@@ -15,5 +15,11 @@
             "type": "dart",
             "args": ["-d","chrome"]
         },
+        {
+            "name": "android",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "android",
+        },
     ]
 }

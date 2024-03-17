@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class gifticon extends StatelessWidget {
   @override
@@ -16,6 +17,11 @@ class gifticon extends StatelessWidget {
                     'coffee.png',
                     height: 250,
                   ),
+                ),
+                QrImageView(
+                  data: '1234567890',
+                  version: QrVersions.auto,
+                  size: 200.0,
                 ),
                 Image.asset(
                   'barcode.png',

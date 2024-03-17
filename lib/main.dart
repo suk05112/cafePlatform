@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Home.dart';
 import 'package:my_app/MenuForStore.dart';
+import 'package:my_app/cafe_list_page';
 import 'package:my_app/myPage.dart';
 import 'package:my_app/GiftBox.dart';
+import 'package:my_app/cafe_list_map_view';
 
 void main() => runApp(MyApp()); // 프로그램을 실행할 때 MyApp 부터 실행하겠어!
 
@@ -54,7 +56,7 @@ class _TabPageState extends State<TabPage> {
   int _selectedIndex = 0; // 처음에 나올 화면 지정
 
   // 이동할 페이지
-  List _pages = [Home(), GiftBox(), myPage()];
+  List _pages = [Home(), GiftBox(), CafeList(), myPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +81,7 @@ class _TabPageState extends State<TabPage> {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "home"),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: "매장보기"),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: "선물함"),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: "mapview"),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: "MyPage"),
         ],
       ),
