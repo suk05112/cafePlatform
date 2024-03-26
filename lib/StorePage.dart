@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class Store extends StatelessWidget {
+class StorePage extends StatelessWidget {
   // MaterialApp = 앱으로서 기능을 할 수 있도록 도와주는 뼈대
   @override
   Widget build(BuildContext context) {

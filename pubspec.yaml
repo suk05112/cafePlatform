@@ -64,7 +64,6 @@ dependencies:
   qrscan: ^0.3.3
   flutter_naver_map: ^1.0.0-dev.5
   kakao_map_plugin: ^0.2.5
-  # flutter_naver_map: ^1.1.1
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   # cupertino_icons: ^1.0.2

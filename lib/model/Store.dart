@@ -17,7 +17,6 @@ class Store {
   int store_photo_cnt;
   String store_address;
   double store_lat, store_lng;
-  File? business_registration;
 
   Store({
     this.owner_id = 0,

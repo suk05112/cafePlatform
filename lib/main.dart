@@ -1,13 +1,28 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:my_app/Home.dart';
 import 'package:my_app/MenuForStore.dart';
-import 'package:my_app/cafe_list_page';
+import 'package:my_app/cafe_list_map_view.dart';
+import 'package:my_app/cafe_list_page.dart';
 import 'package:my_app/myPage.dart';
 import 'package:my_app/GiftBox.dart';
-import 'package:my_app/cafe_list_map_view';
+import 'package:my_app/provider/store_provider.dart';
+import 'package:provider/provider.dart';
 
-void main() => runApp(MyApp()); // 프로그램을 실행할 때 MyApp 부터 실행하겠어!
+// void main() => runApp(MyApp()); // 프로그램을 실행할 때 MyApp 부터 실행하겠어!
 
+void main() async {
+  await _initialize();
+  runApp(MyApp());
+}
+  Future<void> _initialize() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NaverMapSdk.instance.initialize(
+      clientId: 'ofzfofvuev',
+      onAuthFailed: (ex) => log("********* 네이버맵 인증오류 : $ex *********"));
+}
 // StatelessWidget은 변화지 않는 화면을 작업할 때 사용.
 // 변화는 화면을 작업 하고싶을 경우에는 StatefulWidget을 사용.
 class MyApp extends StatelessWidget {
@@ -15,7 +30,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // return MaterialApp() -> Material 디자인 테마를 사용
-    return MaterialApp(
+    return 
+    MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => StoreProvider()),
+        ],
+        child:MaterialApp(
       title: "MyApp", // 앱 이름
       debugShowCheckedModeBanner: false, // 타이틀 바 우측 띠 제거
 
@@ -25,7 +45,7 @@ class MyApp extends StatelessWidget {
       ),
 
       home: MyWidget(), // 앱이 실행될 때 표시할 화면의 함수를 호출
-    );
+    ));
   }
 }
 

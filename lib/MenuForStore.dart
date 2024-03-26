@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/Store.dart';
+import 'package:my_app/StorePage.dart';
 
 class MenuForStore extends StatelessWidget {
   // scaffold = 구성된 앱에서 디자인적인 부분을 도와주는 뼈대
@@ -68,7 +68,7 @@ class _store extends State<store> {
     return new GestureDetector(
       onTap: () {
         Navigator.push(
-            context, MaterialPageRoute(builder: (context) => Store()));
+            context, MaterialPageRoute(builder: (context) => StorePage()));
         print("Container clicked");
       },
       child: Container(

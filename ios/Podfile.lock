@@ -157,6 +157,8 @@ PODS:
   - GTMSessionFetcher/Core (3.3.1)
   - image_picker_ios (0.0.1):
     - Flutter
+  - kakao_map_plugin (0.0.1):
+    - Flutter
   - leveldb-library (1.22.4)
   - MTBBarcodeScanner (5.0.11)
   - nanopb (2.30909.1):
@@ -183,6 +185,8 @@ PODS:
   - SwiftFormat/CLI (0.53.4)
   - SwiftLint (0.48.0)
   - Toast (4.1.0)
+  - webview_flutter_wkwebview (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - amplify_analytics_pinpoint_ios (from `.symlinks/plugins/amplify_analytics_pinpoint_ios/ios`)
@@ -201,9 +205,11 @@ DEPENDENCIES:
   - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - geocoding_ios (from `.symlinks/plugins/geocoding_ios/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - kakao_map_plugin (from `.symlinks/plugins/kakao_map_plugin/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - qr_code_scanner (from `.symlinks/plugins/qr_code_scanner/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/ios`)
 
 SPEC REPOS:
   trunk:
@@ -278,12 +284,16 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/geocoding_ios/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
+  kakao_map_plugin:
+    :path: ".symlinks/plugins/kakao_map_plugin/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   qr_code_scanner:
     :path: ".symlinks/plugins/qr_code_scanner/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  webview_flutter_wkwebview:
+    :path: ".symlinks/plugins/webview_flutter_wkwebview/ios"
 
 CHECKOUT OPTIONS:
   FirebaseFirestore:
@@ -331,6 +341,7 @@ SPEC CHECKSUMS:
   GoogleUtilities: d053d902a8edaa9904e1bd00c37535385b8ed152
   GTMSessionFetcher: 8a1b34ad97ebe6f909fb8b9b77fba99943007556
   image_picker_ios: b545a5f16c0fa88e3ecbbce3ed4de45567a8ec18
+  kakao_map_plugin: 232bc2486ea3ffb5d44c49eac1bcc6dde1a7f0ee
   leveldb-library: 06a69cc7582d64b29424a63e085e683cc188230a
   MTBBarcodeScanner: f453b33c4b7dfe545d8c6484ed744d55671788cb
   nanopb: d4d75c12cd1316f4a64e3c6963f879ecd4b5e0d5
@@ -346,6 +357,7 @@ SPEC CHECKSUMS:
   SwiftFormat: c9a4fbd5e58fc630e0062523186284a917a8803c
   SwiftLint: 284cea64b6187c5d6bd83e9a548a64104d546447
   Toast: ec33c32b8688982cecc6348adeae667c1b9938da
+  webview_flutter_wkwebview: be0f0d33777f1bfd0c9fdcb594786704dbf65f36
 
 PODFILE CHECKSUM: f909298cb9dd276c5f0c8fbbb4764b3be8067c93
 
