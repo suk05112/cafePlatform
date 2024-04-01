@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:my_app/api/API.dart';
 import 'package:my_app/model/Store.dart';
 
-
 class StoreProvider extends ChangeNotifier {
   late Store? _store;
   late List<Store>? storeCards = [];

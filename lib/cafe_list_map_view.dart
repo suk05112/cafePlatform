@@ -33,11 +33,10 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   final Completer<NaverMapController> mapControllerCompleter = Completer();
 
   @override
-    Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final pixelRatio = mediaQuery.devicePixelRatio;
-    final mapSize =
-        Size(mediaQuery.size.width, mediaQuery.size.height - 72);
+    final mapSize = Size(mediaQuery.size.width, mediaQuery.size.height - 72);
     final physicalSize =
         Size(mapSize.width * pixelRatio, mapSize.height * pixelRatio);
 
@@ -69,7 +68,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   //               // color: Colors.greenAccent,
   //               child: Text(""))),
   //   );
-        
+
   // }
 
   Widget _naverMapSection() => NaverMap(
@@ -95,5 +94,3 @@ class _CafeListMapViewState extends State<CafeListMapView> {
         },
       );
 }
-
-

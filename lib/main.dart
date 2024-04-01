@@ -17,12 +17,14 @@ void main() async {
   await _initialize();
   runApp(MyApp());
 }
-  Future<void> _initialize() async {
+
+Future<void> _initialize() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NaverMapSdk.instance.initialize(
       clientId: 'ofzfofvuev',
       onAuthFailed: (ex) => log("********* 네이버맵 인증오류 : $ex *********"));
 }
+
 // StatelessWidget은 변화지 않는 화면을 작업할 때 사용.
 // 변화는 화면을 작업 하고싶을 경우에는 StatefulWidget을 사용.
 class MyApp extends StatelessWidget {
@@ -30,22 +32,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // return MaterialApp() -> Material 디자인 테마를 사용
-    return 
-    MultiProvider(
+    return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (context) => StoreProvider()),
         ],
-        child:MaterialApp(
-      title: "MyApp", // 앱 이름
-      debugShowCheckedModeBanner: false, // 타이틀 바 우측 띠 제거
+        child: MaterialApp(
+          title: "MyApp", // 앱 이름
+          debugShowCheckedModeBanner: false, // 타이틀 바 우측 띠 제거
 
-      // 앱의 기본적인 테마를 지정
-      theme: ThemeData(
-        primarySwatch: Colors.blue, // priamrySwatch 기본적인 앱의 색상을 지정
-      ),
+          // 앱의 기본적인 테마를 지정
+          theme: ThemeData(
+            primarySwatch: Colors.blue, // priamrySwatch 기본적인 앱의 색상을 지정
+          ),
 
-      home: MyWidget(), // 앱이 실행될 때 표시할 화면의 함수를 호출
-    ));
+          home: MyWidget(), // 앱이 실행될 때 표시할 화면의 함수를 호출
+        ));
   }
 }
 
