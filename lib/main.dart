@@ -99,7 +99,7 @@ class _TabPageState extends State<TabPage> {
         // unselectedLabelStyle: TextStyle(color: Colors.grey.shade300),
 
         // BottomNavigationBarItem 위젯
-        items: <BottomNavigationBarItem>[
+        items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "home"),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: "매장보기"),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: "mapview"),
