@@ -6,8 +6,7 @@ import 'package:retrofit/retrofit.dart';
 import 'package:dio/dio.dart';
 part 'ApiClient.g.dart';
 
-@RestApi(
-    baseUrl: "https://ot113tt778.execute-api.us-east-2.amazonaws.com/staging")
+@RestApi(baseUrl: "http://52.76.238.158")
 abstract class ApiClient {
   factory ApiClient(Dio dio, {String baseUrl}) = _ApiClient;
 
