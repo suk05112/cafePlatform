@@ -232,10 +232,10 @@ class _CafeListState extends State<CafeList>
           child: Container(
             margin: EdgeInsets.all(10),
             padding: EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              border: Border.all(color: Color.fromARGB(255, 0, 0, 0)),
-              borderRadius: BorderRadius.all(Radius.circular(5.0)),
-            ),
+            // decoration: BoxDecoration(
+            //   border: Border.all(color: Color.fromARGB(255, 0, 0, 0)),
+            //   borderRadius: BorderRadius.all(Radius.circular(5.0)),
+            // ),
             width: 400,
             child: Row(children: [
               Expanded(

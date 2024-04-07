@@ -14,6 +14,14 @@ class StoreProvider extends ChangeNotifier {
     // }
 
     this.storeCards = storeCards;
+    if (this.storeCards == null || this.storeCards!.isEmpty) {
+      print("여기 탐");
+      this.storeCards = [
+        Store(owner_id: -1, store_id: -1, store_name: "test store")
+      ];
+    } else {
+      print("여기 안탐");
+    }
     notifyListeners();
   }
 
@@ -21,9 +29,11 @@ class StoreProvider extends ChangeNotifier {
     try {
       print("store_provider::fetchStoreList:: fetch 호출");
       var response = await Api().client.getStoreList(1);
-      setStoreCard(response.body.store);
+      var storeList = response.body.store;
+      setStoreCard(storeList);
     } catch (error) {
       print("store_provider::fetchStoreList:: fetch 오류: $error");
+      setStoreCard(null);
     }
   }
 

@@ -6,7 +6,7 @@ import 'package:retrofit/retrofit.dart';
 import 'package:dio/dio.dart';
 part 'ApiClient.g.dart';
 
-@RestApi(baseUrl: "http://52.76.238.158")
+@RestApi(baseUrl: "https://3.23.128.179")
 abstract class ApiClient {
   factory ApiClient(Dio dio, {String baseUrl}) = _ApiClient;
 
@@ -16,7 +16,7 @@ abstract class ApiClient {
     // @Query("owner_id") int owner_id,
   );
 
-  @GET("/store/list/{owner_id}")
+  @GET("/owner/store/list/{owner_id}")
   Future<StoreListResponse> getStoreList(
     @Path('owner_id') int owner_id,
   );

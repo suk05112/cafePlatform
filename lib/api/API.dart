@@ -12,9 +12,9 @@ class Api {
   Dio dio = Dio(_options)..interceptors.add(CustomLogInterceptor());
   var client = ApiClient(Dio()..interceptors.add(CustomLogInterceptor()));
 
-  static const String STAGING_URL = "http://52.76.238.158/";
-  static const String STAGING_URL_V2 = "http://52.76.238.158/";
-  static const String BASE_URL = "http://52.76.238.158/";
+  static const String STAGING_URL = "http://3.23.128.179";
+  static const String STAGING_URL_V2 = "http://3.23.128.179";
+  static const String BASE_URL = "http://3.23.128.179";
   // static const String BASE_URL =
   //     "https://ot113tt778.execute-api.us-east-2.amazonaws.com/staging/";
   static final _options = BaseOptions(

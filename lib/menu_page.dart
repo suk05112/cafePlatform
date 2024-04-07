@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/Payment/select_gift_page.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -50,10 +51,8 @@ class _MenuPageState extends State<MenuPage>
     return GestureDetector(
         onTap: () {
           print("item 선택됨");
-          // Navigator.push(
-          //     context,
-          //     MaterialPageRoute(
-          //         builder: (context) => MenuPage()));
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => SelectGiftPage()));
         },
         child: Container(
           // color: Colors.white,
