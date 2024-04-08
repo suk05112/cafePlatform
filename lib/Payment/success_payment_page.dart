@@ -14,7 +14,10 @@ class _SuccessPaymentPageState extends State<SuccessPaymentPage> {
     return Scaffold(
         body: SafeArea(
             child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        Spacer(),
         Text("결제가 완료되었어요!"),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -33,6 +36,7 @@ class _SuccessPaymentPageState extends State<SuccessPaymentPage> {
             });
           },
         ),
+        Spacer(),
       ],
     )));
   }

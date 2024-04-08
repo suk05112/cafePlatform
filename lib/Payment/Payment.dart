@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/CompletePayment.dart';
+import 'package:my_app/Payment/CompletePayment.dart';
 
 class Payment extends StatelessWidget {
   @override
@@ -51,7 +51,7 @@ class PaymentInfo extends StatelessWidget {
                 Row(
                   children: [
                     Image.asset(
-                      'coffee.png',
+                      'assets/coffee.jpeg',
                       height: 70,
                     ),
                     Column(

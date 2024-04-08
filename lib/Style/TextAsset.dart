@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class TextAssset {
   static const header1 = TextStyle(
-    fontSize: 26,
+    fontSize: 20,
     color: Color(0xff131313),
     fontStyle: FontStyle.normal,
     fontWeight: FontWeight.w700,

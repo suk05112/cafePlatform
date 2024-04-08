@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/Payment/success_payment_page.dart';
 import 'package:my_app/home.dart';
 import 'package:my_app/Payment/CommonPaymentWidget.dart';
 
@@ -33,7 +34,7 @@ class _InputRecipientInfoPagetate extends State<InputRecipientInfoPage> {
             setState(() {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => Home()),
+                MaterialPageRoute(builder: (context) => SuccessPaymentPage()),
               );
             });
           },

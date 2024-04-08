@@ -130,25 +130,7 @@ class _CafeListState extends State<CafeList>
                         return Column(
                           children: <Widget>[
                             // storeCard(null),
-                            TextButton(
-                              onPressed: () {
-                                print("container 눌림");
-                                // Navigator.push(
-                                //   context,
-                                //   MaterialPageRoute(
-                                //     builder: (context) =>
-                                //         const DocumentInputPage(),
-                                //   ),
-                                //   // MaterialPageRoute(
-                                //   //   builder: (context) => const RegisterStorePage(
-                                //   //     isRegister: true,
-                                //   //     store: null,
-                                //   //   ),
-                                //   // ),
-                                // );
-                              },
-                              child: const Text("매장 추가"),
-                            ),
+                            Text("검색된 매장이 없습니다.")
                           ],
                         );
                       } else {

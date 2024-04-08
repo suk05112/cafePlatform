@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/Payment/select_gift_page.dart';
+import 'package:my_app/Payment/select_gift_type_page.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);

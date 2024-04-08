@@ -4,11 +4,18 @@ import 'package:my_app/home.dart';
 class CompletePayment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Material(
-      child: Column(
-        children: [Text('결제가 완료되었습니다'), goHomeBtn()],
-      ),
-    );
+    return Scaffold(
+        body: SafeArea(
+            child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center, // 추가된 부분
+      children: [
+        Spacer(),
+        Text("결제가 완료되었어요!"),
+        goHomeBtn(),
+        Spacer(),
+      ],
+    )));
   }
 }
 

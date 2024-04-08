@@ -14,7 +14,7 @@ class gifticon extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(20),
                   child: Image.asset(
-                    'coffee.png',
+                    'coffee.jpeg',
                     height: 250,
                   ),
                 ),

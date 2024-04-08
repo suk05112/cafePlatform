@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/Payment.dart';
+import 'package:my_app/Payment/CommonPaymentWidget.dart';
+import 'package:my_app/Payment/Payment.dart';
 
 class GiftToOthers extends StatelessWidget {
   @override
@@ -13,13 +14,24 @@ class GiftToOthers extends StatelessWidget {
           elevation: 0.0, //elevation 속성을 통해 그림자 효과 제어
           backgroundColor: Colors.redAccent.withOpacity(0.0),
         ),
-        body: Container(
-          margin: EdgeInsets.fromLTRB(10, 5, 5, 10),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [InputOhtersInfo(), nextBtn()],
-          ),
-        ));
+        body: SafeArea(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+              Container(
+                margin: EdgeInsets.fromLTRB(10, 5, 10, 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    InputOhtersInfo(),
+                  ],
+                ),
+              ),
+              Spacer(),
+              Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [nextBtn()])
+            ])));
   }
 }
 
@@ -31,20 +43,16 @@ class InputOhtersInfo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Text("받을 분의 전화번호를 입력해 주세요."),
-          TextField(
-            decoration: InputDecoration(
-              hintText: '받을 분의 전화번호를 입력해 주세요',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(10.0)),
-              ),
-            ),
+          CommonPaymentWidget.getGiftInfo(),
+          InputInfoWidget(
+            title: "받는 분의 전화번호를 입력해 주세요",
+            hintText: "-없이 입력",
+            validator: validatePhoneNumber,
           ),
           Text("기프티콘은 카카오톡(문자)으로 전달됩니다. \n앱을 설치하지 않아도 이용할 수 있어요!"),
           SizedBox(
             height: 15.0,
           ),
-          Text('메시지를 입력해주세요(생략가능)'),
           TextField(
             decoration: InputDecoration(
               hintText: '메시지를 입력해주세요(생략가능)',
@@ -56,6 +64,13 @@ class InputOhtersInfo extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String? validatePhoneNumber(String? value) {
+    if (value == null || value.isEmpty) {
+      return "빈 문자열";
+    }
+    return null;
   }
 }
 
@@ -73,13 +88,16 @@ class _nextBtn extends State<nextBtn> {
     return Center(
         // Elevated Button 위젯
         child: SizedBox(
-      width: 150,
-      height: 30,
+      width: MediaQuery.of(context).size.width,
+      height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(0.0),
+          ),
         ),
-        child: Text('다음'),
+        child: Text('4500원 결제하기'),
 
         // 클릭 이벤트
         onPressed: () {

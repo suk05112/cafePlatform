@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/GiftToOthers.dart';
-import 'package:my_app/Payment.dart';
+import 'package:my_app/Payment/GiftToOthers.dart';
+import 'package:my_app/Payment/Payment.dart';
 
 class GifticonInfo extends StatelessWidget {
   @override
@@ -60,7 +60,7 @@ class ItemInfo extends StatelessWidget {
       home: Row(
         children: [
           Image.asset(
-            'coffee.png',
+            'assets/coffee.jpeg',
             height: 200,
           ),
           Column(

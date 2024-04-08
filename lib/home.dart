@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:my_app/Payment/GifticonInfo.dart';
 
 import 'package:my_app/myPage.dart';
-import 'package:my_app/GifticonInfo.dart';
 
 // StatelessWidget은 변화지 않는 화면을 작업할 때 사용.
 // 변화는 화면을 작업 하고싶을 경우에는 StatefulWidget을 사용.
@@ -123,12 +123,12 @@ class _cntState extends State<cntState> {
 }
 
 List<Image> categoryImage = [
-  Image.asset('coffee.png'),
-  Image.asset('coffee.png'),
-  Image.asset('coffee.png'),
-  Image.asset('coffee.png'),
-  Image.asset('coffee.png'),
-  Image.asset('coffee.png'),
+  Image.asset('coffee.jpeg'),
+  Image.asset('coffee.jpeg'),
+  Image.asset('coffee.jpeg'),
+  Image.asset('coffee.jpeg'),
+  Image.asset('coffee.jpeg'),
+  Image.asset('coffee.jpeg'),
 ];
 
 var categoryText = [
@@ -208,7 +208,7 @@ class _categoryState extends State<categoryState> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Image.asset(
-                      'coffee.png',
+                      'assets.coffee.jpeg',
                       height: 40,
                     ),
                     Text(
