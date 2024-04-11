@@ -31,9 +31,9 @@ abstract class ApiClient {
     @Body() String uid,
   );
 
-  @GET("/menu/list/{store_Id}")
+  @GET("/menu/list/{menu_Id}")
   Future<MenuGetResponse> getMenuList(
-    @Path('store_Id') int store_Id,
+    @Path('menu_Id') int menu_Id,
   );
 
   @POST("/menu/")

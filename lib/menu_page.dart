@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Payment/select_gift_type_page.dart';
+import 'package:my_app/api/API.dart';
+import 'package:my_app/model/menu.dart';
+import 'package:my_app/provider/menu_provider.dart';
+import 'package:my_app/provider/store_provider.dart';
+import 'package:provider/provider.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({Key? key}) : super(key: key);
@@ -16,7 +21,20 @@ class _MenuPageState extends State<MenuPage>
   void initState() {
     print("init state 호출");
     super.initState();
+    Provider.of<MenuProvider>(context, listen: false).fetchMenuList();
   }
+
+  // Future<void> fetchMenuList() async {
+  //   try {
+  //     print("store_provider::fetchStoreList:: fetch 호출");
+  //     var response = await Api().client.getMenuList(1);
+  //     var menuList = response.menuList;
+  //     setStoreCard(storeList);
+  //   } catch (error) {
+  //     print("store_provider::fetchStoreList:: fetch 오류: $error");
+  //     setStoreCard(null);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +57,49 @@ class _MenuPageState extends State<MenuPage>
                             crossAxisSpacing: 2, //수직 Padding
                             children: List.generate(12, (index) {
                               //item 의 반목문 항목 형성
-                              return getMenu();
+                              return getList(context);
                             }),
                           ),
                         ])))));
   }
 
-  Widget getMenu() {
+  Widget getList(BuildContext context) {
+    return Align(
+        alignment: Alignment.center,
+        child: Consumer<MenuProvider>(
+          builder: (context, menuProvider, child) {
+            List<Menu> menuList = menuProvider.menuCards ?? [];
+            print("cafe_list_builder:: ${menuList}");
+            return Column(
+              children: <Widget>[
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: menuList.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == menuList.length) {
+                        return Column(
+                          children: <Widget>[
+                            // storeCard(null),
+                            Text("검색된 매장이 없습니다.")
+                          ],
+                        );
+                      } else {
+                        return getMenu(menuList[index]);
+                      }
+                    },
+                    separatorBuilder: (BuildContext context, int index) {
+                      if (index == 0) return SizedBox.shrink();
+                      return const Divider();
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ));
+  }
+
+  Widget getMenu(Menu? menu) {
     double widgetWidth = MediaQuery.of(context).size.width / 2;
 
     return GestureDetector(
@@ -85,7 +139,7 @@ class _MenuPageState extends State<MenuPage>
                 // mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("menu name"),
+                  Text("${menu?.name}"),
                   Text("부드러운 디저트 아이스 카페 아메리카노T 2잔"),
                   Text("12000원")
                 ])

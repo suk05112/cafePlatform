@@ -8,6 +8,7 @@ import 'package:my_app/cafe_list_map_view.dart';
 import 'package:my_app/cafe_list_page.dart';
 import 'package:my_app/myPage.dart';
 import 'package:my_app/GiftBox.dart';
+import 'package:my_app/provider/menu_provider.dart';
 import 'package:my_app/provider/store_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (context) => StoreProvider()),
+          ChangeNotifierProvider(create: (context) => MenuProvider()),
         ],
         child: MaterialApp(
           title: "MyApp", // 앱 이름
