@@ -35,7 +35,7 @@ class MenuPostResponse {
 @JsonSerializable()
 class Menu {
   int menu_id;
-  int store_Id;
+  int store_id;
   String name;
   int price;
   String menu_image_url;
@@ -44,7 +44,7 @@ class Menu {
 
   Menu(
       {required this.menu_id,
-      required this.store_Id,
+      required this.store_id,
       required this.name,
       required this.price,
       required this.menu_image_url,

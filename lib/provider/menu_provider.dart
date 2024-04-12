@@ -20,7 +20,7 @@ class MenuProvider extends ChangeNotifier {
       this.menuCards = [
         Menu(
           menu_id: -1,
-          store_Id: -1,
+          store_id: -1,
           name: 'test Menu',
           price: 100,
           menu_image_url: '',

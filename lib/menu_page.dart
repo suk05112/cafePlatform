@@ -48,18 +48,25 @@ class _MenuPageState extends State<MenuPage>
                             .start, // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text("store 이름"),
-                          GridView.count(
-                            shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
-                            crossAxisCount: 2, //1 개의 행에 보여줄 item 개수
-                            childAspectRatio: 1 / 1.7, //item 의 가로 1, 세로 2 의 비율
-                            mainAxisSpacing: 5, //수평 Padding
-                            crossAxisSpacing: 2, //수직 Padding
-                            children: List.generate(12, (index) {
-                              //item 의 반목문 항목 형성
-                              return getList(context);
-                            }),
+                          Container(
+                            height: 500,
+                            child: getList(context),
                           ),
+                          // GridView.count(
+                          //   shrinkWrap: true,
+                          //   physics: NeverScrollableScrollPhysics(),
+                          //   crossAxisCount: 2, //1 개의 행에 보여줄 item 개수
+                          //   childAspectRatio: 1 / 1.7, //item 의 가로 1, 세로 2 의 비율
+                          //   mainAxisSpacing: 5, //수평 Padding
+                          //   crossAxisSpacing: 2, //수직 Padding
+                          //   children:
+                          //   getList(context);
+                          // List.generate(12, (index) {
+                          //   //item 의 반목문 항목 형성
+                          //   return getList(context);
+                          // }
+                          // ),
+                          // ),
                         ])))));
   }
 
@@ -69,7 +76,7 @@ class _MenuPageState extends State<MenuPage>
         child: Consumer<MenuProvider>(
           builder: (context, menuProvider, child) {
             List<Menu> menuList = menuProvider.menuCards ?? [];
-            print("cafe_list_builder:: ${menuList}");
+            print("menu_list_builder:: ${menuList}");
             return Column(
               children: <Widget>[
                 Expanded(
@@ -80,7 +87,7 @@ class _MenuPageState extends State<MenuPage>
                         return Column(
                           children: <Widget>[
                             // storeCard(null),
-                            Text("검색된 매장이 없습니다.")
+                            Text("등록된 없습니다.")
                           ],
                         );
                       } else {
