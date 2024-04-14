@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/model/menu.dart';
 
 class CommonPaymentWidget {
-  static Widget getGiftInfo() {
+  static Widget getGiftInfo(Menu menu) {
     return Container(
         height: 200,
         // width: double.infinity,
@@ -29,12 +30,16 @@ class CommonPaymentWidget {
                   textBaseline: TextBaseline.alphabetic,
                   children: <Widget>[
                     Text(
-                      "아메리카노",
+                      "${menu.name}",
                       style: TextStyle(fontSize: 25, color: Colors.black),
                     ),
                     Text(
-                      "4500원",
+                      "${menu.price}",
                       style: TextStyle(fontSize: 15, color: Colors.black),
+                    ),
+                    Text(
+                      "${menu.description}",
+                      style: TextStyle(fontSize: 13, color: Colors.black),
                     )
                   ],
                 )

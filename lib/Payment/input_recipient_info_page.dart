@@ -21,7 +21,7 @@ class _InputRecipientInfoPagetate extends State<InputRecipientInfoPage> {
         Text("받을 분의 전화번호를 입력해주세요"),
         Text("기프티콘은 카카오톡(문자)로 전달됩니다."),
         Text("메시지를 입력해주세요(생략가능)"),
-        CommonPaymentWidget.getGiftInfo(),
+        // CommonPaymentWidget.getGiftInfo(),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,

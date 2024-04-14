@@ -3,9 +3,12 @@ import 'package:my_app/Payment/GiftToOthers.dart';
 import 'package:my_app/Payment/input_recipient_info_page.dart';
 import 'package:my_app/home.dart';
 import 'package:my_app/Payment/CommonPaymentWidget.dart';
+import 'package:my_app/model/menu.dart';
 
 class SelectGiftPage extends StatefulWidget {
-  const SelectGiftPage({Key? key}) : super(key: key);
+  const SelectGiftPage({Key? key, required Menu this.menu}) : super(key: key);
+
+  final Menu menu; // 메뉴 객체를 저장할 필드 추가
 
   @override
   State<SelectGiftPage> createState() => _SelectGiftPagePageState();
@@ -21,7 +24,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                 child: Column(
                   children: [
                     Text("선물하기"),
-                    CommonPaymentWidget.getGiftInfo(),
+                    CommonPaymentWidget.getGiftInfo(widget.menu),
                     Spacer(),
                     Container(
                       width: double.infinity,

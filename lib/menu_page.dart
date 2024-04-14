@@ -64,37 +64,45 @@ class _MenuPageState extends State<MenuPage>
     double widgetWidth = MediaQuery.of(context).size.width / 2;
 
     return GestureDetector(
-      onTap: () {
-        print("item 선택됨");
-        Navigator.push(
-            context, MaterialPageRoute(builder: (context) => SelectGiftPage()));
-      },
-      child: Column(children: [
-        Spacer(),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8.0),
-          child: Image(
-              image: AssetImage('assets/menu.png'),
-              width: widgetWidth,
-              height: widgetWidth,
-              fit: BoxFit.fill),
-        ),
-        //         Image.network(store!.store_logo,
-        //             width: 90, height: 90, fit: BoxFit.fill,
-        //             errorBuilder: (context, error, stackTrace) {
-        //   return Image(
-        //       image: AssetImage('assets/logo.jpeg'),
-        //       width: 90,
-        //       height: 90,
-        //       fit: BoxFit.fill);
-        // })
-        Spacer(),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text("${menu?.name}"),
-          Text("${menu?.description}"),
-          Text("${menu?.price}"),
-        ])
-      ]),
-    );
+        onTap: () {
+          print("item 선택됨");
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => SelectGiftPage(
+                        menu: menu!,
+                      )));
+        },
+        child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+          Spacer(),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: Image(
+                image: AssetImage('assets/menu.png'),
+                width: widgetWidth,
+                height: widgetWidth,
+                fit: BoxFit.fill),
+          ),
+          //         Image.network(store!.store_logo,
+          //             width: 90, height: 90, fit: BoxFit.fill,
+          //             errorBuilder: (context, error, stackTrace) {
+          //   return Image(
+          //       image: AssetImage('assets/logo.jpeg'),
+          //       width: 90,
+          //       height: 90,
+          //       fit: BoxFit.fill);
+          // })
+          Spacer(),
+          Container(
+              width: double.infinity,
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  // mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text("${menu?.name}"),
+                    Text("${menu?.description}"),
+                    Text("${menu?.price}"),
+                  ]))
+        ]));
   }
 }
