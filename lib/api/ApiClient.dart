@@ -10,13 +10,16 @@ part 'ApiClient.g.dart';
 abstract class ApiClient {
   factory ApiClient(Dio dio, {String baseUrl}) = _ApiClient;
 
+  // @GET("/home")
+  // getHome();
+
   @GET("/store/{store_Id}")
   Future<StoreResponse> getStoreDetailInfo(
     @Path('store_Id') int store_Id,
     // @Query("owner_id") int owner_id,
   );
 
-  @GET("/owner/store/list/{owner_id}")
+  @GET("/store/list/{owner_id}")
   Future<StoreListResponse> getStoreList(
     @Path('owner_id') int owner_id,
   );
@@ -31,9 +34,9 @@ abstract class ApiClient {
     @Body() String uid,
   );
 
-  @GET("/menu/list/{menu_Id}")
+  @GET("/menu/list/{store_id}")
   Future<MenuGetResponse> getMenuList(
-    @Path('menu_Id') int menu_Id,
+    @Path('store_id') int store_id,
   );
 
   @POST("/menu/")

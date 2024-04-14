@@ -12,16 +12,16 @@ class Api {
   Dio dio = Dio(_options)..interceptors.add(CustomLogInterceptor());
   var client = ApiClient(Dio()..interceptors.add(CustomLogInterceptor()));
 
-  static const String STAGING_URL = "http://18.188.65.170";
-  static const String STAGING_URL_V2 = "http://18.188.65.170";
-  static const String BASE_URL = "http://18.188.65.170";
+  static const String STAGING_URL = "http://18.221.2.135";
+  static const String STAGING_URL_V2 = "http://18.221.2.135";
+  static const String BASE_URL = "http://18.221.2.135";
   // static const String BASE_URL =
   //     "https://ot113tt778.execute-api.us-east-2.amazonaws.com/staging/";
   static final _options = BaseOptions(
       baseUrl: STAGING_URL_V2,
       headers: _headers,
-      connectTimeout: 500,
-      receiveTimeout: 500);
+      connectTimeout: 5000,
+      receiveTimeout: 5000);
   static final _headers = {
     'Content-Type': 'application/json; charset=UTF-8',
     // 'X-API-KEY': 'app-id=loplat-go-android,signature=d8d6513401f6714cc98b72bc5bc7e2bfcca13b4fe89b22183f470537e57c040c',
@@ -32,9 +32,9 @@ class Api {
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       headers: _headers,
-      connectTimeout: 500,
-      receiveTimeout: 500,
-      sendTimeout: 500,
+      connectTimeout: 5000,
+      receiveTimeout: 5000,
+      sendTimeout: 5000,
     ))
       ..interceptors.add(CustomLogInterceptor());
 
@@ -49,9 +49,9 @@ class Api {
       headers: accessToken != null
           ? {..._headers, 'Authorization': 'Bearer $accessToken'}
           : _headers,
-      connectTimeout: 500,
-      receiveTimeout: 500,
-      sendTimeout: 500,
+      connectTimeout: 5000,
+      receiveTimeout: 5000,
+      sendTimeout: 5000,
     ))
       ..interceptors.add(CustomLogInterceptor())
       ..interceptors.add(AuthInterceptor());

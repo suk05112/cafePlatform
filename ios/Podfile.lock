@@ -56,7 +56,7 @@ PODS:
     - AWSCore (~> 2.33.0)
   - camera (0.0.1):
     - Flutter
-  - cloud_firestore (4.15.9):
+  - cloud_firestore (4.16.1):
     - Firebase/Firestore (= 10.22.0)
     - firebase_core
     - Flutter
@@ -69,11 +69,11 @@ PODS:
   - Firebase/Firestore (10.22.0):
     - Firebase/CoreOnly
     - FirebaseFirestore (~> 10.22.0)
-  - firebase_auth (4.17.9):
+  - firebase_auth (4.19.1):
     - Firebase/Auth (= 10.22.0)
     - firebase_core
     - Flutter
-  - firebase_core (2.27.1):
+  - firebase_core (2.29.0):
     - Firebase/CoreOnly (= 10.22.0)
     - Flutter
   - FirebaseAppCheckInterop (10.22.0)
@@ -315,10 +315,10 @@ SPEC CHECKSUMS:
   AWSPinpoint: 2d6876a397a7b413bcebab139dd0b9c54a68bde9
   AWSPluginsCore: f2188458c27e6cb09597c67876f80611d14275d7
   camera: fe33292aff715a981eb34d7ce7b35b54337ff34c
-  cloud_firestore: 9d69182af1d677062f005584ca5470a19e1f68e7
+  cloud_firestore: 16ad850949e9c68ac1d99e883adaaba9b9fc955c
   Firebase: 797fd7297b7e1be954432743a0b3f90038e45a71
-  firebase_auth: 610184b4f624545f81e0416bca60642b6818f27f
-  firebase_core: d6dfb4cb86a9ebd92464bb8736075fe967211c97
+  firebase_auth: 35e39b82fa6703db53401e2d8708341597edc7be
+  firebase_core: aaadbddb3cb2ee3792b9804f9dbb63e5f6f7b55c
   FirebaseAppCheckInterop: 58db3e9494751399cf3e7b7e3e705cff71099153
   FirebaseAuth: bbe4c68f958504ba9e54aee181adbdf5b664fbc6
   FirebaseCore: 0326ec9b05fbed8f8716cddbf0e36894a13837f7
@@ -336,7 +336,7 @@ SPEC CHECKSUMS:
   flutter_file_dialog: 4c014a45b105709a27391e266c277d7e588e9299
   flutter_inappwebview: 3d32228f1304635e7c028b0d4252937730bbc6cf
   flutter_naver_map: b18663bc83c2caaab484c58dccf239a87ebbed1b
-  fluttertoast: 31b00dabfa7fb7bacd9e7dbee580d7a2ff4bf265
+  fluttertoast: 9f2f8e81bb5ce18facb9748d7855bf5a756fe3db
   geocoding_ios: a389ea40f6f548de6e63006a2e31bf66ff80769a
   GoogleUtilities: d053d902a8edaa9904e1bd00c37535385b8ed152
   GTMSessionFetcher: 8a1b34ad97ebe6f909fb8b9b77fba99943007556

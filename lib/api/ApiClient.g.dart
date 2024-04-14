@@ -13,7 +13,7 @@ class _ApiClient implements ApiClient {
     this._dio, {
     this.baseUrl,
   }) {
-    baseUrl ??= 'http://3.23.128.179';
+    baseUrl ??= 'http://18.221.2.135';
   }
 
   final Dio _dio;
@@ -114,7 +114,7 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<MenuGetResponse> getMenuList(store_Id) async {
+  Future<MenuGetResponse> getMenuList(store_id) async {
     const _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
@@ -127,7 +127,7 @@ class _ApiClient implements ApiClient {
     )
             .compose(
               _dio.options,
-              '/menu/list/${store_Id}',
+              '/menu/list/${store_id}',
               queryParameters: queryParameters,
               data: _data,
             )

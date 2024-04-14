@@ -231,7 +231,7 @@ class _CafeListState extends State<CafeList>
                           width: 90, height: 90, fit: BoxFit.fill,
                           errorBuilder: (context, error, stackTrace) {
                 return Image(
-                    image: AssetImage('assets/logo.jpeg'),
+                    image: AssetImage('assets/coffee.jpeg'),
                     width: 90,
                     height: 90,
                     fit: BoxFit.fill);
