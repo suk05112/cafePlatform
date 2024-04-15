@@ -5,7 +5,18 @@ import 'package:my_app/model/menu.dart';
 
 class MenuProvider extends ChangeNotifier {
   late Menu? _menu;
+  late Menu? _selectedMenu;
+
   late List<Menu>? menuCards = [];
+
+  void setSelectedMenu(Menu menu) {
+    this._selectedMenu = menu;
+    notifyListeners();
+  }
+
+  Menu getSelectedMenu() {
+    return _selectedMenu!;
+  }
 
   void setMenuCard(List<Menu>? menuCards) {
     // if ((storeCards?.length ?? 0) > 0) {

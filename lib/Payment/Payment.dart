@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/Payment/CommonPaymentWidget.dart';
 import 'package:my_app/Payment/CompletePayment.dart';
+import 'package:my_app/provider/menu_provider.dart';
+import 'package:provider/provider.dart';
 
 class Payment extends StatelessWidget {
   @override
@@ -19,12 +22,14 @@ class Payment extends StatelessWidget {
             Container(
               // width: double.infinity,
               // height: double.infinity,
+              margin: EdgeInsets.fromLTRB(10, 5, 10, 10),
+
               padding: EdgeInsets.all(5),
               child: Column(
                 children: [
-                  PaymentInfo(),
+                  CommonPaymentWidget.getGiftInfo(),
                   ApplyCoupons(),
-                  ApplyPoints(),
+                  // ApplyPoints(),
                 ],
               ),
             ),
@@ -32,57 +37,6 @@ class Payment extends StatelessWidget {
             paymentBtn(),
           ],
         )));
-  }
-}
-
-class PaymentInfo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: <Widget>[
-          Text("결제 정보"),
-          Container(
-            decoration: BoxDecoration(
-                border: Border.all(
-                    color: Colors.black, style: BorderStyle.solid, width: 1)),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Image.asset(
-                      'assets/coffee.jpeg',
-                      height: 70,
-                    ),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: <Widget>[
-                        Text(
-                          "아메리카노",
-                          style: TextStyle(fontSize: 25, color: Colors.black),
-                        ),
-                        Text(
-                          "4500원",
-                          style: TextStyle(fontSize: 15, color: Colors.black),
-                        )
-                      ],
-                    )
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [Text("결제 금액"), Text("4500")],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

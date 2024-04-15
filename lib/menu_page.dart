@@ -66,6 +66,9 @@ class _MenuPageState extends State<MenuPage>
     return GestureDetector(
         onTap: () {
           print("item 선택됨");
+          Provider.of<MenuProvider>(context, listen: false)
+              .setSelectedMenu(menu!);
+
           Navigator.push(
               context,
               MaterialPageRoute(

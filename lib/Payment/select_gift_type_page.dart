@@ -24,7 +24,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                 child: Column(
                   children: [
                     Text("선물하기"),
-                    CommonPaymentWidget.getGiftInfo(widget.menu),
+                    CommonPaymentWidget.getGiftInfo(),
                     Spacer(),
                     Container(
                       width: double.infinity,

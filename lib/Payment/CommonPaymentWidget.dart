@@ -1,57 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/model/menu.dart';
+import 'package:my_app/provider/menu_provider.dart';
+import 'package:provider/provider.dart';
 
 class CommonPaymentWidget {
-  static Widget getGiftInfo(Menu menu) {
-    return Container(
-        height: 200,
-        // width: double.infinity,
-        padding: EdgeInsets.fromLTRB(21, 15, 21, 10),
-        decoration: BoxDecoration(
-          color: Color(0xffCAC9FF),
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.asset(
-                  'assets/coffee.png',
-                  width: 130,
-                  height: 130,
-                ),
-                SizedBox(
-                  width: 10,
-                ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: <Widget>[
-                    Text(
-                      "${menu.name}",
-                      style: TextStyle(fontSize: 25, color: Colors.black),
-                    ),
-                    Text(
-                      "${menu.price}",
-                      style: TextStyle(fontSize: 15, color: Colors.black),
-                    ),
-                    Text(
-                      "${menu.description}",
-                      style: TextStyle(fontSize: 13, color: Colors.black),
-                    )
-                  ],
-                )
-              ],
-            ),
-            Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Text("결제 금액"), Text("4500원")],
-            ),
-          ],
-        ));
+  static Widget getGiftInfo() {
+    return Consumer<MenuProvider>(builder: (context, menuProvider, child) {
+      Menu menu = menuProvider.getSelectedMenu();
+      return Container(
+          height: 200,
+          // width: double.infinity,
+          padding: EdgeInsets.fromLTRB(21, 15, 21, 10),
+          decoration: BoxDecoration(
+            color: Color(0xffCAC9FF),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image.asset(
+                    'assets/coffee.png',
+                    width: 130,
+                    height: 130,
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: <Widget>[
+                      Text(
+                        "${menu.name}",
+                        style: TextStyle(fontSize: 25, color: Colors.black),
+                      ),
+                      Text(
+                        "${menu.price}",
+                        style: TextStyle(fontSize: 15, color: Colors.black),
+                      ),
+                      Text(
+                        "${menu.description}",
+                        style: TextStyle(fontSize: 13, color: Colors.black),
+                      )
+                    ],
+                  )
+                ],
+              ),
+              Spacer(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [Text("결제 금액"), Text("4500원")],
+              ),
+            ],
+          ));
+    });
   }
 
 /*
