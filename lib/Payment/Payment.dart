@@ -13,7 +13,8 @@ class Payment extends StatelessWidget {
           elevation: 0.0, //elevation 속성을 통해 그림자 효과 제어
           backgroundColor: Colors.redAccent.withOpacity(0.0),
         ),
-        body: Column(
+        body: SafeArea(
+            child: Column(
           children: [
             Container(
               // width: double.infinity,
@@ -27,9 +28,10 @@ class Payment extends StatelessWidget {
                 ],
               ),
             ),
+            Spacer(),
             paymentBtn(),
           ],
-        ));
+        )));
   }
 }
 
@@ -154,11 +156,14 @@ class _paymentBtn extends State<paymentBtn> {
     return Center(
         // Elevated Button 위젯
         child: SizedBox(
-      width: 150,
-      height: 30,
+      width: double.infinity,
+      height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(0.0),
+          ),
         ),
         child: Text('4500원 결제하기'),
 
