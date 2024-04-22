@@ -45,46 +45,45 @@ class _CafeListState extends State<CafeList>
   Widget build(BuildContext context) {
     return Scaffold(
         body: SafeArea(
-            child: SingleChildScrollView(
+            child: Expanded(
                 child: Container(
-                    margin: EdgeInsets.fromLTRB(10, 20, 10, 21),
+                    // margin: EdgeInsets.fromLTRB(10, 20, 10, 21),
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment
                             .start, // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            "cafe",
-                          ),
-                          SizedBox(
-                            height: 10,
-                          ),
-                          Container(
-                            height: kToolbarHeight - 8.0,
-                            decoration: BoxDecoration(
-                              color: Color(0xffCAC9FF),
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: getTabBarWidget(),
-                          ),
-                          Container(
-                            margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
-                            height: MediaQuery.of(context).size.height -
-                                kToolbarHeight -
-                                50,
-                            width: double.infinity,
-                            child: TabBarView(
-                              controller: _tabController,
-                              children: <Widget>[
-                                Container(
-                                  height: 500,
-                                  child: getList(context),
-                                ),
-                                // getList(context),
-                                CafeListMapView()
-                              ],
-                            ),
-                          ),
-                        ])))));
+          Text(
+            "cafe",
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          Container(
+            height: kToolbarHeight - 8.0,
+            decoration: BoxDecoration(
+              color: Color(0xffCAC9FF),
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            child: getTabBarWidget(),
+          ),
+          Container(
+            height: MediaQuery.of(context).size.height - kToolbarHeight - 50,
+            width: double.infinity,
+            child: TabBarView(
+              controller: _tabController,
+              physics: NeverScrollableScrollPhysics(),
+              children: <Widget>[
+                Container(
+                  margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
+                  height: 500,
+                  child: getList(context),
+                ),
+                // getList(context),
+                CafeListMapView()
+              ],
+            ),
+          ),
+        ])))));
   }
 
   Widget getTabBarWidget() {

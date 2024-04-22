@@ -85,7 +85,9 @@ class _CafeListMapViewState extends State<CafeListMapView> {
         .getStoreList(); // 변경된 부분: build() 메서드 내에서 storeList를 가져옴
     final lat = storeList![0].store_lat;
     final lng = storeList![0].store_lng;
-    final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
+    // final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
+    final marker =
+        NMarker(id: 'test', position: NLatLng(37.5512414, 126.8645132));
 
     return Consumer<StoreProvider>(builder: (context, storeProvider, child) {
       List<Store> storeList = storeProvider.storeCards ?? [];
@@ -98,7 +100,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
       return NaverMap(
         options: const NaverMapViewOptions(
             initialCameraPosition: NCameraPosition(
-                target: NLatLng(37.5512414, 26.8645132), zoom: 10),
+                target: NLatLng(37.5512414, 126.8645132), zoom: 10),
             indoorEnable: true,
             locationButtonEnable: true,
             consumeSymbolTapEvents: false),
