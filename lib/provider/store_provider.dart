@@ -37,16 +37,20 @@ class StoreProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<Store>> getStoreList() async {
-    print("store_provider::getStoreList:: fetch 호출");
-    Api().client.getStoreList(2).then((response) => {
-          for (var res in response.body.store) {print(res.toString())}
-        });
-    var response = await Api().client.getStoreList(2);
-    notifyListeners();
-
-    return response.body.store;
+  List<Store>? getStoreList() {
+    return storeCards;
   }
+
+  // Future<List<Store>> getStoreList() async {
+  //   print("store_provider::getStoreList:: fetch 호출");
+  //   Api().client.getStoreList(2).then((response) => {
+  //         for (var res in response.body.store) {print(res.toString())}
+  //       });
+  //   var response = await Api().client.getStoreList(2);
+  //   notifyListeners();
+
+  //   return response.body.store;
+  // }
 
   Future<Store> getDetailStore(int storeId) async {
     print("store_provider::getDetailStore:: fetch 호출");

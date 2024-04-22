@@ -57,16 +57,16 @@ class MenuProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<Store>> getStoreList() async {
-    print("store_provider::getStoreList:: fetch 호출");
-    Api().client.getStoreList(2).then((response) => {
-          for (var res in response.body.store) {print(res.toString())}
-        });
-    var response = await Api().client.getStoreList(2);
-    notifyListeners();
+  // Future<List<Store>> getStoreList() async {
+  //   print("store_provider::getStoreList:: fetch 호출");
+  //   Api().client.getStoreList(2).then((response) => {
+  //         for (var res in response.body.store) {print(res.toString())}
+  //       });
+  //   var response = await Api().client.getStoreList(2);
+  //   notifyListeners();
 
-    return response.body.store;
-  }
+  //   return response.body.store;
+  // }
 
   Future<Store> getDetailStore(int storeId) async {
     print("store_provider::getDetailStore:: fetch 호출");

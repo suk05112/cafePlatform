@@ -4,6 +4,9 @@ import 'dart:async';
 import 'dart:developer' show log;
 import 'dart:io';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import 'package:my_app/model/Store.dart';
+import 'package:my_app/provider/store_provider.dart';
+import 'package:provider/provider.dart';
 
 class CafeListMapView extends StatefulWidget {
   const CafeListMapView({Key? key}) : super(key: key);
@@ -16,9 +19,15 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   // late NaverMapController _mapController;
   // final Completer<NaverMapController> mapControllerCompleter = Completer();
 
+  // List<Store>? storeList =
+
   @override
   void initState() {
     super.initState();
+
+    // storeList =
+    // Provider.of<StoreProvider>(context, listen: false).getStoreList();
+
     // _initialize();
   }
 
@@ -71,14 +80,32 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
   // }
 
-  Widget _naverMapSection() => NaverMap(
+  Widget _naverMapSection() {
+    final storeList = Provider.of<StoreProvider>(context)
+        .getStoreList(); // 변경된 부분: build() 메서드 내에서 storeList를 가져옴
+    final lat = storeList![0].store_lat;
+    final lng = storeList![0].store_lng;
+    final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
+
+    return Consumer<StoreProvider>(builder: (context, storeProvider, child) {
+      List<Store> storeList = storeProvider.storeCards ?? [];
+      final store = storeProvider.getStoreList()![0];
+
+      double lat = store.store_lat;
+      double lng = store.store_lng;
+
+      print("cafe_list_builder:: ${storeList}");
+      return NaverMap(
         options: const NaverMapViewOptions(
+            initialCameraPosition: NCameraPosition(
+                target: NLatLng(37.5512414, 26.8645132), zoom: 10),
             indoorEnable: true,
             locationButtonEnable: true,
             consumeSymbolTapEvents: false),
         onMapReady: (controller) async {
           _mapController = controller;
           mapControllerCompleter.complete(controller);
+          controller.addOverlay(marker);
           log("onMapReady", name: "onMapReady");
         },
         onMapTapped: (point, latLng) async {
@@ -93,4 +120,6 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           await marker.openInfoWindow(infoWindow);
         },
       );
+    });
+  }
 }

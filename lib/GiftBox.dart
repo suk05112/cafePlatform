@@ -62,7 +62,7 @@ class _GifticonGridviewState extends State<GifticonGridview> {
             return new GestureDetector(
               onTap: () {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => gifticon()));
+                    MaterialPageRoute(builder: (context) => GiftIcon()));
                 print("Container clicked");
               },
               child: Container(

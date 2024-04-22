@@ -43,7 +43,7 @@ class InputOhtersInfo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          // CommonPaymentWidget.getGiftInfo(),
+          CommonPaymentWidget.getGiftInfo(),
           InputInfoWidget(
             title: "받는 분의 전화번호를 입력해 주세요",
             hintText: "-없이 입력",

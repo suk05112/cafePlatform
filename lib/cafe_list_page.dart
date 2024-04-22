@@ -149,24 +149,24 @@ class _CafeListState extends State<CafeList>
         ));
   }
 
-  void getStoreList(BuildContext context) async {
-    final currentContext = scaffoldKey.currentContext;
+  // void getStoreList(BuildContext context) async {
+  //   final currentContext = scaffoldKey.currentContext;
 
-    try {
-      final response = await Api().client.getStoreList(1);
-      currentContext?.read<StoreProvider>().setStoreCard(response.body.store);
-      print("get store list");
-      print(response);
-      // _isFirstSlotLoaded = true;
-    } catch (error) {
-      // stopLoading();
-      currentContext?.read<StoreProvider>().setStoreCard(null);
-      // _isFirstSlotLoaded = true;
-      showModalDialog(context,
-          "서버에서 오류가 발생하였습니다.\n앱 종료 후 다시 접속해 주세요.\n문제가 지속될 경우, 고객센터(service@loplat.com)로 문의부탁드립니다.");
-      rethrow;
-    }
-  }
+  //   try {
+  //     final response = await Api().client.getStoreList(1);
+  //     currentContext?.read<StoreProvider>().setStoreCard(response.body.store);
+  //     print("get store list");
+  //     print(response);
+  //     // _isFirstSlotLoaded = true;
+  //   } catch (error) {
+  //     // stopLoading();
+  //     currentContext?.read<StoreProvider>().setStoreCard(null);
+  //     // _isFirstSlotLoaded = true;
+  //     showModalDialog(context,
+  //         "서버에서 오류가 발생하였습니다.\n앱 종료 후 다시 접속해 주세요.\n문제가 지속될 경우, 고객센터(service@loplat.com)로 문의부탁드립니다.");
+  //     rethrow;
+  //   }
+  // }
 
   void showModalDialog(BuildContext context, String message) {
     showDialog(
