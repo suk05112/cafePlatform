@@ -104,9 +104,7 @@ class _CafeListState extends State<CafeList>
             child: Text(
               "지도로 보기",
               style: TextAssset.body2,
-            )
-            // Tab(text: '평일/주말 달라요'),
-            ),
+            )),
       ],
       // tabs: _tabs,
     );

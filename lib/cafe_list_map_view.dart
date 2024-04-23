@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'dart:developer' show log;
 import 'dart:io';
@@ -80,6 +81,63 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
   // }
 
+  Future<Position> getLocation() async {
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    return position;
+  }
+
+  Widget _naverMapSection() {
+    return FutureBuilder<Position>(
+      future: getLocation(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator(); // 로딩 인디케이터를 표시합니다.
+        } else if (snapshot.hasError) {
+          return Text('오류: ${snapshot.error}'); // 오류 메시지를 표시합니다.
+        } else {
+          final position = snapshot.data!; // 위치 정보를 가져옵니다.
+          final lat = position.latitude;
+          final lng = position.longitude;
+          print("lat ${lat}, lng ${lng}");
+          final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
+
+          return NaverMap(
+            options: NaverMapViewOptions(
+              initialCameraPosition: NCameraPosition(
+                target: NLatLng(lat, lng), // 초기 카메라 위치를 설정합니다.
+                zoom: 10,
+              ),
+              indoorEnable: true,
+              locationButtonEnable: true,
+              consumeSymbolTapEvents: false,
+            ),
+            onMapReady: (controller) async {
+              _mapController = controller;
+              mapControllerCompleter.complete(controller);
+              controller.addOverlay(marker);
+              log("onMapReady", name: "onMapReady");
+            },
+            onMapTapped: (point, latLng) async {
+              log("onMapTapped: $point, $latLng", name: "onMapTapped");
+              final marker = NMarker(id: latLng.toString(), position: latLng);
+              _mapController.addOverlay(marker);
+
+              final infoWindow = NInfoWindow.onMarker(
+                id: "$point$latLng",
+                text: "$point",
+              );
+              infoWindow.setOnTapListener((overlay) => overlay.close());
+
+              await marker.openInfoWindow(infoWindow);
+            },
+          );
+        }
+      },
+    );
+  }
+
+/*
   Widget _naverMapSection() {
     final storeList = Provider.of<StoreProvider>(context)
         .getStoreList(); // 변경된 부분: build() 메서드 내에서 storeList를 가져옴
@@ -89,18 +147,22 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     final marker =
         NMarker(id: 'test', position: NLatLng(37.5512414, 126.8645132));
 
+
     return Consumer<StoreProvider>(builder: (context, storeProvider, child) {
       List<Store> storeList = storeProvider.storeCards ?? [];
       final store = storeProvider.getStoreList()![0];
 
-      double lat = store.store_lat;
-      double lng = store.store_lng;
+      // double lat = store.store_lat;
+      // double lng = store.store_lng;
+    final location = getLocation();
 
       print("cafe_list_builder:: ${storeList}");
       return NaverMap(
         options: const NaverMapViewOptions(
             initialCameraPosition: NCameraPosition(
-                target: NLatLng(37.5512414, 126.8645132), zoom: 10),
+                              target: NLatLng(location.longtitude, 126.8645132), zoom: 10),
+
+                // target: NLatLng(37.5512414, 126.8645132), zoom: 10),
             indoorEnable: true,
             locationButtonEnable: true,
             consumeSymbolTapEvents: false),
@@ -124,4 +186,5 @@ class _CafeListMapViewState extends State<CafeListMapView> {
       );
     });
   }
+*/
 }
