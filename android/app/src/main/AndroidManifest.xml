@@ -25,6 +25,10 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+                            <data android:scheme="kakao${275e555cdb8196634a6aef161abe3f84}" android:host="oauth"/>
+
+            <data android:host="kakaolink"
+                android:scheme="kakao${275e555cdb8196634a6aef161abe3f84}" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

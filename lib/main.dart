@@ -7,12 +7,14 @@ import 'package:my_app/Home.dart';
 import 'package:my_app/MenuForStore.dart';
 import 'package:my_app/cafe_list_map_view.dart';
 import 'package:my_app/cafe_list_page.dart';
+import 'package:my_app/login_page.dart';
 import 'package:my_app/myPage.dart';
 import 'package:my_app/GiftBox.dart';
 import 'package:my_app/provider/menu_provider.dart';
 import 'package:my_app/provider/store_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 
 // void main() => runApp(MyApp()); // 프로그램을 실행할 때 MyApp 부터 실행하겠어!
 
@@ -27,6 +29,10 @@ Future<void> _initialize() async {
       clientId: 'ofzfofvuev',
       onAuthFailed: (ex) => log("********* 네이버맵 인증오류 : $ex *********"));
 
+  KakaoSdk.init(
+    nativeAppKey: '${"275e555cdb8196634a6aef161abe3f84"}',
+    javaScriptAppKey: '${"16dd251b86287783606ea600a98c7131"}',
+  );
   getPermission();
 }
 
@@ -105,7 +111,7 @@ class _TabPageState extends State<TabPage> {
   int _selectedIndex = 0; // 처음에 나올 화면 지정
 
   // 이동할 페이지
-  List _pages = [Home(), GiftBox(), CafeList(), myPage()];
+  List _pages = [Home(), LoginPage(), CafeList(), myPage()];
 
   @override
   Widget build(BuildContext context) {
