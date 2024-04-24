@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/GiftBox.dart';
+import 'package:my_app/setting_page.dart';
 // import 'package:flutter/semantics.dart';
 
 class myPage extends StatelessWidget {
@@ -15,10 +17,24 @@ class myPage extends StatelessWidget {
         ),
         body: Column(
           children: [
+            IconButton(
+              icon: Icon(Icons.settings), // 검색 아이콘 생성
+              onPressed: () {
+                // 아이콘 버튼 실행
+                print('Search button is clicked');
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => SettingPage()));
+              },
+            ),
             Text('this is my page'),
             MyPoint(),
             Text('선물함'),
-            Text('전체보기')
+            TextButton(
+                onPressed: () {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (context) => GiftBox()));
+                },
+                child: Text('전체보기'))
           ],
         ));
   }

@@ -38,9 +38,25 @@ class _GiftIconState extends State<GiftIcon> {
                 child: AnimatedSwitcher(
                   transitionBuilder: wrapAnimatedBuilder,
                   layoutBuilder: (widget, list) {
-                    return Stack(
-                      children: [widget!, ...list],
-                    );
+                    if (showFront == false) {
+                      return Stack(
+                        children: [
+                          ...list,
+                          widget!,
+                        ],
+                      );
+                    } else {
+                      return Stack(
+                        children: [
+                          list.isNotEmpty ? list.first : SizedBox.shrink(),
+                          widget!,
+                          // Image.asset(
+                          //   'assets/menu.png',
+                          //   height: 250,
+                          // ),
+                        ],
+                      );
+                    }
                   },
                   duration: Duration(milliseconds: 1000),
                   child: showFront ? _renderFront() : _renderBack(),
