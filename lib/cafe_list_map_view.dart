@@ -105,7 +105,9 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           return NaverMap(
             options: NaverMapViewOptions(
               initialCameraPosition: NCameraPosition(
-                target: NLatLng(lat, lng), // 초기 카메라 위치를 설정합니다.
+                // target: NLatLng(lat, lng), // 초기 카메라 위치를 설정합니다.
+                target: NLatLng(37.5512414, 126.8645132), // 초기 카메라 위치를 설정합니다.
+
                 zoom: 10,
               ),
               indoorEnable: true,

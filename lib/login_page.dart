@@ -17,7 +17,9 @@ class _LoginPageState extends State<LoginPage> {
     _initRetrieval();
   }
 
-  Future _initRetrieval() async {
+  Future _initRetrieval() async {}
+
+  Future login() async {
     if (await isKakaoTalkInstalled()) {
       try {
         await UserApi.instance.loginWithKakaoTalk();
@@ -62,6 +64,13 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 13),
+                    IconButton(
+                      icon: Image.asset('assets/kakao_login.png'),
+                      iconSize: 50,
+                      onPressed: () {
+                        login();
+                      },
+                    )
                   ]))
         ]))));
   }
