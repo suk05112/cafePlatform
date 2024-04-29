@@ -45,13 +45,13 @@ class _CafeListState extends State<CafeList>
   Widget build(BuildContext context) {
     return Scaffold(
         body: SafeArea(
-            child: Expanded(
-                child: Container(
-                    // margin: EdgeInsets.fromLTRB(10, 20, 10, 21),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment
-                            .start, // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
+            // child: Expanded(
+            // child: Container(
+            // margin: EdgeInsets.fromLTRB(10, 20, 10, 21),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment
+                    .start, // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
           Text(
             "cafe",
           ),
@@ -66,24 +66,40 @@ class _CafeListState extends State<CafeList>
             ),
             child: getTabBarWidget(),
           ),
-          Container(
-            height: MediaQuery.of(context).size.height - kToolbarHeight - 50,
-            width: double.infinity,
+          Expanded(
             child: TabBarView(
               controller: _tabController,
               physics: NeverScrollableScrollPhysics(),
               children: <Widget>[
                 Container(
                   margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
-                  height: 500,
                   child: getList(context),
                 ),
-                // getList(context),
                 CafeListMapView()
               ],
             ),
           ),
-        ])))));
+          // Container(
+          //   height: MediaQuery.of(context).size.height - kToolbarHeight - 50,
+          //   width: double.infinity,
+          //   child: TabBarView(
+          //     controller: _tabController,
+          //     physics: NeverScrollableScrollPhysics(),
+          //     children: <Widget>[
+          //       Container(
+          //         margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
+          //         height: 500,
+          //         child: getList(context),
+          //       ),
+          //       // getList(context),
+          //       CafeListMapView()
+          //     ],
+          //   ),
+          // ),
+        ]))
+        // )
+        // )
+        );
   }
 
   Widget getTabBarWidget() {
@@ -139,7 +155,7 @@ class _CafeListState extends State<CafeList>
                       return const Divider();
                     },
                   ),
-                ),
+                )
               ],
             );
           },

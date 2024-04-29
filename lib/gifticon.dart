@@ -31,6 +31,38 @@ class _GiftIconState extends State<GiftIcon> {
             children: <Widget>[
               GestureDetector(
                 onTap: () {
+                  Dialog(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("팝업이다."),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          icon: const Icon(Icons.close),
+                        )
+                      ],
+                    ),
+                  );
+
+                  showDialog(
+                      context: context,
+                      barrierDismissible: true, // 바깥 영역 터치시 닫을지 여부
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                            content: Text("이것도 팝업"),
+                            insetPadding:
+                                const EdgeInsets.fromLTRB(0, 80, 0, 80),
+                            actions: [
+                              TextButton(
+                                child: const Text('확인'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ]);
+                      });
                   setState(() {
                     showFront = !showFront;
                   });

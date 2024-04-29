@@ -110,14 +110,16 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           final lat = position.latitude;
           final lng = position.longitude;
           print("lat ${lat}, lng ${lng}");
-          final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
+          // final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
+          final marker =
+              NMarker(id: 'test', position: NLatLng(37.5512414, 126.8645132));
 
           // marker.performClick();
           marker.setOnTapListener((overlay) => {
                 print("marker 터치됨"),
-                // setState(() {
-                //   isBottomSheetShowing = !isBottomSheetShowing;
-                // })
+                setState(() {
+                  isBottomSheetShowing = !isBottomSheetShowing;
+                })
               });
           return NaverMap(
             options: NaverMapViewOptions(
@@ -125,7 +127,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                 // target: NLatLng(lat, lng), // 초기 카메라 위치를 설정합니다.
                 target: NLatLng(37.5512414, 126.8645132), // 등촌역
 
-                zoom: 10,
+                zoom: 13,
               ),
               indoorEnable: true,
               locationButtonEnable: true,
@@ -136,6 +138,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               mapControllerCompleter.complete(controller);
               controller.addOverlay(marker);
               log("onMapReady", name: "onMapReady");
+              print("onmapready");
             },
             onMapTapped: (point, latLng) async {
               log("onMapTapped: $point, $latLng", name: "onMapTapped");
