@@ -22,6 +22,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
   // List<Store>? storeList =
 
+  bool isBottomSheetShowing = false;
   @override
   void initState() {
     super.initState();
@@ -59,7 +60,16 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               width: mapSize.width,
               height: mapSize.height,
               // color: Colors.greenAccent,
-              child: _naverMapSection())),
+              child: Stack(
+                children: [
+                  _naverMapSection(),
+                  isBottomSheetShowing
+                      ? BottomSheet()
+                      : SizedBox(
+                          height: 0,
+                        )
+                ],
+              ))),
     );
   }
   // Widget build(BuildContext context) {
@@ -102,11 +112,18 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           print("lat ${lat}, lng ${lng}");
           final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
 
+          // marker.performClick();
+          marker.setOnTapListener((overlay) => {
+                print("marker 터치됨"),
+                // setState(() {
+                //   isBottomSheetShowing = !isBottomSheetShowing;
+                // })
+              });
           return NaverMap(
             options: NaverMapViewOptions(
               initialCameraPosition: NCameraPosition(
                 // target: NLatLng(lat, lng), // 초기 카메라 위치를 설정합니다.
-                target: NLatLng(37.5512414, 126.8645132), // 초기 카메라 위치를 설정합니다.
+                target: NLatLng(37.5512414, 126.8645132), // 등촌역
 
                 zoom: 10,
               ),
@@ -139,54 +156,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     );
   }
 
-/*
-  Widget _naverMapSection() {
-    final storeList = Provider.of<StoreProvider>(context)
-        .getStoreList(); // 변경된 부분: build() 메서드 내에서 storeList를 가져옴
-    final lat = storeList![0].store_lat;
-    final lng = storeList![0].store_lng;
-    // final marker = NMarker(id: 'test', position: NLatLng(lat, lng));
-    final marker =
-        NMarker(id: 'test', position: NLatLng(37.5512414, 126.8645132));
-
-
-    return Consumer<StoreProvider>(builder: (context, storeProvider, child) {
-      List<Store> storeList = storeProvider.storeCards ?? [];
-      final store = storeProvider.getStoreList()![0];
-
-      // double lat = store.store_lat;
-      // double lng = store.store_lng;
-    final location = getLocation();
-
-      print("cafe_list_builder:: ${storeList}");
-      return NaverMap(
-        options: const NaverMapViewOptions(
-            initialCameraPosition: NCameraPosition(
-                              target: NLatLng(location.longtitude, 126.8645132), zoom: 10),
-
-                // target: NLatLng(37.5512414, 126.8645132), zoom: 10),
-            indoorEnable: true,
-            locationButtonEnable: true,
-            consumeSymbolTapEvents: false),
-        onMapReady: (controller) async {
-          _mapController = controller;
-          mapControllerCompleter.complete(controller);
-          controller.addOverlay(marker);
-          log("onMapReady", name: "onMapReady");
-        },
-        onMapTapped: (point, latLng) async {
-          log("onMapTapped: $point, $latLng", name: "onMapTapped");
-          final marker = NMarker(id: latLng.toString(), position: latLng);
-          _mapController.addOverlay(marker);
-
-          final infoWindow =
-              NInfoWindow.onMarker(id: "$point$latLng", text: "$point");
-          infoWindow.setOnTapListener((overlay) => overlay.close());
-
-          await marker.openInfoWindow(infoWindow);
-        },
-      );
-    });
+  Widget BottomSheet() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      child: Column(
+        children: [Text("Bottom sheet")],
+      ),
+    );
   }
-*/
 }
