@@ -29,9 +29,12 @@ Future<void> _initialize() async {
       clientId: 'ofzfofvuev',
       onAuthFailed: (ex) => log("********* 네이버맵 인증오류 : $ex *********"));
 
+  var native = '275e555cdb8196634a6aef161abe3f84';
+  var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';
+
   KakaoSdk.init(
-    nativeAppKey: '${"275e555cdb8196634a6aef161abe3f84"}',
-    javaScriptAppKey: '${"16dd251b86287783606ea600a98c7131"}',
+    nativeAppKey: '${native}',
+    javaScriptAppKey: '${javaScriptAppKey}',
   );
   getPermission();
 }
