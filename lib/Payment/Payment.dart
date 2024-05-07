@@ -5,6 +5,9 @@ import 'package:my_app/provider/menu_provider.dart';
 import 'package:provider/provider.dart';
 
 class Payment extends StatelessWidget {
+  Payment({super.key, required this.type});
+
+  var type;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,6 +31,11 @@ class Payment extends StatelessWidget {
               child: Column(
                 children: [
                   CommonPaymentWidget.getGiftInfo(),
+                  type == 1
+                      ? SizedBox(
+                          height: 0,
+                        )
+                      : ReceiverInfo(),
                   ApplyCoupons(),
                   // ApplyPoints(),
                 ],
@@ -133,5 +141,44 @@ class _paymentBtn extends State<paymentBtn> {
         },
       ),
     ));
+  }
+}
+
+class ReceiverInfo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          CommonPaymentWidget.getGiftInfo(),
+          InputInfoWidget(
+            title: "받는 분의 전화번호를 입력해 주세요",
+            hintText: "-없이 입력",
+            validator: validatePhoneNumber,
+          ),
+          Text("기프티콘은 카카오톡(문자)으로 전달됩니다. \n앱을 설치하지 않아도 이용할 수 있어요!"),
+          SizedBox(
+            height: 15.0,
+          ),
+          TextField(
+            decoration: InputDecoration(
+              hintText: '메시지를 입력해주세요(생략가능)',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10.0)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? validatePhoneNumber(String? value) {
+    if (value == null || value.isEmpty) {
+      return "빈 문자열";
+    }
+    return null;
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/Payment/GiftToOthers.dart';
 import 'package:my_app/Payment/Payment.dart';
 
 class GifticonInfo extends StatelessWidget {
@@ -108,7 +107,10 @@ class _gift extends State<gift> {
           setState(() {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => GiftToOthers()),
+              MaterialPageRoute(
+                  builder: (context) => Payment(
+                        type: 1,
+                      )),
             );
           });
         },
@@ -145,7 +147,10 @@ class _giftToMe extends State<giftToMe> {
           setState(() {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => Payment()),
+              MaterialPageRoute(
+                  builder: (context) => Payment(
+                        type: 1,
+                      )),
             );
           });
         },
