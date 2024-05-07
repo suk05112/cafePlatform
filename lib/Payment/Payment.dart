@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Payment/CommonPaymentWidget.dart';
 import 'package:my_app/Payment/CompletePayment.dart';
+import 'package:my_app/Payment/success_payment_page.dart';
 import 'package:my_app/provider/menu_provider.dart';
 import 'package:provider/provider.dart';
 
-class Payment extends StatelessWidget {
-  Payment({super.key, required this.type});
+class Payment extends StatefulWidget {
+  const Payment({Key? key, required this.type}) : super(key: key);
 
-  var type;
+  final int type;
+  @override
+  State<Payment> createState() => _PaymentState();
+}
+
+class _PaymentState extends State<Payment> {
   @override
   Widget build(BuildContext context) {
+    int type = widget.type;
+
     return Scaffold(
         appBar: AppBar(
           title: Text("결제하기"), // 타이틀 이름 지정
@@ -31,12 +39,19 @@ class Payment extends StatelessWidget {
               child: Column(
                 children: [
                   CommonPaymentWidget.getGiftInfo(),
+                  Divider(thickness: 1, height: 1, color: Colors.grey),
                   type == 1
                       ? SizedBox(
                           height: 0,
                         )
                       : ReceiverInfo(),
-                  ApplyCoupons(),
+                  Divider(thickness: 1, height: 1, color: Colors.grey),
+                  PaymentMehtod(),
+                  Divider(thickness: 1, height: 1, color: Colors.grey),
+                  TotalPrice(),
+                  Divider(thickness: 1, height: 1, color: Colors.grey),
+                  Notice(),
+                  // ApplyCoupons(),
                   // ApplyPoints(),
                 ],
               ),
@@ -45,6 +60,81 @@ class Payment extends StatelessWidget {
             paymentBtn(),
           ],
         )));
+  }
+
+  Widget TotalPrice() {
+    return Row(
+      children: [Text("결제금액"), Spacer(), Text("4500원")],
+    );
+  }
+
+  Widget Notice() {
+    return Column(children: const [
+      Text("주문 내용 및 결제 조건을 확인했으며, 결제 진행에 동의합니다."),
+      Text("이벤트 상품에는 쿠폰 할인이 적용되지 않습니다."),
+      Text("최소 결제 금액은 일반 상품 금액 대상으로 책정돕니다."),
+    ]);
+  }
+
+  Widget PaymentMehtod() {
+    return Column(children: [
+      Text("결제 수단"),
+      Row(children: [
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+          ),
+          child: Text('신용/체크카드'),
+
+          // 클릭 이벤트
+          onPressed: () {
+            // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
+            setState(() {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SuccessPaymentPage()),
+              );
+            });
+          },
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+          ),
+          child: Text('카카오페이'),
+
+          // 클릭 이벤트
+          onPressed: () {
+            // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
+            setState(() {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SuccessPaymentPage()),
+              );
+            });
+          },
+        ),
+      ]),
+      Row(children: [
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+          ),
+          child: Text('네이버페이'),
+
+          // 클릭 이벤트
+          onPressed: () {
+            // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
+            setState(() {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SuccessPaymentPage()),
+              );
+            });
+          },
+        ),
+      ]),
+    ]);
   }
 }
 

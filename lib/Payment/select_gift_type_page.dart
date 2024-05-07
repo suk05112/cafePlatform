@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/Payment/Payment.dart';
-import 'package:my_app/Payment/input_recipient_info_page.dart';
 import 'package:my_app/home.dart';
 import 'package:my_app/Payment/CommonPaymentWidget.dart';
 import 'package:my_app/model/menu.dart';
