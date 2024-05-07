@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/setting/faq_page.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({Key? key}) : super(key: key);
@@ -54,7 +55,16 @@ class _SettingPageState extends State<SettingPage> {
 
   List getSelectedPage() {
     // var items = List.generate(5, (i) => "Item $i");
-    var items = [const LicensePage(), const LicensePage()];
+    var items = [
+      const LicensePage(),
+      const LicensePage(),
+      const LicensePage(),
+      const LicensePage(),
+      const FAQPage(),
+      const LicensePage(),
+      const LicensePage(),
+      const LicensePage()
+    ];
 
     return items;
   }

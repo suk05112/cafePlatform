@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/GiftBox.dart';
-import 'package:my_app/setting_page.dart';
+import 'package:my_app/setting/setting_page.dart';
 // import 'package:flutter/semantics.dart';
 
 class myPage extends StatelessWidget {

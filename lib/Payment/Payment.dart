@@ -30,33 +30,36 @@ class _PaymentState extends State<Payment> {
         body: SafeArea(
             child: Column(
           children: [
-            Container(
-              // width: double.infinity,
-              // height: double.infinity,
-              margin: EdgeInsets.fromLTRB(10, 5, 10, 10),
+            Expanded(
+                child: SingleChildScrollView(
+              child: Container(
+                // width: double.infinity,
+                // height: double.infinity,
+                margin: EdgeInsets.fromLTRB(10, 5, 10, 10),
 
-              padding: EdgeInsets.all(5),
-              child: Column(
-                children: [
-                  CommonPaymentWidget.getGiftInfo(),
-                  Divider(thickness: 1, height: 1, color: Colors.grey),
-                  type == 1
-                      ? SizedBox(
-                          height: 0,
-                        )
-                      : ReceiverInfo(),
-                  Divider(thickness: 1, height: 1, color: Colors.grey),
-                  PaymentMehtod(),
-                  Divider(thickness: 1, height: 1, color: Colors.grey),
-                  TotalPrice(),
-                  Divider(thickness: 1, height: 1, color: Colors.grey),
-                  Notice(),
-                  // ApplyCoupons(),
-                  // ApplyPoints(),
-                ],
+                padding: EdgeInsets.all(5),
+                child: Column(
+                  children: [
+                    CommonPaymentWidget.getGiftInfo(),
+                    Divider(thickness: 1, height: 1, color: Colors.grey),
+                    type == 1
+                        ? SizedBox(
+                            height: 0,
+                          )
+                        : ReceiverInfo(),
+                    Divider(thickness: 1, height: 1, color: Colors.grey),
+                    PaymentMehtod(),
+                    Divider(thickness: 1, height: 1, color: Colors.grey),
+                    TotalPrice(),
+                    Divider(thickness: 1, height: 1, color: Colors.grey),
+                    Notice(),
+
+                    // ApplyCoupons(),
+                    // ApplyPoints(),
+                  ],
+                ),
               ),
-            ),
-            Spacer(),
+            )),
             paymentBtn(),
           ],
         )));
@@ -242,7 +245,6 @@ class ReceiverInfo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          CommonPaymentWidget.getGiftInfo(),
           InputInfoWidget(
             title: "받는 분의 전화번호를 입력해 주세요",
             hintText: "-없이 입력",
