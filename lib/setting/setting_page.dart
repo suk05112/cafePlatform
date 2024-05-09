@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/setting/faq_page.dart';
+import 'package:my_app/setting/notice_page.dart';
+import 'package:my_app/setting/user_info_page.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({Key? key}) : super(key: key);
@@ -40,25 +42,15 @@ class _SettingPageState extends State<SettingPage> {
 
   List dataListItem() {
     // var items = List.generate(5, (i) => "Item $i");
-    var items = [
-      "내 정보",
-      "공지사항",
-      "고객센터",
-      "정산계좌 관리",
-      "자주묻는 질문",
-      "알림",
-      "버전",
-      "라이선스"
-    ];
+    var items = ["내 정보", "공지사항", "정산계좌 관리", "자주묻는 질문", "알림", "버전", "라이선스"];
     return items;
   }
 
   List getSelectedPage() {
     // var items = List.generate(5, (i) => "Item $i");
     var items = [
-      const LicensePage(),
-      const LicensePage(),
-      const LicensePage(),
+      const UserInfoPage(),
+      const NoticePage(),
       const LicensePage(),
       const FAQPage(),
       const LicensePage(),

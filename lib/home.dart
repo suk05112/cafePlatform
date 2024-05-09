@@ -185,7 +185,7 @@ class _categoryState extends State<categoryState> {
     return new GestureDetector(
       onTap: () {
         Navigator.push(
-            context, MaterialPageRoute(builder: (context) => myPage()));
+            context, MaterialPageRoute(builder: (context) => MyPage()));
         print("Container clicked");
       },
       child: Container(

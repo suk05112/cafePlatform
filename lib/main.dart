@@ -114,7 +114,7 @@ class _TabPageState extends State<TabPage> {
   int _selectedIndex = 0; // 처음에 나올 화면 지정
 
   // 이동할 페이지
-  List _pages = [Home(), LoginPage(), CafeList(), myPage()];
+  List _pages = [Home(), LoginPage(), CafeList(), MyPage()];
 
   @override
   Widget build(BuildContext context) {
