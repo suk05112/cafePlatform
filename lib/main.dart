@@ -114,7 +114,7 @@ class _TabPageState extends State<TabPage> {
   int _selectedIndex = 0; // 처음에 나올 화면 지정
 
   // 이동할 페이지
-  List _pages = [Home(), LoginPage(), CafeList(), MyPage()];
+  List _pages = [Home(), LoginPage(), GiftBox(), CafeList(), MyPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -139,8 +139,9 @@ class _TabPageState extends State<TabPage> {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "home"),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: "매장보기"),
+          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: "선물함"),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: "mapview"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "MyPage"),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "더보기"),
         ],
       ),
     );

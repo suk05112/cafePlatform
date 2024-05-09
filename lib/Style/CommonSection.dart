@@ -6,8 +6,7 @@ class CommonSection {
 
   CommonSection(this.sectionString);
 
-  static Widget getHeader(String sectionString) {
-    // Widget getHeader() {
+  static Widget getHeader1(String sectionString) {
     return Row(children: [
       Spacer(),
       Text(
@@ -16,6 +15,25 @@ class CommonSection {
       ),
       Spacer(),
     ]);
+  }
+
+  static Widget getHeader2(context, sectionString) {
+    return Container(
+        width: double.infinity,
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          TextButton(
+              child: Text("<"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              }),
+          Spacer(),
+          Text(
+            sectionString,
+            style: TextAssset.header2,
+          ),
+          Spacer(),
+          SizedBox()
+        ]));
   }
 
   // static const Footter = TextStyle(

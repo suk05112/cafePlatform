@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:my_app/Style/CommonSection.dart';
 import 'package:my_app/setting/faq_page.dart';
 import 'package:my_app/setting/notice_page.dart';
 import 'package:my_app/setting/user_info_page.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({Key? key}) : super(key: key);
@@ -13,9 +16,12 @@ class SettingPage extends StatefulWidget {
 class _SettingPageState extends State<SettingPage> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
   final int _storeId = 1;
+  late Future<String> _version;
+
   @override
   void initState() {
-    // _initRetrieval();
+    super.initState();
+    _version = getVersion();
   }
 
   Future _initRetrieval() async {}
@@ -33,16 +39,18 @@ class _SettingPageState extends State<SettingPage> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // CommonSection.getHeader("설정"),
+                    CommonSection.getHeader2(context, "더보기"),
                     SizedBox(height: 13),
-                    getsettingListView()
+                    getsettingListView(),
+                    Spacer(),
+                    Text("사업자 정보 쓸거임")
                   ]))
         ]))));
   }
 
   List dataListItem() {
     // var items = List.generate(5, (i) => "Item $i");
-    var items = ["내 정보", "공지사항", "정산계좌 관리", "자주묻는 질문", "알림", "버전", "라이선스"];
+    var items = ["내 정보", "공지사항", "자주묻는 질문", "알림설정", "버전", "라이선스"];
     return items;
   }
 
@@ -68,10 +76,10 @@ class _SettingPageState extends State<SettingPage> {
     // var listView = ListView.separated(
     var listView = ListView.builder(
       itemCount: allItems.length,
-      itemExtent: 46.0,
+      itemExtent: 50.0,
       shrinkWrap: true,
       itemBuilder: (context, index) {
-        if (index == 6) {
+        if (index == 4) {
           return Version();
         } else {
           return GestureDetector(
@@ -92,13 +100,38 @@ class _SettingPageState extends State<SettingPage> {
   }
 
   Widget Version() {
-    return const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [Text("버전"), Spacer(), Text("v 1.0.0"), Divider()])
-        ]);
+    print("version: ${_version}");
+    return FutureBuilder<String>(
+      future: _version,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator(); // 데이터를 기다리는 동안 로딩 인디케이터를 표시합니다.
+        } else if (snapshot.hasError) {
+          print(snapshot.error);
+          return Text('Error: ${snapshot.error}'); // 오류가 발생하면 오류 메시지를 표시합니다.
+        } else {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("버전"),
+                  Spacer(),
+                  Text("v ${snapshot.data}"), // 앱의 버전을 표시합니다.
+                ],
+              ),
+              Divider(),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  Future<String> getVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo.version;
   }
 }
 
