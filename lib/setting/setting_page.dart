@@ -30,22 +30,17 @@ class _SettingPageState extends State<SettingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         body: SafeArea(
-            child: SingleChildScrollView(
+            child: Container(
+                margin: EdgeInsets.fromLTRB(21, 0, 21, 21),
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-          Container(
-              margin: EdgeInsets.fromLTRB(21, 0, 21, 21),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CommonSection.getHeader2(context, "더보기"),
-                    SizedBox(height: 13),
-                    getsettingListView(),
-                    Spacer(),
-                    Text("사업자 정보 쓸거임")
-                  ]))
-        ]))));
+                      CommonSection.getHeader2(context, "더보기"),
+                      SizedBox(height: 13),
+                      getsettingListView(),
+                      Spacer(),
+                      Text("사업자 정보 쓸거임")
+                    ]))));
   }
 
   List dataListItem() {
