@@ -23,8 +23,14 @@ class _UserInfoPageState extends State<UserInfoPage> {
         bottom: false,
         child: Column(
             crossAxisAlignment: CrossAxisAlignment
-                .start, // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: []),
+                .center, // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Image.asset(height: 200, 'assets/coffee.jpeg'),
+              Text("이름"),
+              Text("이메일"),
+              Text("전화번호"),
+              Text("회원정보 수정")
+            ]),
       ),
     );
   }
