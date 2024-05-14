@@ -32,7 +32,13 @@ class CommonSection {
             style: TextAssset.header2,
           ),
           Spacer(),
-          SizedBox()
+          TextButton(
+              child: Text(""),
+              onPressed: () {
+                // Navigator.of(context).pop();
+              }),
+          // Spacer(),
+          // SizedBox()
         ]));
   }
 
