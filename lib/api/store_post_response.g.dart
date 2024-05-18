@@ -8,8 +8,8 @@ part of 'store_post_response.dart';
 
 StorePostResponse _$StorePostResponseFromJson(Map<String, dynamic> json) =>
     StorePostResponse(
-      statusCode: json['statusCode'] as int,
-      store_id: json['store_id'] as int,
+      statusCode: (json['statusCode'] as num).toInt(),
+      store_id: (json['store_id'] as num).toInt(),
       store_logo_url: json['store_logo_url'] as String,
       store_photo_urls: (json['store_photo_urls'] as List<dynamic>)
           .map((e) => e as String)

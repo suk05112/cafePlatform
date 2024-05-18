@@ -1,6 +1,7 @@
 import 'package:my_app/api/find_ownername_response.dart';
 import 'package:my_app/api/store_post_response.dart';
 import 'package:my_app/model/Store.dart';
+import 'package:my_app/model/gifticon.dart';
 import 'package:my_app/model/menu.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:dio/dio.dart';
@@ -42,5 +43,10 @@ abstract class ApiClient {
   @POST("/menu/")
   Future<MenuPostResponse> addMenu(
     @Body() Menu menu,
+  );
+
+  @GET("/gifticon/list/{user_id}")
+  Future<GifticonListResponse> getGifticonList(
+    @Path('user_id') int user_id,
   );
 }

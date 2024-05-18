@@ -8,7 +8,7 @@ part of 'menu.dart';
 
 MenuGetResponse _$MenuGetResponseFromJson(Map<String, dynamic> json) =>
     MenuGetResponse(
-      statusCode: json['statusCode'] as int,
+      statusCode: (json['statusCode'] as num).toInt(),
       menuList: (json['menuList'] as List<dynamic>)
           .map((e) => Menu.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -22,8 +22,8 @@ Map<String, dynamic> _$MenuGetResponseToJson(MenuGetResponse instance) =>
 
 MenuPostResponse _$MenuPostResponseFromJson(Map<String, dynamic> json) =>
     MenuPostResponse(
-      statusCode: json['statusCode'] as int,
-      menu_id: json['menu_id'] as int,
+      statusCode: (json['statusCode'] as num).toInt(),
+      menu_id: (json['menu_id'] as num).toInt(),
       menu_url: json['menu_url'] as String,
     );
 
@@ -35,18 +35,18 @@ Map<String, dynamic> _$MenuPostResponseToJson(MenuPostResponse instance) =>
     };
 
 Menu _$MenuFromJson(Map<String, dynamic> json) => Menu(
-      menu_id: json['menu_id'] as int,
-      store_id: json['store_id'] as int,
+      menu_id: (json['menu_id'] as num).toInt(),
+      store_id: (json['store_id'] as num).toInt(),
       name: json['name'] as String,
-      price: json['price'] as int,
+      price: (json['price'] as num).toInt(),
       menu_image_url: json['menu_image_url'] as String,
       description: json['description'] as String,
-      status: json['status'] as int,
+      status: (json['status'] as num).toInt(),
     );
 
 Map<String, dynamic> _$MenuToJson(Menu instance) => <String, dynamic>{
       'menu_id': instance.menu_id,
-      'store_Id': instance.store_id,
+      'store_id': instance.store_id,
       'name': instance.name,
       'price': instance.price,
       'menu_image_url': instance.menu_image_url,

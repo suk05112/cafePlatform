@@ -9,7 +9,7 @@ part of 'find_ownername_response.dart';
 FindOwnernameResponse _$FindOwnernameResponseFromJson(
         Map<String, dynamic> json) =>
     FindOwnernameResponse(
-      statusCode: json['statusCode'] as int,
+      statusCode: (json['statusCode'] as num).toInt(),
     )
       ..id = json['id'] as String?
       ..createdTime = json['createdTime'] as String?
