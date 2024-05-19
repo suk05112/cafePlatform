@@ -1,16 +1,19 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:my_app/Payment/GifticonInfo.dart';
+import 'package:my_app/model/gifticon.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-class GiftIcon extends StatefulWidget {
-  const GiftIcon({Key? key}) : super(key: key);
+class GifticonPage extends StatefulWidget {
+  const GifticonPage({Key? key, required this.gifticon}) : super(key: key);
 
+  final Gifticon gifticon;
   @override
-  State<GiftIcon> createState() => _GiftIconState();
+  State<GifticonPage> createState() => _GifticonPageState();
 }
 
-class _GiftIconState extends State<GiftIcon> {
+class _GifticonPageState extends State<GifticonPage> {
   late bool showFront;
 
   @override
@@ -22,86 +25,38 @@ class _GiftIconState extends State<GiftIcon> {
 
   @override
   Widget build(BuildContext context) {
+    Gifticon gifticon = widget.gifticon;
+
+    print("receiver ${gifticon.receiver}");
     return Scaffold(
         appBar: AppBar(title: Text("선물함")),
         body: SafeArea(
           child: Container(
-            // width: double.infinity,
-            // height: double.infinity,
             margin: EdgeInsets.fromLTRB(10, 5, 10, 10),
-
-            padding: EdgeInsets.all(5),
             child: Center(
               child: Column(
                 children: <Widget>[
-                  GestureDetector(
-                    onTap: () {
-                      Dialog(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text("팝업이다."),
-                            IconButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              icon: const Icon(Icons.close),
-                            )
-                          ],
-                        ),
-                      );
-                    },
-                    child: Image.asset(
-                      'assets/menu.png',
-                      height: 250,
-                    ),
-                    /*
-                 AnimatedSwitcher(
-                  transitionBuilder: wrapAnimatedBuilder,
-                  layoutBuilder: (widget, list) {
-                    if (showFront == false) {
-                      return Stack(
-                        children: [
-                          ...list,
-                          widget!,
-                        ],
-                      );
-                    } else {
-                      return Stack(
-                        children: [
-                          list.isNotEmpty ? list.first : SizedBox.shrink(),
-                          widget!,
-                          // Image.asset(
-                          //   'assets/menu.png',
-                          //   height: 250,
-                          // ),
-                        ],
-                      );
-                    }
-                  },
-                  duration: Duration(milliseconds: 1000),
-                  child: showFront ? _renderFront() : _renderBack(),
-                ),
-                */
-                  ),
+                  Text('From ${gifticon.receiver}'),
+                  Image.network("${gifticon.menu_url}",
+                      width: 250, height: 250, fit: BoxFit.fill,
+                      errorBuilder: (context, error, stackTrace) {
+                    print(error);
+                    return Image(
+                        image: AssetImage('assets/coffee.jpeg'),
+                        width: 79,
+                        height: 79,
+                        fit: BoxFit.fill);
+                  }),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('유효기간 2022.01.01 ~2022.12.31'),
-                      Text('주문번호 12345678'),
-                      Text('주문일 2022.10.23'),
-                      Text('쿠폰 상태 사용안함/사용완료/기간만료'),
+                      Text('${gifticon.name}'),
+                      Text('유효기간 ${gifticon.validity}'),
+                      Text('주문번호 ${gifticon.order_id}'),
+                      gifticonStatus(gifticon.use_yn),
                       Text('교환처 지도로보기'),
                     ],
                   ),
-                  // Container(
-                  //   padding: EdgeInsets.all(20),
-                  //   child: Image.asset(
-                  //     'assets/barcode.png',
-                  //     height: 100,
-                  //   ),
-                  // ),
-
                   Spacer(),
                   Container(
                     width: double.infinity,
@@ -122,6 +77,18 @@ class _GiftIconState extends State<GiftIcon> {
             ),
           ),
         ));
+  }
+
+  Widget gifticonStatus(int status) {
+    if (status == 0) {
+      return Text("쿠폰 상태 사용가능");
+    } else if (status == 1) {
+      return Text("쿠폰 상태 사용완료");
+    } else if (status == 2) {
+      return Text("쿠폰 상태 기간완료");
+    } else {
+      return Text("쿠폰 상태 사용 불가능");
+    }
   }
 
   Future<void> ShowQR() {
@@ -159,9 +126,6 @@ class _GiftIconState extends State<GiftIcon> {
             ),
           ));
         });
-    setState(() {
-      showFront = !showFront;
-    });
   }
 
   Widget _renderCard({

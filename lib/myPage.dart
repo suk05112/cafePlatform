@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/GiftBox.dart';
-import 'package:my_app/gifticon.dart';
+import 'package:my_app/gifticon_page.dart';
 import 'package:my_app/setting/notice_page.dart';
 import 'package:my_app/setting/setting_page.dart';
 import 'package:my_app/setting/user_info_page.dart';
@@ -113,8 +113,8 @@ class _MyPageState extends State<MyPage> {
         children: gifticonList.map((gifticon) {
           return GestureDetector(
             onTap: () {
-              Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => GiftIcon()));
+              // NavigaageRoutor.push(context,
+              //     MaterialPte(builder: (context) => GifticonListPage()));
               print("Container clicked");
             },
             child: Container(

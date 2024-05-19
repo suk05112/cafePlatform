@@ -234,15 +234,9 @@ class _CafeListState extends State<CafeList>
             width: 400,
             child: Row(children: [
               Expanded(
-                  child:
-                      // Image(
-                      //     image: AssetImage('assets/coffee.png'),
-                      //     width: 90,
-                      //     height: 90,
-                      //     fit: BoxFit.fill)
-                      Image.network(store!.store_logo,
-                          width: 90, height: 90, fit: BoxFit.fill,
-                          errorBuilder: (context, error, stackTrace) {
+                  child: Image.network(store!.store_logo,
+                      width: 90, height: 90, fit: BoxFit.fill,
+                      errorBuilder: (context, error, stackTrace) {
                 return Image(
                     image: AssetImage('assets/coffee.jpeg'),
                     width: 90,

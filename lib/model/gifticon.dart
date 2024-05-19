@@ -13,7 +13,8 @@ class Gifticon {
   String description;
   DateTime? validity;
   String sender;
-  bool use_yn;
+  String receiver;
+  int use_yn;
   int availability;
   String menu_url;
 
@@ -25,7 +26,8 @@ class Gifticon {
     this.description = "",
     // this.validity = DateTime(2020, 1, 1, 1, 1),
     this.sender = "",
-    this.use_yn = true,
+    this.receiver = "",
+    this.use_yn = 1,
     this.availability = 0,
     this.menu_url = "",
   });
