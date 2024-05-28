@@ -48,6 +48,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                         },
                       ),
                     ),
+                    /*
                     Container(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -74,6 +75,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                         },
                       ),
                     ),
+                    */
                     Container(
                       width: double.infinity,
                       child: ElevatedButton(

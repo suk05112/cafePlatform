@@ -60,7 +60,14 @@ getPermission() async {
 
 // StatelessWidget은 변화지 않는 화면을 작업할 때 사용.
 // 변화는 화면을 작업 하고싶을 경우에는 StatefulWidget을 사용.
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   // MaterialApp = 앱으로서 기능을 할 수 있도록 도와주는 뼈대
   @override
   void initState() {}
@@ -82,7 +89,7 @@ class MyApp extends StatelessWidget {
             primarySwatch: Colors.blue, // priamrySwatch 기본적인 앱의 색상을 지정
           ),
 
-          home: MyWidget(), // 앱이 실행될 때 표시할 화면의 함수를 호출
+          home: TabPage(), // 앱이 실행될 때 표시할 화면의 함수를 호출
         ));
   }
 }

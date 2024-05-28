@@ -75,6 +75,8 @@ StoreCard _$StoreCardFromJson(Map<String, dynamic> json) => StoreCard(
       status: json['status'] as int,
       store_name: json['store_name'] as String,
       store_logo: json['store_logo'] as String,
+      store_lat: json['store_lat'] as double,
+      store_lng: json['store_lng'] as double,
     );
 
 Map<String, dynamic> _$StoreCardToJson(StoreCard instance) => <String, dynamic>{

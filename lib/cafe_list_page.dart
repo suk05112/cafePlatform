@@ -27,7 +27,7 @@ class _CafeListState extends State<CafeList>
     Tab(text: '지도로 보기'),
   ];
   Future<List<CafeBasicInfo>>? cafeList;
-  List<Store>? storeList;
+  List<Store> storeList = [];
 
   @override
   void initState() {
@@ -75,7 +75,9 @@ class _CafeListState extends State<CafeList>
                   margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
                   child: getList(context),
                 ),
-                CafeListMapView()
+                CafeListMapView(
+                  storeList: storeList,
+                )
               ],
             ),
           ),

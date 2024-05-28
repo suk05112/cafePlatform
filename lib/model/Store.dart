@@ -89,12 +89,14 @@ class StoreCard {
   int status;
   String store_name;
   String store_logo;
+  double store_lat, store_lng;
 
-  StoreCard({
-    required this.status,
-    required this.store_name,
-    required this.store_logo,
-  });
+  StoreCard(
+      {required this.status,
+      required this.store_name,
+      required this.store_logo,
+      required this.store_lat,
+      required this.store_lng});
 
   factory StoreCard.fromJson(Map<String, dynamic> json) =>
       _$StoreCardFromJson(json);

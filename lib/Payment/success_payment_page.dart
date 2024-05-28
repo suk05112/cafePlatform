@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/home.dart';
+import 'package:my_app/main.dart';
 
 class SuccessPaymentPage extends StatefulWidget {
   const SuccessPaymentPage({Key? key}) : super(key: key);
@@ -29,9 +30,13 @@ class _SuccessPaymentPageState extends State<SuccessPaymentPage> {
           onPressed: () {
             // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
             setState(() {
+              // Navigator.of(context).popUntil((route) => route.isFirst);
+              // Navigator.of(context, rootNavigator: true)
+              //     .push(MaterialPageRoute(builder: (context) => TabPage()));
+
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => Home()),
+                MaterialPageRoute(builder: (context) => TabPage()),
               );
             });
           },
