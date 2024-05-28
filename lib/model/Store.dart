@@ -28,7 +28,7 @@ class Store {
     this.store_photo_urls = const [],
     this.store_photo_cnt = 0,
     this.store_address = "",
-    this.store_lat = 0,
+    this.store_lat = 10,
     this.store_lng = 0,
     // this.business_registration = File(),
   });

@@ -30,6 +30,12 @@ class StoreProvider extends ChangeNotifier {
       print("store_provider::fetchStoreList:: fetch 호출");
       var response = await Api().client.getStoreList(1);
       var storeList = response.body.store;
+      storeList.forEach(
+        (element) {
+          print(
+              "${element.store_name} ${element.store_lat} ${element.store_lng} ");
+        },
+      );
       setStoreCard(storeList);
     } catch (error) {
       print("store_provider::fetchStoreList:: fetch 오류: $error");

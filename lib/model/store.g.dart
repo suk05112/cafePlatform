@@ -83,4 +83,6 @@ Map<String, dynamic> _$StoreCardToJson(StoreCard instance) => <String, dynamic>{
       'status': instance.status,
       'store_name': instance.store_name,
       'store_logo': instance.store_logo,
+      'store_lat': instance.store_lat,
+      'store_lng': instance.store_lng,
     };
