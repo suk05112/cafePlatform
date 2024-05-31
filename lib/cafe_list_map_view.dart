@@ -110,9 +110,17 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           storeList?.forEach((element) {
             print(
                 "${element.store_name} ${storeList![2].store_lat}, ${storeList![2].store_lng}");
-            markerList.add(NMarker(
+            final marker = NMarker(
                 id: element.store_name,
-                position: NLatLng(element.store_lat, element.store_lng)));
+                position: NLatLng(element.store_lat, element.store_lng));
+
+            marker.setOnTapListener((overlay) => {
+                  print("marker 터치됨"),
+                  setState(() {
+                    isBottomSheetShowing = !isBottomSheetShowing;
+                  })
+                });
+            markerList.add(marker);
           });
 
           final marker2 = NMarker(
@@ -125,9 +133,10 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           // marker.performClick();
           marker.setOnTapListener((overlay) => {
                 print("marker 터치됨"),
-                setState(() {
-                  isBottomSheetShowing = !isBottomSheetShowing;
-                })
+                BottomSheet()
+                // setState(() {
+                //   isBottomSheetShowing = !isBottomSheetShowing;
+                // })
               });
           return NaverMap(
             options: NaverMapViewOptions(
@@ -143,7 +152,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
             onMapReady: (controller) async {
               _mapController = controller;
               // controller.addOverlay(marker);
-              controller.addOverlayAll({marker, marker2});
+              // controller.addOverlayAll({marker, marker2});
               markerList.forEach(
                 (element) => controller.addOverlay(element),
               );
@@ -176,7 +185,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
       width: double.infinity,
       height: 200,
       child: Column(
-        children: [Text("Bottom sheet")],
+        children: [
+          Spacer(),
+          Container(
+            color: Colors.white,
+            child: Text("Bottom sheet"),
+          )
+        ],
       ),
     );
   }
