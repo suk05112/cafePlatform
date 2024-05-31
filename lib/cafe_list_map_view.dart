@@ -39,6 +39,8 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
   late NaverMapController _mapController;
   final Completer<NaverMapController> mapControllerCompleter = Completer();
+  // Store? _selectedStore;
+  ValueNotifier<Store?> _selectedStore = ValueNotifier<Store?>(null);
 
   @override
   Widget build(BuildContext context) {
@@ -60,11 +62,24 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               child: Stack(
                 children: [
                   _naverMapSection(),
-                  isBottomSheetShowing
-                      ? BottomSheet()
-                      : SizedBox(
-                          height: 0,
-                        )
+
+                  ValueListenableBuilder<Store?>(
+                    valueListenable: _selectedStore,
+                    builder: (context, store, child) {
+                      if (store == null) return SizedBox.shrink();
+                      return Align(
+                        alignment: Alignment.bottomCenter,
+                        child: _buildBottomSheet(store),
+                      );
+                    },
+                  ),
+                  // if (_selectedStore != null)
+                  //   Positioned(
+                  //     bottom: 0,
+                  //     left: 0,
+                  //     right: 0,
+                  //     child: _buildBottomSheet(_selectedStore!),
+                  //   ),
                 ],
               ))),
     );
@@ -116,28 +131,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
             marker.setOnTapListener((overlay) => {
                   print("marker 터치됨"),
-                  setState(() {
-                    isBottomSheetShowing = !isBottomSheetShowing;
-                  })
+                  if (_selectedStore.value == element)
+                    {_selectedStore.value = null}
+                  else
+                    {_selectedStore.value = element}
                 });
             markerList.add(marker);
           });
-
-          final marker2 = NMarker(
-              id: 'test2',
-              position:
-                  NLatLng(storeList![2].store_lat, storeList![2].store_lng));
-
-          print("marker 2 위경도 ");
-          print("${storeList![2].store_lat}, ${storeList![2].store_lng}");
-          // marker.performClick();
-          marker.setOnTapListener((overlay) => {
-                print("marker 터치됨"),
-                BottomSheet()
-                // setState(() {
-                //   isBottomSheetShowing = !isBottomSheetShowing;
-                // })
-              });
           return NaverMap(
             options: NaverMapViewOptions(
               initialCameraPosition: NCameraPosition(
@@ -180,19 +180,45 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     );
   }
 
-  Widget BottomSheet() {
+  Widget _buildBottomSheet(Store store) {
     return Container(
-      width: double.infinity,
-      height: 200,
+      color: Colors.white,
+      padding: EdgeInsets.all(16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Spacer(),
-          Container(
-            color: Colors.white,
-            child: Text("Bottom sheet"),
-          )
+          Text(store.store_name,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          Text(store.store_address),
+          SizedBox(height: 8),
+          Text('Additional information can be displayed here'),
+          SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _selectedStore.value = null;
+              });
+            },
+            child: Text('Close'),
+          ),
         ],
       ),
     );
   }
+  // Widget BottomSheet() {
+  //   return Container(
+  //     width: double.infinity,
+  //     height: 200,
+  //     child: Column(
+  //       children: [
+  //         Spacer(),
+  //         Container(
+  //           color: Colors.white,
+  //           child: Text("Bottom sheet"),
+  //         )
+  //       ],
+  //     ),
+  //   );
+  // }
 }
