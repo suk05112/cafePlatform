@@ -7,7 +7,11 @@ import 'package:my_app/provider/store_provider.dart';
 import 'package:provider/provider.dart';
 
 class MenuPage extends StatefulWidget {
-  const MenuPage({Key? key}) : super(key: key);
+  MenuPage({Key? key, required this.storeId, required this.storeName})
+      : super(key: key);
+
+  int storeId;
+  String storeName;
 
   @override
   State<MenuPage> createState() => _MenuPageState();
@@ -21,12 +25,21 @@ class _MenuPageState extends State<MenuPage>
   void initState() {
     print("init state 호출");
     super.initState();
-    Provider.of<MenuProvider>(context, listen: false).fetchMenuList();
+    Provider.of<MenuProvider>(context, listen: false)
+        .fetchMenuList(widget.storeId);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        appBar: AppBar(
+          title: Text("메뉴 "), // 타이틀 이름 지정
+          foregroundColor: Colors.black,
+          // titleTextStyle: TextStyle(color: Colors.black),
+          centerTitle: false, // 타이틀 이름을 가운데 정렬
+          elevation: 0.0, //elevation 속성을 통해 그림자 효과 제어
+          backgroundColor: Colors.redAccent.withOpacity(0.0),
+        ),
         body: SafeArea(
             child: Container(
                 margin: EdgeInsets.fromLTRB(10, 20, 10, 0),

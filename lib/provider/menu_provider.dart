@@ -45,10 +45,10 @@ class MenuProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchMenuList() async {
+  Future<void> fetchMenuList(storeId) async {
     try {
       print("store_provider::fetchStoreList:: fetch 호출");
-      var response = await Api().client.getMenuList(1);
+      var response = await Api().client.getMenuList(storeId);
       var menuList = response.menuList;
       setMenuCard(menuList);
     } catch (error) {

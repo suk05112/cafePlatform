@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:developer' show log;
 import 'dart:io';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import 'package:my_app/menu_page.dart';
 import 'package:my_app/model/Store.dart';
 import 'package:my_app/provider/store_provider.dart';
 import 'package:provider/provider.dart';
@@ -53,7 +54,6 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     print("physicalSize: $physicalSize");
 
     return Scaffold(
-      backgroundColor: const Color(0xFF343945),
       body: Center(
           child: SizedBox(
               width: mapSize.width,
@@ -123,8 +123,8 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
           print("store List!!!!");
           storeList?.forEach((element) {
-            print(
-                "${element.store_name} ${storeList![2].store_lat}, ${storeList![2].store_lng}");
+            // print(
+            // "${element.store_name} ${storeList![2].store_lat}, ${storeList![2].store_lng}");
             final marker = NMarker(
                 id: element.store_name,
                 position: NLatLng(element.store_lat, element.store_lng));
@@ -181,30 +181,49 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   }
 
   Widget _buildBottomSheet(Store store) {
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(store.store_name,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          Text(store.store_address),
-          SizedBox(height: 8),
-          Text('Additional information can be displayed here'),
-          SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _selectedStore.value = null;
-              });
-            },
-            child: Text('Close'),
-          ),
-        ],
-      ),
-    );
+    return GestureDetector(
+        onTap: () {
+          print("item 선택됨");
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => MenuPage(
+                        storeId: store.store_id,
+                        storeName: store.store_name,
+                      )));
+        },
+        child: Container(
+          margin: EdgeInsets.all(10),
+          color: Colors.white,
+          padding: EdgeInsets.all(5),
+          child: Row(children: [
+            Expanded(
+                child: Image.network(store.store_logo,
+                    width: 90, height: 90, fit: BoxFit.fill,
+                    errorBuilder: (context, error, stackTrace) {
+              return Image(
+                  image: AssetImage('assets/coffee.jpeg'),
+                  width: 90,
+                  height: 90);
+            })),
+            SizedBox(
+              width: 10,
+            ),
+            SizedBox(
+                height: 100,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("${store.store_name}"),
+                    Text("100m"),
+                  ],
+                )),
+            Spacer(),
+            SizedBox(
+              width: 10,
+            )
+          ]),
+        ));
   }
   // Widget BottomSheet() {
   //   return Container(

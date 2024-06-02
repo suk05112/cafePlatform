@@ -22,7 +22,7 @@ class _CafeListState extends State<CafeList>
   late TabController _tabController;
   final _selectedColor = Color(0xff9D9BFF);
   final _unselectedColor = Color(0xffCAC9FF);
-  final _tabs = [
+  final c = [
     Tab(text: '리스트로 보기'),
     Tab(text: '지도로 보기'),
   ];
@@ -44,6 +44,14 @@ class _CafeListState extends State<CafeList>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        appBar: AppBar(
+          title: Text("매장 목록"), // 타이틀 이름 지정
+          foregroundColor: Colors.black,
+          // titleTextStyle: TextStyle(color: Colors.black),
+          centerTitle: false, // 타이틀 이름을 가운데 정렬
+          elevation: 0.0, //elevation 속성을 통해 그림자 효과 제어
+          backgroundColor: Colors.redAccent.withOpacity(0.0),
+        ),
         body: SafeArea(
             // child: Expanded(
             // child: Container(
@@ -52,53 +60,31 @@ class _CafeListState extends State<CafeList>
                 crossAxisAlignment: CrossAxisAlignment
                     .start, // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-          Text(
-            "cafe",
-          ),
-          SizedBox(
-            height: 10,
-          ),
-          Container(
-            height: kToolbarHeight - 8.0,
-            decoration: BoxDecoration(
-              color: Color(0xffCAC9FF),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            child: getTabBarWidget(),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              physics: NeverScrollableScrollPhysics(),
-              children: <Widget>[
-                Container(
-                  margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
-                  child: getList(context),
+              Container(
+                height: kToolbarHeight - 8.0,
+                decoration: BoxDecoration(
+                  color: Color(0xffCAC9FF),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
-                CafeListMapView(
-                  storeList: storeList,
-                )
-              ],
-            ),
-          ),
-          // Container(
-          //   height: MediaQuery.of(context).size.height - kToolbarHeight - 50,
-          //   width: double.infinity,
-          //   child: TabBarView(
-          //     controller: _tabController,
-          //     physics: NeverScrollableScrollPhysics(),
-          //     children: <Widget>[
-          //       Container(
-          //         margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
-          //         height: 500,
-          //         child: getList(context),
-          //       ),
-          //       // getList(context),
-          //       CafeListMapView()
-          //     ],
-          //   ),
-          // ),
-        ]))
+                child: getTabBarWidget(),
+              ),
+              // getTabBarWidget(),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: <Widget>[
+                    Container(
+                      margin: EdgeInsets.fromLTRB(2, 20, 2, 20),
+                      child: getList(context),
+                    ),
+                    CafeListMapView(
+                      storeList: storeList,
+                    )
+                  ],
+                ),
+              ),
+            ]))
         // )
         // )
         );
@@ -114,14 +100,15 @@ class _CafeListState extends State<CafeList>
       unselectedLabelColor: Colors.black,
       tabs: [
         Container(
-          width: (MediaQuery.of(context).size.width - 80) / 2,
+          alignment: Alignment.center,
+          // width: (MediaQuery.of(context).size.width) / 2,
           child: Tab(text: '리스트로 보기'),
         ),
         Container(
-            width: (MediaQuery.of(context).size.width - 80) / 2,
+            alignment: Alignment.center,
+            // width: (MediaQuery.of(context).size.width),
             child: Text(
               "지도로 보기",
-              style: TextAssset.body2,
             )),
       ],
       // tabs: _tabs,
@@ -164,25 +151,6 @@ class _CafeListState extends State<CafeList>
         ));
   }
 
-  // void getStoreList(BuildContext context) async {
-  //   final currentContext = scaffoldKey.currentContext;
-
-  //   try {
-  //     final response = await Api().client.getStoreList(1);
-  //     currentContext?.read<StoreProvider>().setStoreCard(response.body.store);
-  //     print("get store list");
-  //     print(response);
-  //     // _isFirstSlotLoaded = true;
-  //   } catch (error) {
-  //     // stopLoading();
-  //     currentContext?.read<StoreProvider>().setStoreCard(null);
-  //     // _isFirstSlotLoaded = true;
-  //     showModalDialog(context,
-  //         "서버에서 오류가 발생하였습니다.\n앱 종료 후 다시 접속해 주세요.\n문제가 지속될 경우, 고객센터(service@loplat.com)로 문의부탁드립니다.");
-  //     rethrow;
-  //   }
-  // }
-
   void showModalDialog(BuildContext context, String message) {
     showDialog(
         barrierDismissible: false,
@@ -222,7 +190,12 @@ class _CafeListState extends State<CafeList>
         onTap: () {
           print("item 선택됨");
           Navigator.push(
-              context, MaterialPageRoute(builder: (context) => MenuPage()));
+              context,
+              MaterialPageRoute(
+                  builder: (context) => MenuPage(
+                        storeId: store.store_id,
+                        storeName: store.store_name,
+                      )));
         },
         child: SizedBox(
           height: 130,
@@ -246,7 +219,7 @@ class _CafeListState extends State<CafeList>
                     fit: BoxFit.fill);
               })),
               Spacer(),
-              Text("${store?.store_name}"),
+              Text("${store.store_name}"),
             ]),
           ),
         ));
