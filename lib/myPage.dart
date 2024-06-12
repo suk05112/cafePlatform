@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/GiftBox.dart';
-import 'package:my_app/gifticon_page.dart';
+import 'package:my_app/order_list.dart';
 import 'package:my_app/setting/notice_page.dart';
 import 'package:my_app/setting/setting_page.dart';
-import 'package:my_app/setting/user_info_page.dart';
-// import 'package:flutter/semantics.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({Key? key}) : super(key: key);
@@ -81,7 +79,7 @@ class _MyPageState extends State<MyPage> {
   Widget getListView() {
     var selectedPageName = ['주문내역', '고객센터'];
 
-    var selectedPage = [const UserInfoPage(), const NoticePage()];
+    var selectedPage = [OrderListPage(), const NoticePage()];
     // var listView = ListView.separated(
     var listView = ListView.builder(
       itemCount: selectedPage.length,
