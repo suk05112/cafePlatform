@@ -1,7 +1,5 @@
 import UIKit
 import Flutter
-import flutter_naver_login
-import KakaoOpenSDK
 
 @UIApplicationMain
 @objc class AppDelegate: FlutterAppDelegate {
