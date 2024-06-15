@@ -11,6 +11,7 @@ import 'package:my_app/login_page.dart';
 import 'package:my_app/myPage.dart';
 import 'package:my_app/GiftBox.dart';
 import 'package:my_app/provider/menu_provider.dart';
+import 'package:my_app/provider/order_provider.dart';
 import 'package:my_app/provider/store_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -79,6 +80,7 @@ class _MyAppState extends State<MyApp> {
         providers: [
           ChangeNotifierProvider(create: (context) => StoreProvider()),
           ChangeNotifierProvider(create: (context) => MenuProvider()),
+          ChangeNotifierProvider(create: (context) => OrderProvider()),
         ],
         child: MaterialApp(
           title: "MyApp", // 앱 이름
