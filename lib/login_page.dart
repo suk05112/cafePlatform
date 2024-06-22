@@ -24,6 +24,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         await UserApi.instance.loginWithKakaoTalk();
         print('카카오톡으로 로그인 성공');
+        getEmail();
       } catch (error) {
         print('카카오톡으로 로그인 실패 $error');
 
@@ -36,6 +37,7 @@ class _LoginPageState extends State<LoginPage> {
         try {
           await UserApi.instance.loginWithKakaoAccount();
           print('카카오계정으로 로그인 성공');
+          getEmail();
         } catch (error) {
           print('카카오계정으로 로그인 실패 $error');
         }
@@ -47,6 +49,20 @@ class _LoginPageState extends State<LoginPage> {
       } catch (error) {
         print('카카오계정으로 로그인 실패 $error');
       }
+    }
+  }
+
+  Future<String?> getEmail() async {
+    try {
+      User user = await UserApi.instance.me();
+      print('사용자 정보 요청 성공'
+          '\n회원번호: ${user.id}'
+          '\n닉네임: ${user.kakaoAccount?.profile?.nickname}'
+          '\n이메일: ${user.kakaoAccount?.email}');
+
+      return user.kakaoAccount?.email;
+    } catch (error) {
+      print('사용자 정보 요청 실패 $error');
     }
   }
 
