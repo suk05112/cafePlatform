@@ -1,5 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
+import 'package:google_sign_in/google_sign_in.dart' as google;
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
 class LoginPage extends StatefulWidget {
@@ -12,6 +18,16 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
   final int _storeId = 1;
+
+  final firebaseAuth = FirebaseAuth.instance;
+
+  google.GoogleSignIn _googleSignIn = google.GoogleSignIn(
+    scopes: [
+      'email',
+      'https://www.googleapis.com/auth/contacts.readonly',
+    ],
+  );
+
   @override
   void initState() {
     _initRetrieval();
@@ -19,12 +35,66 @@ class _LoginPageState extends State<LoginPage> {
 
   Future _initRetrieval() async {}
 
-  Future login() async {
-    if (await isKakaoTalkInstalled()) {
+  Future<void> _handleSignIn() async {
+    try {
+      await _googleSignIn.signIn();
+    } catch (error) {
+      print(error);
+    }
+  }
+
+  void signOut() async {
+    await _googleSignIn.signOut();
+    print("User signed out.");
+  }
+
+  Future<dynamic> handleGoogleSignInProvider() async {
+    try {
+      await _googleSignIn
+          .signIn()
+          .then((google.GoogleSignInAccount? googleSignInAccount) async {
+        if (googleSignInAccount == null) {
+          print('구글 데이터를 가져오지 못했습니다');
+
+          return null;
+        }
+
+        google.GoogleSignInAuthentication googleSignInAuthentication =
+            await googleSignInAccount.authentication;
+
+        AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleSignInAuthentication.accessToken,
+          idToken: googleSignInAuthentication.idToken,
+        );
+
+        UserCredential authResult =
+            await firebaseAuth.signInWithCredential(credential);
+        fb.User? user = authResult.user;
+
+        if (user == null) {
+          print('구글 유저 데이터를 가져오지 못했습니다');
+
+          return null;
+        }
+
+        return {
+          'type': 'google',
+          'user_uuid': user.uid,
+          'email': user.email,
+          'profile': user.photoURL,
+        };
+      });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  Future kakaoLogin() async {
+    if (await kakao.isKakaoTalkInstalled()) {
       try {
-        await UserApi.instance.loginWithKakaoTalk();
+        await kakao.UserApi.instance.loginWithKakaoTalk();
         print('카카오톡으로 로그인 성공');
-        getEmail();
+        getKakaoEmail();
       } catch (error) {
         print('카카오톡으로 로그인 실패 $error');
 
@@ -35,16 +105,16 @@ class _LoginPageState extends State<LoginPage> {
         }
         // 카카오톡에 연결된 카카오계정이 없는 경우, 카카오계정으로 로그인
         try {
-          await UserApi.instance.loginWithKakaoAccount();
+          await kakao.UserApi.instance.loginWithKakaoAccount();
           print('카카오계정으로 로그인 성공');
-          getEmail();
+          getKakaoEmail();
         } catch (error) {
           print('카카오계정으로 로그인 실패 $error');
         }
       }
     } else {
       try {
-        await UserApi.instance.loginWithKakaoAccount();
+        await kakao.UserApi.instance.loginWithKakaoAccount();
         print('카카오계정으로 로그인 성공');
       } catch (error) {
         print('카카오계정으로 로그인 실패 $error');
@@ -52,9 +122,9 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<String?> getEmail() async {
+  Future<String?> getKakaoEmail() async {
     try {
-      User user = await UserApi.instance.me();
+      kakao.User user = await UserApi.instance.me();
       print('사용자 정보 요청 성공'
           '\n회원번호: ${user.id}'
           '\n닉네임: ${user.kakaoAccount?.profile?.nickname}'
@@ -84,7 +154,14 @@ class _LoginPageState extends State<LoginPage> {
                       icon: Image.asset('assets/kakao_login.png'),
                       iconSize: 50,
                       onPressed: () {
-                        login();
+                        kakaoLogin();
+                      },
+                    ),
+                    IconButton(
+                      icon: Image.asset('assets/google_login.png'),
+                      iconSize: 50,
+                      onPressed: () {
+                        handleGoogleSignInProvider();
                       },
                     )
                   ]))

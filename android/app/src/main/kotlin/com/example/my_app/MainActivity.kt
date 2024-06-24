@@ -1,4 +1,4 @@
-package com.example.my_app
+package com.dododang.cafePlatform
 
 import io.flutter.embedding.android.FlutterActivity
 

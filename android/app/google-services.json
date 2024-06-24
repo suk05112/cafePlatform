@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "99431167510",
+    "project_id": "cafeplatform",
+    "storage_bucket": "cafeplatform.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:99431167510:android:a56cfe2b2d996dc96e6737",
+        "android_client_info": {
+          "package_name": "com.dododang.cafePlatform"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "99431167510-i0vcfq4pfdvn0kct1aqmaj7qki1ooire.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlX-7Src_cDoPT468x56GqOXu6yDaDWdc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "99431167510-i0vcfq4pfdvn0kct1aqmaj7qki1ooire.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
