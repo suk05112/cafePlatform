@@ -26,7 +26,7 @@ class _CafeListState extends State<CafeList>
     Tab(text: '리스트로 보기'),
     Tab(text: '지도로 보기'),
   ];
-  Future<List<CafeBasicInfo>>? cafeList;
+  // Future<List<CafeBasicInfo>>? cafeList;
   List<Store> storeList = [];
 
   @override
