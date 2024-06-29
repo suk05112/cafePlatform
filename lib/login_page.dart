@@ -71,6 +71,20 @@ class _LoginPageState extends State<LoginPage> {
                         login();
                       },
                     )
+                  ])),
+          Container(
+              margin: EdgeInsets.fromLTRB(21, 0, 21, 21),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 13),
+                    IconButton(
+                      icon: Image.asset('assets/google_login.png'),
+                      iconSize: 50,
+                      onPressed: () {
+                        login();
+                      },
+                    )
                   ]))
         ]))));
   }
