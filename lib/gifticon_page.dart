@@ -51,8 +51,8 @@ class _GifticonPageState extends State<GifticonPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text('${gifticon.name}'),
-                      Text('유효기간 ${gifticon.validity}'),
-                      Text('주문번호 ${gifticon.order_id}'),
+                      Text('유효 기간 ${gifticon.validity}'),
+                      Text('주문 번호 ${gifticon.order_id}'),
                       gifticonStatus(gifticon.use_yn),
                       Text('교환처 지도로보기'),
                     ],

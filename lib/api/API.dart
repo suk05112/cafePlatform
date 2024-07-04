@@ -20,8 +20,8 @@ class Api {
   static final _options = BaseOptions(
       baseUrl: STAGING_URL_V2,
       headers: _headers,
-      connectTimeout: Duration(seconds: 5000),
-      receiveTimeout: Duration(seconds: 5000));
+      connectTimeout: Duration(seconds: 500),
+      receiveTimeout: Duration(seconds: 500));
   static final _headers = {
     'Content-Type': 'application/json; charset=UTF-8',
     // 'X-API-KEY': 'app-id=loplat-go-android,signature=d8d6513401f6714cc98b72bc5bc7e2bfcca13b4fe89b22183f470537e57c040c',
@@ -32,9 +32,9 @@ class Api {
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       headers: _headers,
-      connectTimeout: Duration(seconds: 5000),
-      receiveTimeout: Duration(seconds: 5000),
-      sendTimeout: Duration(seconds: 5000),
+      connectTimeout: Duration(seconds: 500),
+      receiveTimeout: Duration(seconds: 500),
+      sendTimeout: Duration(seconds: 500),
     ))
       ..interceptors.add(CustomLogInterceptor());
 
@@ -49,9 +49,9 @@ class Api {
       headers: accessToken != null
           ? {..._headers, 'Authorization': 'Bearer $accessToken'}
           : _headers,
-      connectTimeout: Duration(seconds: 5000),
-      receiveTimeout: Duration(seconds: 5000),
-      sendTimeout: Duration(seconds: 5000),
+      connectTimeout: Duration(seconds: 500),
+      receiveTimeout: Duration(seconds: 500),
+      sendTimeout: Duration(seconds: 500),
     ))
       ..interceptors.add(CustomLogInterceptor())
       ..interceptors.add(AuthInterceptor());
