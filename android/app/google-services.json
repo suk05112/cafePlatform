@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "99431167510",
+    "project_id": "cafeplatform",
+    "storage_bucket": "cafeplatform.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:99431167510:android:6a15a4f1b0ee924e6e6737",
+        "android_client_info": {
+          "package_name": "com.gifnut.cafeplatform"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "99431167510-2glo5lec2sg8rtgemfs6j12su6jvn3cj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gifnut.cafeplatform",
+            "certificate_hash": "066a604319c449f4ec23c2e6285088bf6b13dcf5"
+          }
+        },
+        {
+          "client_id": "99431167510-i0vcfq4pfdvn0kct1aqmaj7qki1ooire.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlX-7Src_cDoPT468x56GqOXu6yDaDWdc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "99431167510-i0vcfq4pfdvn0kct1aqmaj7qki1ooire.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "99431167510-5lfovp3b3ejqddj9drtn4nc9rukql3hr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.gifnut.cafeplatform.dev"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:99431167510:android:3142d4ef8e4ea3936e6737",
+        "android_client_info": {
+          "package_name": "com.gifnut.cafeplatform.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "99431167510-i0vcfq4pfdvn0kct1aqmaj7qki1ooire.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlX-7Src_cDoPT468x56GqOXu6yDaDWdc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "99431167510-i0vcfq4pfdvn0kct1aqmaj7qki1ooire.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "99431167510-5lfovp3b3ejqddj9drtn4nc9rukql3hr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.gifnut.cafeplatform.dev"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

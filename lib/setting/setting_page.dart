@@ -1,0 +1,630 @@
+import 'package:flutter/material.dart';
+import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/business_info_response.dart';
+import 'package:cafeplatform/setting/inquiry_page.dart';
+import 'package:cafeplatform/SignIn/login_page.dart';
+import 'package:cafeplatform/model/user.dart';
+import 'package:cafeplatform/order/order_list.dart';
+import 'package:cafeplatform/provider/user_provider.dart';
+import 'package:cafeplatform/setting/faq_page.dart';
+import 'package:cafeplatform/setting/notice_page.dart';
+import 'package:cafeplatform/setting/user_info_page.dart';
+import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
+import 'package:cafeplatform/setting/oss_licenses.dart';
+import 'package:cafeplatform/setting/notification_setting_page.dart';
+import 'package:cafeplatform/setting/terms_page.dart';
+
+class SettingPage extends StatefulWidget {
+  const SettingPage({super.key});
+
+  @override
+  State<SettingPage> createState() => _SettingPageState();
+}
+
+class _SettingPageState extends State<SettingPage> {
+  late Future<String> _version;
+
+  @override
+  void initState() {
+    super.initState();
+    _version = getVersion();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: const CommonAppBar(title: "더보기"),
+        backgroundColor: Colors.white,
+        body: SafeArea(
+            child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // SizedBox(height: 20),
+                    getUserInfo(),
+                    SizedBox(height: 24),
+                    getsettingListView(),
+                    SizedBox(height: 20),
+                  ],
+                ),
+              ),
+              businessInformation(),
+              SizedBox(height: 20),
+            ],
+          ),
+        )));
+  }
+
+  List dataListItem() {
+    var items = [
+      "알림 설정",
+      "공지사항",
+      "자주묻는 질문",
+      "문의하기",
+      "주문내역",
+      "약관 보기",
+      "버전",
+      "라이선스",
+    ];
+    return items;
+  }
+
+  List<IconData> getIcons() {
+    return [
+      Icons.notifications_active_outlined,
+      Icons.notifications_outlined,
+      Icons.help_outline,
+      Icons.contact_support_outlined,
+      Icons.receipt_long_outlined,
+      Icons.description_outlined,
+      Icons.info_outline,
+      Icons.description_outlined,
+    ];
+  }
+
+  List getSelectedPage() {
+    // var items = List.generate(5, (i) => "Item $i");
+    var items = [
+      const NotificationSettingPage(),
+      const NoticePage(),
+      const FAQPage(),
+      const InquiryPage(),
+      OrderListPage(),
+      const TermsPage(),
+      const LicensePage(),
+      OssLicensesPage(),
+    ];
+
+    return items;
+  }
+
+  Widget getUserInfo() {
+    User? user = Provider.of<UserProvider>(context).user;
+
+    if (user == null) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => LoginPage()),
+          );
+        },
+        child: Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person,
+                  size: 30,
+                  color: Colors.grey[600],
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "로그인 & 가입하기",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "로그인 후 서비스 이용이 가능합니다.",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => UserInfoPage()),
+            );
+          },
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person,
+                  size: 30,
+                  color: Colors.grey[600],
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      user.email,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey[400],
+              ),
+            ]),
+          ));
+    }
+  }
+
+  Widget getsettingListView() {
+    var allItems = dataListItem();
+    var selectedPage = getSelectedPage();
+    var icons = getIcons();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          for (int index = 0; index < allItems.length; index++)
+            if (index == 6)
+              version()
+            else
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => selectedPage[index]),
+                ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          icons[index],
+                          size: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          allItems[index],
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.grey[400],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+
+  Widget version() {
+    return FutureBuilder<String>(
+      future: _version,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        } else if (snapshot.hasError) {
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: TextStyle(color: Colors.red),
+            ),
+          );
+        } else {
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.info_outline,
+                    size: 20,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "버전",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                Text(
+                  "v ${snapshot.data}",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Future<String> getVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo.version;
+  }
+
+  Future<BusinessInfoResponse> getBusinessInfo() async {
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+      var response = await Api().client.getBusinessInfo();
+      print('사업자 정보 조회 성공: ${response.toJson()}');
+      return response;
+    } catch (error) {
+      print('사업자 정보 조회 오류: $error');
+      // 에러 발생 시 기본값 반환
+      return BusinessInfoResponse(
+        business_number: '479-03-03427',
+        online_sales_number: '2025-서울강서-3226',
+        address: '서울특별시 강서구 공항대로 543',
+        telephone: '02-1111-1111',
+      );
+    }
+  }
+
+  Widget businessInformation() {
+    return FutureBuilder<BusinessInfoResponse>(
+      future: getBusinessInfo(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+            ),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "502 Company \n대표: 한수진 \n사업자등록번호: 479-03-03427",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[700],
+                    height: 1.4,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "주소: 서울특별시 강서구 공항대로 543 \n이메일: service@502company.com \n고객센터: 02-1111-1111",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[700],
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final businessInfo = snapshot.data!;
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "502 Company \n대표: 한수진 \n사업자등록번호: ${businessInfo.business_number}",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[700],
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                "통신판매업신고번호: ${businessInfo.online_sales_number}",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[700],
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                "주소: ${businessInfo.address}\n이메일: service@502company.com\n고객센터: ${businessInfo.telephone}",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[700],
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class LicensePage extends StatelessWidget {
+  const LicensePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        body: SafeArea(
+            child: SingleChildScrollView(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+          Container(
+              margin: EdgeInsets.fromLTRB(21, 0, 21, 21),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // CommonSection.getHeader("라이선스"),
+                  const Text("this is license page")
+                ],
+              ))
+        ]))));
+  }
+}
+
+class OssLicensesPage extends StatelessWidget {
+  const OssLicensesPage({super.key});
+
+  static Future<List<String>> loadLicenses() async {
+    final ossKeys = List<String>.from(ossLicenses);
+    return ossKeys..sort();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: const CommonAppBar(title: "라이선스"),
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              for (var i = 0; i < ossLicenses.length; i++)
+                ListTile(
+                  title: Text(ossLicenses[i].name),
+                  // subtitle: ossLicenses[i].description != null ? Text(ossLicenses[i].description!) : null,
+                  trailing: Icon(Icons.chevron_right),
+                  onTap: () {
+                    // 클릭하면 해당 오픈소스 라이선스 페이지로 이동
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) => MiscOssLicenseSingle(
+                            name: ossLicenses[i].name ?? '',
+                            version: ossLicenses[i].version ?? '',
+                            description: ossLicenses[i].description ?? '',
+                            licenseText: ossLicenses[i].license ?? '',
+                            homepage: ossLicenses[i].homepage ?? '')));
+                  },
+                  // onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => MiscOssLicenseSingle(name: ossLicenses[i].name, json: ossLicenses[i])))
+                )
+            ],
+          ),
+        ));
+  }
+}
+
+class MiscOssLicenseSingle extends StatelessWidget {
+  final String name;
+  final String version;
+  final String description;
+  final String licenseText;
+  final String homepage;
+
+  const MiscOssLicenseSingle({
+    super.key,
+    required this.name,
+    required this.version,
+    required this.description,
+    required this.licenseText,
+    required this.homepage,
+  });
+
+  String _bodyText() {
+    return licenseText.split('\n').map((line) {
+      if (line.startsWith('//')) line = line.substring(2);
+      line = line.trim();
+      return line;
+    }).join('\n');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        title: const Text("라이선스"),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            ListTile(
+              title: Text(name),
+              subtitle: Text('version : $version'),
+            ),
+            if (description.isNotEmpty)
+              Padding(
+                  padding:
+                      const EdgeInsets.only(top: 12.0, left: 12.0, right: 12.0),
+                  child: Text(description)),
+            const Divider(),
+            Padding(
+              padding:
+                  const EdgeInsets.only(top: 12.0, left: 12.0, right: 12.0),
+              child: Text(_bodyText()),
+            ),
+            const Divider(),
+            ListTile(
+              title: Text('Homepage'),
+              subtitle: Text(homepage),
+              // onTap: () async {
+              //   if (await canLaunch(homepage)) {
+              //     await launch(homepage);
+              //   } else {
+              //     throw 'Could not launch $homepage';
+              //   }
+              // }
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
