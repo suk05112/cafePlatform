@@ -191,45 +191,51 @@ class _CafeListState extends State<CafeList>
     final availableRegions = storeProvider.availableRegions;
     final selectedRegionCode =
         storeProvider.selectedRegionCode ?? _selectedRegionCode;
+    
+    // 기본 선택 지역이 없으면 첫 번째 지역을 기본으로 설정
+    if (selectedRegionCode == null && availableRegions.isNotEmpty) {
+      final firstRegionCode = availableRegions.first.region_code;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedRegionCode = firstRegionCode;
+          });
+          storeProvider.setSelectedRegionCode(firstRegionCode);
+        }
+      });
+    }
+    
     final selectedRegion = availableRegions.firstWhere(
-      (r) => r.region_code == selectedRegionCode,
-      orElse: () => Region(region_name: '전체 지역', region_code: ''),
+      (r) => r.region_code == (selectedRegionCode ?? (availableRegions.isNotEmpty ? availableRegions.first.region_code : '')),
+      orElse: () => availableRegions.isNotEmpty 
+          ? availableRegions.first 
+          : Region(region_name: '지역 선택', region_code: ''),
     );
 
     return Row(
       children: [
         PopupMenuButton<String>(
           onSelected: (regionCode) async {
-            if (regionCode.isEmpty) {
-              // 전체 지역 선택
-              setState(() {
-                _selectedRegionCode = null;
-              });
-              storeProvider.setSelectedRegionCode(null);
-              // 전체 매장 다시 로드
-              await storeProvider.fetchStoreList();
-            } else {
-              // 특정 지역 선택 - district_code로 API 호출
-              setState(() {
-                _selectedRegionCode = regionCode;
-              });
-              storeProvider.setSelectedRegionCode(regionCode);
-              try {
-                final selectedRegion = availableRegions.firstWhere(
-                  (r) => r.region_code == regionCode,
-                );
-                // region의 첫 번째 district_code 사용
-                final districtCode =
-                    selectedRegion.districts?.isNotEmpty == true
-                        ? selectedRegion.districts!.first.district_code
-                        : regionCode; // district가 없으면 region_code 사용
+            // 특정 지역 선택 - district_code로 API 호출
+            setState(() {
+              _selectedRegionCode = regionCode;
+            });
+            storeProvider.setSelectedRegionCode(regionCode);
+            try {
+              final selectedRegion = availableRegions.firstWhere(
+                (r) => r.region_code == regionCode,
+              );
+              // region의 첫 번째 district_code 사용
+              final districtCode =
+                  selectedRegion.districts?.isNotEmpty == true
+                      ? selectedRegion.districts!.first.district_code
+                      : regionCode; // district가 없으면 region_code 사용
 
-                final response =
-                    await Api().client.getStoreListByDistrict(districtCode);
-                storeProvider.setStoreCard(response.store);
-              } catch (error) {
-                print("지역별 매장 로드 오류: $error");
-              }
+              final response =
+                  await Api().client.getStoreListByDistrict(districtCode);
+              storeProvider.setStoreCard(response.store);
+            } catch (error) {
+              print("지역별 매장 로드 오류: $error");
             }
           },
           shape: RoundedRectangleBorder(
@@ -241,9 +247,7 @@ class _CafeListState extends State<CafeList>
             onPressed: null,
             icon: const Icon(Icons.place_outlined, size: 18),
             label: Text(
-              selectedRegionCode == null || selectedRegionCode.isEmpty
-                  ? '전체 지역'
-                  : selectedRegion.region_name,
+              selectedRegion.region_name,
               overflow: TextOverflow.ellipsis,
             ),
             style: OutlinedButton.styleFrom(
@@ -254,48 +258,6 @@ class _CafeListState extends State<CafeList>
             ),
           ),
           itemBuilder: (BuildContext context) => [
-            PopupMenuItem<String>(
-              value: '',
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 18,
-                      color: selectedRegionCode == null ||
-                              selectedRegionCode.isEmpty
-                          ? Colors.black87
-                          : Colors.grey[400],
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '전체 지역',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: selectedRegionCode == null ||
-                                selectedRegionCode.isEmpty
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: selectedRegionCode == null ||
-                                selectedRegionCode.isEmpty
-                            ? Colors.black87
-                            : Colors.black87,
-                      ),
-                    ),
-                    if (selectedRegionCode == null ||
-                        selectedRegionCode.isEmpty) ...[
-                      const Spacer(),
-                      Icon(
-                        Icons.check,
-                        size: 18,
-                        color: Colors.black87,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
             ...availableRegions.map((region) => PopupMenuItem<String>(
                   value: region.region_code,
                   child: Container(
@@ -359,9 +321,9 @@ class _CafeListState extends State<CafeList>
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '매장명, 동네 이름으로 검색하기',
+                      '매장명으로 검색',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
                         color: ColorAssset.grey5,
                       ),
@@ -447,9 +409,13 @@ class _StoreCard extends StatelessWidget {
     if (cleanedUrl.isEmpty ||
         (!cleanedUrl.startsWith('http://') &&
             !cleanedUrl.startsWith('https://'))) {
-      return Image.asset(
-        'assets/coffee.jpeg',
-        fit: BoxFit.cover,
+      return Container(
+        color: Colors.grey[100],
+        child: Icon(
+          Icons.storefront,
+          size: 60,
+          color: Colors.grey[400],
+        ),
       );
     }
 
@@ -479,19 +445,24 @@ class _StoreCard extends StatelessWidget {
         if (frame != null) return child;
         // 프레임이 null이면 로딩 중이거나 에러
         return Container(
-          color: Colors.grey[200],
-          child: Image.asset(
-            'assets/coffee.jpeg',
-            fit: BoxFit.cover,
+          color: Colors.grey[100],
+          child: Icon(
+            Icons.storefront,
+            size: 60,
+            color: Colors.grey[400],
           ),
         );
       },
       errorBuilder: (context, error, stackTrace) {
         print('이미지 로드 오류: $error, URL: $cleanedUrl');
         print('스택 트레이스: $stackTrace');
-        return Image.asset(
-          'assets/coffee.jpeg',
-          fit: BoxFit.cover,
+        return Container(
+          color: Colors.grey[100],
+          child: Icon(
+            Icons.storefront,
+            size: 60,
+            color: Colors.grey[400],
+          ),
         );
       },
       // 캐시 최적화

@@ -37,13 +37,16 @@ class CommonPaymentWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: AspectRatio(
                       aspectRatio: 1, // 정방형
-                      child: Image.network(
-                        menu.menu_image_url!.trim(),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const SizedBox.shrink();
-                        },
-                      ),
+                      child: (menu.menu_image_url != null &&
+                              menu.menu_image_url!.trim().isNotEmpty)
+                          ? Image.network(
+                              menu.menu_image_url!.trim(),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const SizedBox.shrink();
+                              },
+                            )
+                          : const SizedBox.shrink(),
                     ),
                   ),
                 ),

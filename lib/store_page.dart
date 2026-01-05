@@ -429,13 +429,16 @@ class _StorePageState extends State<StorePage> {
               SizedBox(width: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  menu.menu_image_url!,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => SizedBox.shrink(),
-                ),
+                child: (menu.menu_image_url != null &&
+                        menu.menu_image_url!.isNotEmpty)
+                    ? Image.network(
+                        menu.menu_image_url!,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => SizedBox.shrink(),
+                      )
+                    : SizedBox.shrink(),
               ),
             ],
           ],

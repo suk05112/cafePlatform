@@ -206,19 +206,27 @@ class _OrderDetailPageState extends State<OrderDetailPage>
                                 height: 100,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'assets/coffee.png',
+                                  return Container(
                                     width: 100,
                                     height: 100,
-                                    fit: BoxFit.cover,
+                                    color: Colors.grey[100],
+                                    child: Icon(
+                                      Icons.card_giftcard,
+                                      size: 50,
+                                      color: Colors.grey[400],
+                                    ),
                                   );
                                 },
                               )
-                            : Image.asset(
-                                'assets/coffee.png',
+                            : Container(
                                 width: 100,
                                 height: 100,
-                                fit: BoxFit.cover,
+                                color: Colors.grey[100],
+                                child: Icon(
+                                  Icons.card_giftcard,
+                                  size: 50,
+                                  color: Colors.grey[400],
+                                ),
                               ),
                       ),
                     ),

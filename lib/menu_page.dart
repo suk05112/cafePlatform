@@ -100,14 +100,21 @@ class _MenuPageState extends State<MenuPage>
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                menu.menu_image_url ?? "",
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Image.asset('assets/menu.png',
-                    width: 80, height: 80, fit: BoxFit.cover),
-              ),
+              child: (menu.menu_image_url != null &&
+                      menu.menu_image_url!.isNotEmpty)
+                  ? Image.network(
+                      menu.menu_image_url!,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/menu.png',
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover),
+                    )
+                  : Image.asset('assets/menu.png',
+                      width: 80, height: 80, fit: BoxFit.cover),
             ),
             const SizedBox(width: 18),
             // 오른쪽 텍스트 영역 (세로정렬)

@@ -386,7 +386,7 @@ class _GifticonPageState extends State<GifticonPage>
           ),
           child: Column(
             children: [
-              gifticonInfoRow('유효기간', '${gifticon.validity?.toDateTimeString}'),
+              gifticonInfoRow('유효기간', '${gifticon.validity?.toDateString}'),
               gifticonInfoRow('쿠폰번호', gifticon.gift_code ?? ""),
               // gifticonInfoRow(
               // '선물주문일', '${gifticon.created_time?.toDateTimeString}'),
@@ -507,7 +507,8 @@ class _GifticonPageState extends State<GifticonPage>
             borderRadius: BorderRadius.circular(12),
           ),
           foregroundColor: Colors.white,
-          backgroundColor: available == true ? Colors.black : Colors.grey[400],
+          backgroundColor:
+              available == true ? ColorAssset.mainColor : Colors.grey[400],
           elevation: 0,
         ),
         onPressed: available == false
@@ -841,16 +842,10 @@ class _GifticonPageState extends State<GifticonPage>
           ),
         ),
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                'assets/gifnut_logo.svg',
-                width: 80,
-                height: 80,
-                fit: BoxFit.contain,
-              ),
-            ],
+          child: Icon(
+            Icons.card_giftcard,
+            size: 80,
+            color: Colors.grey[400],
           ),
         ),
       );
@@ -905,16 +900,10 @@ class _GifticonPageState extends State<GifticonPage>
             ),
           ),
           child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SvgPicture.asset(
-                  'assets/gifnut_logo.svg',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.contain,
-                ),
-              ],
+            child: Icon(
+              Icons.card_giftcard,
+              size: 80,
+              color: Colors.grey[400],
             ),
           ),
         );

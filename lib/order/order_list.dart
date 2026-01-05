@@ -192,25 +192,71 @@ class _OrderListPageState extends State<OrderListPage>
               ],
             ),
             SizedBox(height: 16),
-            // 상품 정보
-            Column(
+            // 상품 정보 (이미지 + 텍스트)
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  order.menu_name,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
+                // 메뉴 이미지
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[100],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: (order.menu_url != null && order.menu_url!.isNotEmpty)
+                        ? Image.network(
+                            order.menu_url!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[100],
+                                child: Icon(
+                                  Icons.card_giftcard,
+                                  size: 40,
+                                  color: Colors.grey[400],
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.grey[100],
+                            child: Icon(
+                              Icons.card_giftcard,
+                              size: 40,
+                              color: Colors.grey[400],
+                            ),
+                          ),
                   ),
                 ),
-                SizedBox(height: 8),
-                Text(
-                  "${order.price}원",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
+                SizedBox(width: 12),
+                // 메뉴 텍스트 정보
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.menu_name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        "${order.price}원",
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

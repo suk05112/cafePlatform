@@ -282,11 +282,15 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     if (cleanedUrl.isEmpty ||
         (!cleanedUrl.startsWith('http://') &&
             !cleanedUrl.startsWith('https://'))) {
-      return Image.asset(
-        'assets/coffee.jpeg',
+      return Container(
         width: width,
         height: height,
-        fit: BoxFit.cover,
+        color: Colors.grey[100],
+        child: Icon(
+          Icons.storefront,
+          size: width > height ? height * 0.6 : width * 0.6,
+          color: Colors.grey[400],
+        ),
       );
     }
 
@@ -318,11 +322,15 @@ class _CafeListMapViewState extends State<CafeListMapView> {
       },
       errorBuilder: (context, error, stackTrace) {
         print('이미지 로드 오류: $error, URL: $cleanedUrl');
-        return Image.asset(
-          'assets/coffee.jpeg',
+        return Container(
           width: width,
           height: height,
-          fit: BoxFit.cover,
+          color: Colors.grey[100],
+          child: Icon(
+            Icons.storefront,
+            size: width > height ? height * 0.6 : width * 0.6,
+            color: Colors.grey[400],
+          ),
         );
       },
       // 캐시 최적화

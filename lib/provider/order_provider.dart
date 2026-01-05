@@ -4,41 +4,13 @@ import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/order.dart';
 
 class OrderProvider extends ChangeNotifier {
-  late Order? _order;
   late List<Order>? orderCards = [];
 
   void setOrderCard(List<Order>? orderCards) {
-    // if ((storeCards?.length ?? 0) > 0) {
-    //     slotCardsListVisible = true;
-    // } else {
-    //     slotCardsListVisible = false;
-    // }
-
-    this.orderCards = orderCards;
-    if (this.orderCards == null || this.orderCards!.isEmpty) {
-      print("여기 탐");
-      this.orderCards = [
-        Order(
-            order_id: 1,
-            store_id: 1,
-            order_number: 1,
-            sender: "홍길동",
-            created_time: DateTime(2025, 4, 1),
-            price: 5000,
-            menu_name: "아메리카노",
-            status: 'COMPLETED'),
-        Order(
-            order_id: 2,
-            store_id: 1,
-            order_number: 1,
-            sender: "김철수",
-            created_time: DateTime(2025, 4, 3),
-            price: 5000,
-            menu_name: "카페라떼",
-            status: 'COMPLETED')
-      ];
-    } else {
-      print("여기 안탐");
+    this.orderCards = orderCards ?? [];
+    print("order_provider::setOrderCard:: 주문 개수: ${this.orderCards?.length ?? 0}");
+    if (this.orderCards != null && this.orderCards!.isNotEmpty) {
+      print("order_provider::setOrderCard:: 첫 번째 주문: ${this.orderCards!.first.toJson()}");
     }
     notifyListeners();
   }
@@ -74,13 +46,18 @@ class OrderProvider extends ChangeNotifier {
 
     try {
       print("order_provider::fetchOrderList:: fetch 호출, user_id: $userId");
+      await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getOrderList(userId);
       var orderList = response.orderList;
 
-      print("order_provider::fetchOrderList:: 주문 개수: ${orderList.length}");
+      print("order_provider::fetchOrderList:: 응답 받음, 주문 개수: ${orderList.length}");
+      if (orderList.isNotEmpty) {
+        print("order_provider::fetchOrderList:: 첫 번째 주문 정보: ${orderList.first.toJson()}");
+      }
       setOrderCard(orderList);
     } catch (error) {
       print("order_provider::fetchOrderList:: fetch 오류: $error");
+      print("order_provider::fetchOrderList:: 스택 트레이스: ${error.toString()}");
       setOrderCard([]);
     }
   }

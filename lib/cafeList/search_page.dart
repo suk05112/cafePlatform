@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/api/API.dart';
-import 'package:cafeplatform/api/store_post_response.dart';
-import 'package:cafeplatform/gifticon_page.dart';
-import 'package:cafeplatform/SignIn/login_page.dart';
-import 'package:cafeplatform/menu_page.dart';
 import 'package:cafeplatform/model/Store.dart';
-import 'package:cafeplatform/model/gifticon.dart';
-import 'package:cafeplatform/model/user.dart';
-import 'package:cafeplatform/provider/user_provider.dart';
-import 'package:cafeplatform/widget/CommonDialog.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
-import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert'; // JSON 디코딩을 위해 필요
+import 'dart:convert';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -23,51 +14,218 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  String inputText = '';
+  final TextEditingController _searchController = TextEditingController();
   List<StoreCard> storeCards = [];
+  bool _isLoading = false;
+  bool _hasSearched = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: const CommonAppBar(title: "매장검색"),
-        backgroundColor: Colors.white,
-        body: Container(
-            margin: EdgeInsets.fromLTRB(10, 0, 10, 10),
-            child: Column(children: <Widget>[
-              SearchBar(
-                hintText: "검색어를 입력하세요",
-                shape: WidgetStateProperty.all(ContinuousRectangleBorder(
-                    borderRadius: BorderRadius.circular(20))),
-                onSubmitted: (value) {
-                  setState(() => inputText = value);
-                  print('Input Text = $inputText');
-                  searchStore(value);
-                },
-                trailing: [
-                  IconButton(
-                    icon: Icon(Icons.search),
-                    onPressed: () {
-                      // 현재 입력된 텍스트로 onSubmitted 실행
-                      setState(() {
-                        print('Button Clicked, Input Text = $inputText');
-                        searchStore(inputText);
-                      });
-                    },
-                  )
-                ],
-              ),
-              SizedBox(height: 20),
-              // 검색 결과를 보여주는 부분
-              Expanded(
-                child: ListView.builder(
-                  itemCount: storeCards.length,
-                  itemBuilder: (context, index) {
-                    final storeCard = storeCards[index];
-                    return StoreCardWidget(storeCard);
-                  },
+        backgroundColor: Colors.grey[50],
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 검색바 영역
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: "매장명으로 검색",
+                            hintStyle: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 15,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Colors.grey[600],
+                              size: 20,
+                            ),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.clear,
+                                      color: Colors.grey[600],
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        storeCards = [];
+                                        _hasSearched = false;
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          style: const TextStyle(fontSize: 15),
+                          onSubmitted: (value) {
+                            if (value.trim().isNotEmpty) {
+                              _performSearch(value.trim());
+                            }
+                          },
+                          onChanged: (value) {
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.search, color: Colors.white),
+                        onPressed: () {
+                          if (_searchController.text.trim().isNotEmpty) {
+                            _performSearch(_searchController.text.trim());
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ])));
+              // 검색 결과 영역
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : _hasSearched && storeCards.isEmpty
+                        ? _buildEmptyState()
+                        : storeCards.isEmpty
+                            ? _buildInitialState()
+                            : _buildSearchResults(),
+              ),
+            ],
+          ),
+        ));
+  }
+
+  void _performSearch(String query) {
+    setState(() {
+      _isLoading = true;
+      _hasSearched = true;
+    });
+    searchStore(query).then((_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  Widget _buildInitialState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "매장명을 검색해보세요",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "원하는 카페를 찾아보세요",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "검색 결과가 없습니다",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "다른 검색어로 시도해보세요",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: storeCards.length,
+      itemBuilder: (context, index) {
+        final storeCard = storeCards[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: StoreCardWidget(storeCard),
+        );
+      },
+    );
   }
 
   Widget _buildStoreImage(String imageUrl, double width, double height) {
@@ -78,11 +236,15 @@ class _SearchPageState extends State<SearchPage> {
     if (cleanedUrl.isEmpty ||
         (!cleanedUrl.startsWith('http://') &&
             !cleanedUrl.startsWith('https://'))) {
-      return Image.asset(
-        'assets/coffee.jpeg',
+      return Container(
         width: width,
         height: height,
-        fit: BoxFit.fill,
+        color: Colors.grey[100],
+        child: Icon(
+          Icons.storefront,
+          size: width > height ? height * 0.6 : width * 0.6,
+          color: Colors.grey[400],
+        ),
       );
     }
 
@@ -124,22 +286,30 @@ class _SearchPageState extends State<SearchPage> {
           width: width,
           height: height,
           color: Colors.grey[200],
-          child: Image.asset(
-            'assets/coffee.jpeg',
+          child: Container(
             width: width,
             height: height,
-            fit: BoxFit.fill,
+            color: Colors.grey[100],
+            child: Icon(
+              Icons.storefront,
+              size: width > height ? height * 0.6 : width * 0.6,
+              color: Colors.grey[400],
+            ),
           ),
         );
       },
       errorBuilder: (context, error, stackTrace) {
         print('이미지 로드 오류: $error, URL: $cleanedUrl');
         print('스택 트레이스: $stackTrace');
-        return Image.asset(
-          'assets/coffee.jpeg',
+        return Container(
           width: width,
           height: height,
-          fit: BoxFit.fill,
+          color: Colors.grey[100],
+          child: Icon(
+            Icons.storefront,
+            size: width > height ? height * 0.6 : width * 0.6,
+            color: Colors.grey[400],
+          ),
         );
       },
       // 캐시 최적화
@@ -150,34 +320,100 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget StoreCardWidget(StoreCard? storeCard) {
+    if (storeCard == null) return const SizedBox.shrink();
+
     return GestureDetector(
-        onTap: () {
-          print("item 선택됨");
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => StorePage(
-                        storeId: storeCard?.store_id ?? -1,
-                        storeName: storeCard?.store_name ?? "store name",
-                      )));
-        },
-        child: SizedBox(
-          height: 130,
-          child: Container(
-            margin: EdgeInsets.all(10),
-            padding: EdgeInsets.all(5),
-            // decoration: BoxDecoration(
-            //   border: Border.all(color: Color.fromARGB(255, 0, 0, 0)),
-            //   borderRadius: BorderRadius.all(Radius.circular(5.0)),
-            // ),
-            width: 400,
-            child: Row(children: [
-              Expanded(child: _buildStoreImage(storeCard!.store_logo, 90, 90)),
-              Spacer(),
-              Text(storeCard.store_name),
-            ]),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StorePage(
+              storeId: storeCard.store_id,
+              storeName: storeCard.store_name,
+            ),
           ),
-        ));
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 매장 이미지
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+              ),
+              child: _buildStoreImage(storeCard.store_logo, 120, 120),
+            ),
+            // 매장 정보
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      storeCard.store_name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '위치 정보',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // 화살표 아이콘
+            Padding(
+              padding: const EdgeInsets.only(right: 16, top: 16),
+              child: Icon(
+                Icons.chevron_right,
+                color: Colors.grey[400],
+                size: 24,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> searchStore(String item) async {

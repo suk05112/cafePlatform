@@ -4,13 +4,28 @@ part 'order.g.dart';
 
 @JsonSerializable()
 class Order {
+  @JsonKey(name: 'order_id')
   int order_id;
+  
+  @JsonKey(name: 'store_id')
   int store_id;
-  int order_number;
+  
+  @JsonKey(name: 'order_number')
+  String order_number;
+  
   String sender;
+  
+  @JsonKey(name: 'created_time', fromJson: _dateTimeFromJson)
   DateTime created_time;
+  
   int price;
+  
+  @JsonKey(name: 'menu_name')
   String menu_name;
+  
+  @JsonKey(name: 'menu_url')
+  String? menu_url;
+  
   String status;
 
   Order(
@@ -21,10 +36,26 @@ class Order {
       required this.created_time,
       required this.price,
       required this.menu_name,
+      this.menu_url,
       required this.status});
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
   Map<String, dynamic> toJson() => _$OrderToJson(this);
+  
+  static DateTime _dateTimeFromJson(dynamic dateTime) {
+    if (dateTime is String) {
+      try {
+        return DateTime.parse(dateTime);
+      } catch (e) {
+        print('Order::_dateTimeFromJson:: 파싱 오류: $dateTime, $e');
+        return DateTime.now();
+      }
+    } else if (dateTime is int) {
+      // Unix timestamp인 경우
+      return DateTime.fromMillisecondsSinceEpoch(dateTime * 1000);
+    }
+    return DateTime.now();
+  }
 }
 
 class OrderDetail {

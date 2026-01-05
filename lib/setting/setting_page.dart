@@ -15,6 +15,8 @@ import 'package:provider/provider.dart';
 import 'package:cafeplatform/setting/oss_licenses.dart';
 import 'package:cafeplatform/setting/notification_setting_page.dart';
 import 'package:cafeplatform/setting/terms_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -378,13 +380,62 @@ class _SettingPageState extends State<SettingPage> {
 
   Future<BusinessInfoResponse> getBusinessInfo() async {
     try {
+      // SharedPreferences에서 캐시된 데이터와 마지막 업데이트 시간 확인
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('business_info_cache');
+      final lastUpdateTimeStr = prefs.getString('business_info_last_update');
+
+      // 캐시가 있고 오늘 날짜면 캐시된 데이터 반환
+      if (cachedJson != null && lastUpdateTimeStr != null) {
+        try {
+          final lastUpdateTime = DateTime.parse(lastUpdateTimeStr);
+          final now = DateTime.now();
+
+          // 같은 날이면 캐시된 데이터 반환
+          if (lastUpdateTime.year == now.year &&
+              lastUpdateTime.month == now.month &&
+              lastUpdateTime.day == now.day) {
+            print('사업자 정보 캐시 사용 (마지막 업데이트: $lastUpdateTime)');
+            final jsonMap = jsonDecode(cachedJson) as Map<String, dynamic>;
+            return BusinessInfoResponse.fromJson(jsonMap);
+          } else {
+            print('캐시 만료됨 (마지막 업데이트: $lastUpdateTime, 현재: $now)');
+          }
+        } catch (e) {
+          print('캐시 파싱 오류: $e, API 호출로 재시도');
+        }
+      }
+
+      // 캐시가 없거나 오래되었으면 API 호출
+      print('사업자 정보 API 호출');
       await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getBusinessInfo();
       print('사업자 정보 조회 성공: ${response.toJson()}');
+
+      // 캐시에 저장 (JSON으로 직렬화)
+      final now = DateTime.now();
+      await prefs.setString('business_info_last_update', now.toIso8601String());
+      await prefs.setString(
+          'business_info_cache', jsonEncode(response.toJson()));
+
       return response;
     } catch (error) {
       print('사업자 정보 조회 오류: $error');
-      // 에러 발생 시 기본값 반환
+
+      // 에러 발생 시 캐시된 데이터가 있으면 사용
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString('business_info_cache');
+        if (cachedJson != null && cachedJson.isNotEmpty) {
+          print('에러 발생, 캐시된 사업자 정보 사용');
+          final jsonMap = jsonDecode(cachedJson) as Map<String, dynamic>;
+          return BusinessInfoResponse.fromJson(jsonMap);
+        }
+      } catch (e) {
+        print('캐시 조회 오류: $e');
+      }
+
+      // 캐시도 없으면 기본값 반환
       return BusinessInfoResponse(
         business_number: '479-03-03427',
         online_sales_number: '2025-서울강서-3226',

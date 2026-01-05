@@ -26,8 +26,8 @@ class _GiftBoxState extends State<GiftBox> {
   void initState() {
     super.initState();
     print("_GiftBoxState initState");
-    makeFakeData(); // 테스트용
-    // fetchGifticons(); // API 호출 - 테스트 시 주석 처리
+    // makeFakeData(); // 테스트용
+    fetchGifticons(); // API 호출 - 테스트 시 주석 처리
   }
 
   void makeFakeData() {

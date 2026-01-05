@@ -355,16 +355,22 @@ class _PaymentState extends State<Payment> {
             child: SizedBox(
               width: 56,
               height: 56,
-              child: Image.network(
-                menu.menu_image_url ?? "",
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/coffee.jpeg',
-                    fit: BoxFit.cover,
-                  );
-                },
-              ),
+              child: (menu.menu_image_url != null &&
+                      menu.menu_image_url!.isNotEmpty)
+                  ? Image.network(
+                      menu.menu_image_url!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/coffee.jpeg',
+                          fit: BoxFit.cover,
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      'assets/coffee.jpeg',
+                      fit: BoxFit.cover,
+                    ),
             ),
           ),
           const SizedBox(width: 12),
