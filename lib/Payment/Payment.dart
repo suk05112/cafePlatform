@@ -3,8 +3,6 @@
 // import 'package:bootpay/model/user.dart' as bt;
 // import 'package:bootpay/model/extra.dart' as bt_ex;
 // import 'package:bootpay/model/item.dart';
-import 'package:flutter/foundation.dart';
-
 import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:cafeplatform/Payment/CompletePayment.dart';
@@ -51,9 +49,24 @@ class _PaymentState extends State<Payment> {
   // 주문 정보 저장
   int? _orderId;
 
+  // 결제 위젯 로딩 상태
+  bool _isLoadingWidgets = true;
+
+  void _checkWidgetsReady() {
+    if (_paymentMethodWidgetControl != null &&
+        _agreementWidgetControl != null) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWidgets = false;
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    print("Payment initState ${widget.menu.name} ${widget.menu.store_id}");
 
     // PaymentWidget 초기화
     // TODO: 실제 clientKey와 customerKey로 교체 필요
@@ -62,39 +75,97 @@ class _PaymentState extends State<Payment> {
       customerKey: "zG5XLcHhA7c3tuJsV_H3j", // 테스트 키
     );
 
-    // 결제수단 위젯 렌더링
-    _paymentWidget
-        .renderPaymentMethods(
-      selector: 'payment-methods',
-      amount: Amount(
-        value: widget.menu.price,
-        currency: Currency.KRW,
-        country: "KR",
-      ),
-      options: RenderPaymentMethodsOptions(variantKey: "DEFAULT"),
-    )
-        .then((control) {
-      if (mounted) {
-        setState(() {
-          _paymentMethodWidgetControl = control;
-        });
-      }
-    }).catchError((error) {
-      print("결제수단 위젯 렌더링 오류: $error");
+    // 위젯이 빌드된 후에 렌더링 호출 (약간의 지연을 두어 웹뷰 위젯이 완전히 초기화될 때까지 대기)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          try {
+            _renderPaymentWidgets();
+          } catch (e) {
+            print("PaymentWidget 초기화 오류: $e");
+            if (mounted) {
+              setState(() {
+                _isLoadingWidgets = false;
+              });
+            }
+          }
+        }
+      });
     });
+  }
 
-    // 약관 위젯 렌더링
-    _paymentWidget
-        .renderAgreement(selector: 'payment-agreement')
-        .then((control) {
+  void _renderPaymentWidgets() {
+    if (!mounted) return;
+
+    try {
+      // 결제수단 위젯 렌더링
+      _paymentWidget
+          .renderPaymentMethods(
+        selector: 'payment-methods',
+        amount: Amount(
+          value: widget.menu.price,
+          currency: Currency.KRW,
+          country: "KR",
+        ),
+        options: RenderPaymentMethodsOptions(variantKey: "DEFAULT"),
+      )
+          .then((control) {
+        if (mounted) {
+          setState(() {
+            _paymentMethodWidgetControl = control;
+          });
+          _checkWidgetsReady();
+        }
+      }).catchError((error, stackTrace) {
+        print("결제수단 위젯 렌더링 오류: $error");
+        print("스택 트레이스: $stackTrace");
+        if (mounted) {
+          setState(() {
+            _isLoadingWidgets = false;
+          });
+        }
+      });
+
+      // 약관 위젯 렌더링
+      _paymentWidget
+          .renderAgreement(selector: 'payment-agreement')
+          .then((control) {
+        if (mounted) {
+          setState(() {
+            _agreementWidgetControl = control;
+          });
+          _checkWidgetsReady();
+        }
+      }).catchError((error, stackTrace) {
+        print("약관 위젯 렌더링 오류: $error");
+        print("스택 트레이스: $stackTrace");
+        if (mounted) {
+          setState(() {
+            _isLoadingWidgets = false;
+          });
+        }
+      });
+    } catch (e, stackTrace) {
+      print("_renderPaymentWidgets 오류: $e");
+      print("스택 트레이스: $stackTrace");
       if (mounted) {
         setState(() {
-          _agreementWidgetControl = control;
+          _isLoadingWidgets = false;
         });
       }
-    }).catchError((error) {
-      print("약관 위젯 렌더링 오류: $error");
-    });
+    }
+  }
+
+  @override
+  void dispose() {
+    // PaymentWidget 리소스 정리
+    try {
+      _paymentMethodWidgetControl = null;
+      _agreementWidgetControl = null;
+    } catch (e) {
+      print("PaymentWidget 정리 중 오류: $e");
+    }
+    super.dispose();
   }
 
   @override
@@ -167,14 +238,34 @@ class _PaymentState extends State<Payment> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 12),
-                            PaymentMethodWidget(
-                              paymentWidget: _paymentWidget,
-                              selector: 'payment-methods',
-                            ),
-                            const SizedBox(height: 12),
-                            AgreementWidget(
-                              paymentWidget: _paymentWidget,
-                              selector: 'payment-agreement',
+                            Stack(
+                              children: [
+                                // 위젯은 항상 렌더링 (DOM에 존재해야 함)
+                                Opacity(
+                                  opacity: _isLoadingWidgets ? 0.0 : 1.0,
+                                  child: Column(
+                                    children: [
+                                      PaymentMethodWidget(
+                                        paymentWidget: _paymentWidget,
+                                        selector: 'payment-methods',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      AgreementWidget(
+                                        paymentWidget: _paymentWidget,
+                                        selector: 'payment-agreement',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // 로딩 중일 때 프로그레스바 표시
+                                if (_isLoadingWidgets)
+                                  const SizedBox(
+                                    height: 200,
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
@@ -452,9 +543,19 @@ class _PaymentState extends State<Payment> {
               return;
             }
 
+            // store_id 유효성 검증
+            final storeId = widget.menu.store_id;
+            if (storeId <= 0) {
+              _showToast('유효하지 않은 메뉴 정보입니다. 다시 선택해주세요.');
+              print(
+                  'ERROR: Invalid store_id: $storeId (menu_id: ${widget.menu.menu_id})');
+              return;
+            }
+
             Gifticon gifticon = Gifticon();
-            print('gifticon: $gifticon');
-            gifticon.store_id = widget.menu.store_id;
+            print(
+                'gifticon 생성 - store_id: $storeId, menu_id: ${widget.menu.menu_id}, menu_name: ${widget.menu.name}');
+            gifticon.store_id = storeId;
             gifticon.type = widget.type;
             gifticon.name = widget.menu.name ?? "";
             gifticon.sender = user.name;
@@ -516,6 +617,20 @@ class _PaymentState extends State<Payment> {
               }
             } on DioException catch (e) {
               print("정보 등록 실패: $e");
+
+              // 외래키 제약 오류 감지
+              if (e.response?.statusCode == 500) {
+                final errorMessage = e.response?.data?.toString() ?? '';
+                if (errorMessage.contains('foreign key constraint') ||
+                    errorMessage.contains('store_id') ||
+                    errorMessage.contains('Cannot add or update a child row')) {
+                  _showToast('유효하지 않은 가게 정보입니다. 메뉴를 다시 선택해주세요.');
+                  print(
+                      'ERROR: Foreign key constraint failed for store_id: $storeId');
+                  return;
+                }
+              }
+
               _showToast('주문 정보 등록에 실패했습니다. 다시 시도해주세요.');
             } catch (e) {
               print("결제 오류: $e");

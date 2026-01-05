@@ -418,6 +418,27 @@ class _StoreCard extends StatelessWidget {
 
   final Store store;
 
+  String _getStoreImageUrl() {
+    // 로고 URL이 있으면 로고 사용
+    String? logoUrl = store.store_logo.trim();
+    if (logoUrl.isNotEmpty &&
+        (logoUrl.startsWith('http://') || logoUrl.startsWith('https://'))) {
+      return logoUrl;
+    }
+    
+    // 로고가 없으면 매장 사진의 첫 번째 이미지 사용
+    if (store.store_photo_urls.isNotEmpty) {
+      String? photoUrl = store.store_photo_urls[0].trim();
+      if (photoUrl.isNotEmpty &&
+          (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+        return photoUrl;
+      }
+    }
+    
+    // 둘 다 없으면 빈 문자열 반환 (기본 이미지 사용)
+    return '';
+  }
+
   Widget _buildStoreImage(String imageUrl) {
     // URL 검증 및 정리
     final cleanedUrl = imageUrl.trim();
@@ -516,7 +537,7 @@ class _StoreCard extends StatelessWidget {
                   const BorderRadius.vertical(top: Radius.circular(16)),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: _buildStoreImage(store.store_logo),
+                child: _buildStoreImage(_getStoreImageUrl()),
               ),
             ),
             Padding(

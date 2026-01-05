@@ -9,7 +9,7 @@ part of 'user_response.dart';
 RegisterUserPostResponse _$RegisterUserPostResponseFromJson(
         Map<String, dynamic> json) =>
     RegisterUserPostResponse(
-      user_id: (json['user_id'] as num).toInt(),
+      user_id: json['user_id'] as int,
     );
 
 Map<String, dynamic> _$RegisterUserPostResponseToJson(
@@ -21,7 +21,7 @@ Map<String, dynamic> _$RegisterUserPostResponseToJson(
 LoginUserGetResponse _$LoginUserGetResponseFromJson(
         Map<String, dynamic> json) =>
     LoginUserGetResponse(
-      user_id: (json['user_id'] as num?)?.toInt(),
+      user_id: json['user_id'] as int?,
       email: json['email'] as String?,
       name: json['name'] as String?,
       phone_number: json['phone_number'] as String?,

@@ -23,10 +23,8 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   late NaverMapController _mapController;
   final Completer<NaverMapController> mapControllerCompleter = Completer();
   NMarker? _activeMarker;
-  final NOverlayImage _defaultIcon =
-      NOverlayImage.fromAssetImage('assets/pin.png');
-  final NOverlayImage _selectedIcon =
-      NOverlayImage.fromAssetImage('assets/selected_pin.png');
+  NOverlayImage? _defaultIcon;
+  NOverlayImage? _selectedIcon;
   bool _permissionRequested = false;
   List<Store> _searchedStores = []; // 검색된 매장 리스트
   final List<Store> _dummyStores = [
@@ -63,6 +61,34 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   void initState() {
     super.initState();
     _requestPermissionOnEnter();
+    // 작은 크기의 핀 아이콘 초기화 (비동기)
+    _initIcons();
+  }
+
+  Future<void> _initIcons() async {
+    if (!mounted) return;
+    // 작은 크기의 핀 아이콘 생성 (30x40 픽셀)
+    _defaultIcon = await NOverlayImage.fromWidget(
+      context: context,
+      widget: SizedBox(
+        width: 30,
+        height: 40,
+        child: Image.asset('assets/pin.png', fit: BoxFit.contain),
+      ),
+      size: const Size(30, 40),
+    );
+    _selectedIcon = await NOverlayImage.fromWidget(
+      context: context,
+      widget: SizedBox(
+        width: 30,
+        height: 40,
+        child: Image.asset('assets/selected_pin.png', fit: BoxFit.contain),
+      ),
+      size: const Size(30, 40),
+    );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -207,24 +233,45 @@ class _CafeListMapViewState extends State<CafeListMapView> {
         } else {
           _selectedStore.value = store;
           if (_activeMarker != null && _activeMarker != overlay) {
-            _activeMarker!.setIcon(_defaultIcon);
+            _activeMarker!.setIcon(_defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
           }
-          overlay.setIcon(_selectedIcon);
+          overlay.setIcon(_selectedIcon ?? NOverlayImage.fromAssetImage('assets/selected_pin.png'));
           _activeMarker = overlay;
         }
       });
 
-      marker.setIcon(_defaultIcon);
+      marker.setIcon(_defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
       controller.addOverlay(marker);
     }
   }
 
   void _clearSelection() {
     if (_activeMarker != null) {
-      _activeMarker!.setIcon(_defaultIcon);
+      _activeMarker!.setIcon(_defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
       _activeMarker = null;
     }
     _selectedStore.value = null;
+  }
+
+  String _getStoreImageUrl(Store store) {
+    // 로고 URL이 있으면 로고 사용
+    String? logoUrl = store.store_logo.trim();
+    if (logoUrl.isNotEmpty &&
+        (logoUrl.startsWith('http://') || logoUrl.startsWith('https://'))) {
+      return logoUrl;
+    }
+    
+    // 로고가 없으면 매장 사진의 첫 번째 이미지 사용
+    if (store.store_photo_urls.isNotEmpty) {
+      String? photoUrl = store.store_photo_urls[0].trim();
+      if (photoUrl.isNotEmpty &&
+          (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+        return photoUrl;
+      }
+    }
+    
+    // 둘 다 없으면 빈 문자열 반환 (기본 이미지 사용)
+    return '';
   }
 
   Widget _buildStoreImage(String imageUrl, double width, double height) {
@@ -318,7 +365,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: _buildStoreImage(store.store_logo, 60, 60),
+                child: _buildStoreImage(_getStoreImageUrl(store), 60, 60),
               ),
               const SizedBox(width: 12),
               Expanded(

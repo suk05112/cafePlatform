@@ -369,6 +369,11 @@ class _StorePageState extends State<StorePage> {
 
     return GestureDetector(
       onTap: () {
+        // store_id가 0이거나 유효하지 않은 경우 widget.storeId로 설정
+        if (menu.store_id <= 0 && widget.storeId > 0) {
+          menu.store_id = widget.storeId;
+          print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
+        }
         Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
         Navigator.push(
           context,

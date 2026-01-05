@@ -66,5 +66,16 @@ flutter {
 dependencies {
     implementation platform("com.google.firebase:firebase-bom:33.4.0")
     // implementation 'com.google.firebase:firebase-analytics:21.5.0'
+    
+}
+
+// LeakCanary 완전 비활성화 - 모든 전이 의존성에서 제외
+configurations.all {
+    exclude group: "com.squareup.leakcanary", module: "leakcanary-android"
+    exclude group: "com.squareup.leakcanary", module: "leakcanary-android-no-op"
+    exclude group: "com.squareup.leakcanary", module: "leakcanary-object-watcher-android"
+    exclude group: "com.squareup.leakcanary", module: "leakcanary-object-watcher"
+    exclude group: "com.squareup.leakcanary", module: "shark"
+    exclude group: "com.squareup.leakcanary", module: "shark-android"
 }
 

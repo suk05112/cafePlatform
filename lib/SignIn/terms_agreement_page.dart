@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 enum TermsType {
   service('https://www.naver.com'),
@@ -79,6 +80,7 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
+        appBar: const CommonAppBar(title: "약관동의"),
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Padding(
@@ -86,18 +88,10 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
-                Center(
-                  child: const Text(
-                    '고객님 환영합니다!',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 40),
+                // const SizedBox(height: 200),
+                // Expanded(
+                //   child: Container(), // 빈 공간
+                // ),
                 _AgreementTile(
                   label: '약관 전체동의',
                   requiredLabel: '',
@@ -160,16 +154,18 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                Spacer(),
+
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
                     onPressed: _canProceed ? _handleNext : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: ColorAssset.mainColor,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.grey[300],
-                      disabledForegroundColor: Colors.white,
+                      disabledForegroundColor: Colors.grey[600],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

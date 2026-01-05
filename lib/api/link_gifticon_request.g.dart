@@ -8,8 +8,8 @@ part of 'link_gifticon_request.dart';
 
 LinkGifticonRequest _$LinkGifticonRequestFromJson(Map<String, dynamic> json) =>
     LinkGifticonRequest(
-      user_id: (json['user_id'] as num).toInt(),
-      gifticon_id: (json['gifticon_id'] as num).toInt(),
+      user_id: json['user_id'] as int,
+      gifticon_id: json['gifticon_id'] as int,
       receiver_phone: json['receiver_phone'] as String,
     );
 

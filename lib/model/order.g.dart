@@ -7,12 +7,12 @@ part of 'order.dart';
 // **************************************************************************
 
 Order _$OrderFromJson(Map<String, dynamic> json) => Order(
-      order_id: (json['order_id'] as num).toInt(),
-      store_id: (json['store_id'] as num).toInt(),
-      order_number: (json['order_number'] as num).toInt(),
+      order_id: json['order_id'] as int,
+      store_id: json['store_id'] as int,
+      order_number: json['order_number'] as int,
       sender: json['sender'] as String,
       created_time: DateTime.parse(json['created_time'] as String),
-      price: (json['price'] as num).toInt(),
+      price: json['price'] as int,
       menu_name: json['menu_name'] as String,
       status: json['status'] as String,
     );

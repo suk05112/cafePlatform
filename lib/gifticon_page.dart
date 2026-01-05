@@ -18,6 +18,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cafeplatform/order/order_detail_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class GifticonPage extends StatefulWidget {
   const GifticonPage({super.key, required this.gifticon_id});
@@ -141,21 +142,8 @@ class _GifticonPageState extends State<GifticonPage>
                                       ),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(20),
-                                        child: Image.network(
-                                          "${gifticon.menu_url}",
-                                          width: 200,
-                                          height: 200,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Image(
-                                                image: AssetImage(
-                                                    'assets/coffee.jpeg'),
-                                                width: 200,
-                                                height: 200,
-                                                fit: BoxFit.cover);
-                                          },
-                                        ),
+                                        child:
+                                            _buildMenuImage(gifticon.menu_url),
                                       ),
                                     ),
                                     usedOverlay(gifticon),
@@ -828,6 +816,110 @@ class _GifticonPageState extends State<GifticonPage>
         gifticon.status == 'CANCELED' ||
         (gifticon.validity != null &&
             gifticon.validity!.isBefore(DateTime.now()));
+  }
+
+  // ✅ 메뉴 이미지 빌드 (URL 유효성 검사 포함)
+  Widget _buildMenuImage(String? menuUrl) {
+    final cleanedUrl = menuUrl?.trim() ?? '';
+
+    // URL이 비어있거나 유효하지 않은 경우
+    if (cleanedUrl.isEmpty ||
+        (!cleanedUrl.startsWith('http://') &&
+            !cleanedUrl.startsWith('https://'))) {
+      // 이미지가 없을 때 예쁜 플레이스홀더 표시
+      return Container(
+        width: 200,
+        height: 200,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.grey[100]!,
+              Colors.grey[200]!,
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                'assets/gifnut_logo.svg',
+                width: 80,
+                height: 80,
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 유효한 URL이 있을 때 네트워크 이미지 표시
+    return Image.network(
+      cleanedUrl,
+      width: 200,
+      height: 200,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: 200,
+          height: 200,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey[100]!,
+                Colors.grey[200]!,
+              ],
+            ),
+          ),
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // 네트워크 이미지 로드 실패 시 플레이스홀더 표시
+        return Container(
+          width: 200,
+          height: 200,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey[100]!,
+                Colors.grey[200]!,
+              ],
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  'assets/gifnut_logo.svg',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.contain,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

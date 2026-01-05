@@ -92,6 +92,13 @@ class _FindUserIDPageState extends State<FindUserIDPage> {
                     ]))));
   }
 
+  @override
+  void dispose() {
+    inputIDController.dispose();
+    inputPhoneNumbfController.dispose();
+    super.dispose();
+  }
+
   //전화번호 인증 성공 후 uid 넘겨 받고, 이름, Uid 담아서 id response 로 받기
   showRegisteredId() async {
     try {
@@ -167,6 +174,12 @@ class RegisterdIDPage extends StatefulWidget {
 
 class _RegisterdIDPageState extends State<RegisterdIDPage> {
   TextEditingController inputIDController = TextEditingController();
+
+  @override
+  void dispose() {
+    inputIDController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

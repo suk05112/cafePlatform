@@ -104,16 +104,30 @@ class Api {
   Future<ApiClient> setBaseClient(String baseUrl) async {
     final user = FirebaseAuth.instance.currentUser;
     final idToken = await user?.getIdToken(); // Firebase ID Token
-    final appCheck = await FirebaseAppCheck.instance.getToken();
+
+    // App Check 토큰 가져오기 (에러 처리 포함)
+    String? appCheckToken;
+    try {
+      final appCheck = await FirebaseAppCheck.instance.getToken();
+      if (appCheck != null) {
+        appCheckToken = appCheck.toString();
+      }
+    } catch (e) {
+      print('⚠️ Firebase App Check Token 가져오기 실패: $e');
+      // 개발 모드에서는 토큰 없이도 진행
+    }
+
     final baseHeaders = await _getHeaders();
+
+    final headers = <String, dynamic>{
+      ...baseHeaders,
+      if (idToken != null) 'Authorization': 'Bearer $idToken',
+      if (appCheckToken != null) "X-Firebase-AppCheck": appCheckToken,
+    };
 
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      headers: {
-        ...baseHeaders,
-        'Authorization': 'Bearer $idToken',
-        "X-Firebase-AppCheck": appCheck,
-      },
+      headers: headers,
       connectTimeout: Duration(seconds: 5),
       receiveTimeout: Duration(seconds: 5),
       sendTimeout: Duration(seconds: 5),
@@ -192,6 +206,8 @@ class AuthInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     print(['dio error interceptor']);
+    print('❌ Error: ${err.type} [${err.type}]: ${err.message}');
+
     if (err.response?.statusCode == 401) {
       print('[401 interceptor] at ${err.requestOptions.path}');
 
@@ -221,19 +237,28 @@ class AuthInterceptor extends Interceptor {
         // request 재요청
         final user = FirebaseAuth.instance.currentUser;
         final idToken = await user?.getIdToken(); // Firebase ID Token
-        final appCheck = await FirebaseAppCheck.instance.getToken();
+        String? appCheckToken;
+        try {
+          final appCheck = await FirebaseAppCheck.instance.getToken();
+          if (appCheck != null) {
+            appCheckToken = appCheck.toString();
+          }
+        } catch (e) {
+          print('⚠️ Firebase App Check Token 가져오기 실패: $e');
+        }
 
-        // print("app check token ${appCheck}");
+        // print("app check token ${appCheckToken}");
 
         RequestOptions requestOptions = err.requestOptions;
         final baseHeaders = await Api._getHeaders();
+        final headers = <String, dynamic>{
+          ...baseHeaders,
+          if (idToken != null) 'Authorization': 'Bearer $idToken',
+          if (appCheckToken != null) "X-Firebase-AppCheck": appCheckToken,
+        };
         Dio dio = Dio(BaseOptions(
           baseUrl: Api.STAGING_URL_V2,
-          headers: {
-            ...baseHeaders,
-            'Authorization': 'Bearer $idToken',
-            "X-Firebase-AppCheck": appCheck,
-          },
+          headers: headers,
         ));
 
         print('[401 interceptor] 재요청');

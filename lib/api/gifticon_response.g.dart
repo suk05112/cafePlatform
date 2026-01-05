@@ -9,8 +9,8 @@ part of 'gifticon_response.dart';
 PurchaseGifticonResponse _$PurchaseGifticonResponseFromJson(
         Map<String, dynamic> json) =>
     PurchaseGifticonResponse(
-      order_id: (json['order_id'] as num).toInt(),
-      gifticon_id: (json['gifticon_id'] as num).toInt(),
+      order_id: json['order_id'] as int,
+      gifticon_id: json['gifticon_id'] as int,
       order_no: json['order_no'] as String,
     );
 
@@ -25,7 +25,7 @@ Map<String, dynamic> _$PurchaseGifticonResponseToJson(
 PaymentResultRequest _$PaymentResultRequestFromJson(
         Map<String, dynamic> json) =>
     PaymentResultRequest(
-      order_id: (json['order_id'] as num).toInt(),
+      order_id: json['order_id'] as int,
       payment_key: json['payment_key'] as String?,
       is_success: json['is_success'] as bool,
     );

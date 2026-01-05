@@ -6,9 +6,9 @@ import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
-import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class GiftBox extends StatefulWidget {
   const GiftBox({super.key});
@@ -26,29 +26,36 @@ class _GiftBoxState extends State<GiftBox> {
   void initState() {
     super.initState();
     print("_GiftBoxState initState");
-    fetchGifticons(); // API 호출
-    makeFakeData();
+    makeFakeData(); // 테스트용
+    // fetchGifticons(); // API 호출 - 테스트 시 주석 처리
   }
 
-  makeFakeData() {
-    usedGifticons = [
-      Gifticon(
-          name: "사용된 기프티콘",
-          status: "USED",
-          store_name: "store_name",
-          sender: "sender",
-          description: "description",
-          validity: DateTime(2025, 4, 1))
-    ];
-    unusedGifticons = [
-      Gifticon(
-          name: "사용안된 기프티콘",
-          status: "UNUSED",
-          store_name: "store_name",
-          sender: "sender",
-          description: "description",
-          validity: DateTime(2026, 4, 1))
-    ];
+  void makeFakeData() {
+    print("🔹 makeFakeData 호출됨");
+    setState(() {
+      usedGifticons = [
+        Gifticon(
+            gifticon_id: 1,
+            name: "사용된 기프티콘",
+            status: "USED",
+            store_name: "테스트 카페",
+            sender: "sender",
+            description: "description",
+            validity: DateTime(2024, 1, 1)) // 과거 날짜로 설정
+      ];
+      unusedGifticons = [
+        Gifticon(
+            gifticon_id: 2,
+            name: "사용안된 기프티콘",
+            status: "UNUSED",
+            store_name: "테스트 카페",
+            sender: "sender",
+            description: "description",
+            validity: DateTime(2026, 12, 31)) // 미래 날짜로 설정
+      ];
+      print(
+          "🔹 makeFakeData 완료 - usedGifticons: ${usedGifticons.length}, unusedGifticons: ${unusedGifticons.length}");
+    });
   }
 
   Future<void> fetchGifticons() async {
@@ -320,19 +327,7 @@ class GifticonGridview extends StatelessWidget {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.network(
-                              gifticon.menu_url ?? '',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[200],
-                                  child: Image.asset(
-                                    'assets/coffee.jpeg',
-                                    fit: BoxFit.cover,
-                                  ),
-                                );
-                              },
-                            ),
+                            _buildMenuImage(gifticon.menu_url),
                             // 이미지 하단 그라데이션
                             Positioned(
                               bottom: 0,
@@ -422,7 +417,7 @@ class GifticonGridview extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                gifticon.name ?? '',
+                                gifticon.name,
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -448,7 +443,7 @@ class GifticonGridview extends StatelessWidget {
                                   SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      gifticon.store_name ?? '',
+                                      gifticon.store_name,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: isUsedGift
@@ -480,5 +475,101 @@ class GifticonGridview extends StatelessWidget {
   // ✅ 기프티콘이 사용되었는지 판별
   bool isUsed(Gifticon gifticon) {
     return gifticon.validity!.isBefore(DateTime.now());
+  }
+
+  // ✅ 메뉴 이미지 빌드 (URL 유효성 검사 포함)
+  Widget _buildMenuImage(String? menuUrl) {
+    final cleanedUrl = menuUrl?.trim() ?? '';
+
+    // URL이 비어있거나 유효하지 않은 경우
+    if (cleanedUrl.isEmpty ||
+        (!cleanedUrl.startsWith('http://') &&
+            !cleanedUrl.startsWith('https://'))) {
+      // 이미지가 없을 때 예쁜 플레이스홀더 표시
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.grey[100]!,
+              Colors.grey[200]!,
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                'assets/gifnut_logo.svg',
+                width: 60,
+                height: 60,
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 유효한 URL이 있을 때 네트워크 이미지 표시
+    return Image.network(
+      cleanedUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey[100]!,
+                Colors.grey[200]!,
+              ],
+            ),
+          ),
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // 네트워크 이미지 로드 실패 시 플레이스홀더 표시
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey[100]!,
+                Colors.grey[200]!,
+              ],
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  'assets/gifnut_logo.svg',
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.contain,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

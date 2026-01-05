@@ -238,8 +238,15 @@ class LoginService {
 
   Future<bool> isRegisteredUser(email, provider) async {
     print("register 확인할 email $email");
+    final response = await Api().client.getIsRegisteredUser(email, provider);
+    print(" isRegisteredUser$response");
+    return response.isRegistered;
+  }
+
+  Future<bool> isRegisteredAppleUser(phoneNumber) async {
+    print("apple register 확인할 phoneNumber $phoneNumber");
     try {
-      final response = await Api().client.getIsRegisteredUser(email, provider);
+      final response = await Api().client.getIsRegisteredAppleUser(phoneNumber);
       print(" isRegisteredUser$response");
       return response.isRegistered;
     } catch (e) {
@@ -248,11 +255,11 @@ class LoginService {
     }
   }
 
-  Future<bool> isRegisteredAppleUser(phoneNumber) async {
-    print("apple register 확인할 phoneNumber $phoneNumber");
+  Future<bool> isRegisteredUserByPhone(String phoneNumber) async {
+    print("register 확인할 phoneNumber $phoneNumber");
     try {
       final response = await Api().client.getIsRegisteredAppleUser(phoneNumber);
-      print(" isRegisteredUser$response");
+      print(" isRegisteredUserByPhone $response");
       return response.isRegistered;
     } catch (e) {
       print("❌ Error: $e");

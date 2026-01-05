@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
@@ -12,6 +13,7 @@ import 'package:cafeplatform/widget/input_info_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:dio/dio.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key, required this.phoneAuthResult});
@@ -28,23 +30,32 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-        onTap: () {
-          //FocusManager.instance.primaryFocus?.unfocus();
-          FocusScope.of(context).unfocus();
-        },
-        child: Scaffold(
-            backgroundColor: Colors.white,
-            body: SafeArea(
-              child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        BasicInfoFormWidget(
-                            phoneAuthResult: widget.phoneAuthResult)
-                      ])),
-            )));
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          // 뒤로가기 시 전화번호 인증 페이지로 돌아가기
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhoneAuthPage(isSocialLogin: false),
+            ),
+          );
+        }
+      },
+      child: GestureDetector(
+          onTap: () {
+            //FocusManager.instance.primaryFocus?.unfocus();
+            FocusScope.of(context).unfocus();
+          },
+          child: Scaffold(
+              backgroundColor: Colors.white,
+              appBar: const CommonAppBar(title: "회원가입"),
+              body: SafeArea(
+                child: BasicInfoFormWidget(
+                    phoneAuthResult: widget.phoneAuthResult),
+              ))),
+    );
   }
 }
 
@@ -72,6 +83,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
 
   String? password;
   String? confirmPassword; // 비밀번호 확인 값
+  bool _loading = false; // 로딩 상태
 
   @override
   void initState() {
@@ -84,174 +96,175 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
   Widget build(BuildContext context) {
     return Form(
         key: formKey,
-        child: Container(
-            color: Colors.white,
-            margin: EdgeInsets.symmetric(horizontal: 0),
-            child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 40),
-                      SizedBox(height: 50),
-                      // 상단 제목 영역
-                      Text(
-                        '회원가입',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 40),
-                      InputInfoWidget(
-                        title: "이름",
-                        hintText: "이름을 입력해주세요",
-                        validator: validateName,
-                        onChanged: (newName) {
-                          setState(() {
-                            name = newName;
-                          });
-                        },
-                      ),
-                      SizedBox(height: 20),
-                      Text(
-                        "전화번호",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.grey[100],
-                        ),
-                        child: Text(
-                          phoneNumber,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 28),
-                      IDVerificationWidget(
-                        formKey: formKey2,
-                        onEmailChanged: (newEmail) {
-                          setState(() {
-                            email = newEmail; // 이메일 값 업데이트
-                          });
-                        },
-                      ), //아이디
-                      SizedBox(height: 20),
-                      InputInfoWidget(
-                        title: "비밀번호",
-                        hintText: "비밀번호를 입력해주세요",
-                        hidePassword: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "비밀번호를 입력해주세요";
-                          }
-                          return null;
-                        },
-                        onChanged: (newPassword) {
-                          setState(() {
-                            password = newPassword;
-                          });
-                        },
-                      ),
-                      SizedBox(height: 20),
-                      InputInfoWidget(
-                        title: "비밀번호 확인",
-                        hintText: "비밀번호를 입력해주세요",
-                        hidePassword: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "비밀번호를 입력해주세요";
-                          }
-                          return null;
-                        },
-                        onChanged: (newConfirmPassword) {
-                          setState(() {
-                            confirmPassword = newConfirmPassword;
-                          });
-                        },
-                      ),
-                      SizedBox(height: 50),
-                      // 확인 버튼
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              if (password != confirmPassword) {
-                                CommonDialog.show(
-                                  context: context,
-                                  title: "비밀번호 확인",
-                                  content: "비밀번호가 일치하지 않습니다.",
-                                  buttonText: "확인",
-                                  onPressed: () {},
-                                );
-                                return;
-                              }
-
-                              signUpWithEmail(email ?? "", password ?? "");
-                            } else {
-                              return;
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                margin: EdgeInsets.symmetric(horizontal: 0),
+                child: SingleChildScrollView(
+                  child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 20),
+                            // 상단 제목 영역
+                            // Text(
+                            //   '회원가입',
+                            //   style: TextStyle(
+                            //     fontSize: 24,
+                            //     fontWeight: FontWeight.bold,
+                            //     color: Colors.black,
+                            //   ),
+                            // ),
+                            // SizedBox(height: 40),
+                            InputInfoWidget(
+                              title: "이름",
+                              hintText: "이름을 입력해주세요",
+                              validator: validateName,
+                              onChanged: (newName) {
+                                setState(() {
+                                  name = newName;
+                                });
+                              },
                             ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            '회원가입',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 24),
-                      // 로그인 페이지로 이동
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              '로그인',
+                            SizedBox(height: 20),
+                            Text(
+                              "전화번호",
                               style: TextStyle(
                                 fontSize: 14,
+                                fontWeight: FontWeight.w500,
                                 color: Colors.black87,
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 16),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.grey[100],
+                              ),
+                              child: Text(
+                                _formatPhoneNumber(phoneNumber),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 28),
+                            IDVerificationWidget(
+                              formKey: formKey2,
+                              onEmailChanged: (newEmail) {
+                                setState(() {
+                                  email = newEmail; // 이메일 값 업데이트
+                                });
+                              },
+                            ), //아이디
+                            SizedBox(height: 20),
+                            InputInfoWidget(
+                              title: "비밀번호",
+                              hintText: "비밀번호를 입력해주세요",
+                              hidePassword: true,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return "비밀번호를 입력해주세요";
+                                }
+                                return null;
+                              },
+                              onChanged: (newPassword) {
+                                setState(() {
+                                  password = newPassword;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 20),
+                            InputInfoWidget(
+                              title: "비밀번호 확인",
+                              hintText: "비밀번호를 입력해주세요",
+                              hidePassword: true,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return "비밀번호를 입력해주세요";
+                                }
+                                return null;
+                              },
+                              onChanged: (newConfirmPassword) {
+                                setState(() {
+                                  confirmPassword = newConfirmPassword;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 20),
+                          ])),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _loading
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            if (password != confirmPassword) {
+                              CommonDialog.show(
+                                context: context,
+                                title: "비밀번호 확인",
+                                content: "비밀번호가 일치하지 않습니다.",
+                                buttonText: "확인",
+                                onPressed: () {},
+                              );
+                              return;
+                            }
+
+                            setState(() {
+                              _loading = true;
+                            });
+                            signUpWithEmail(email ?? "", password ?? "");
+                          } else {
+                            return;
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ColorAssset.mainColor,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
+                    disabledForegroundColor: Colors.grey[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _loading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
-                        ],
-                      ),
-                      SizedBox(height: 50),
-                    ]))));
+                        )
+                      : Text(
+                          '회원가입',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ));
   }
 
   // 이메일과 비밀번호를 사용하여 Firebase Authentication에 새 사용자를 만듭니다.
@@ -259,6 +272,9 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
     try {
       // 이름과 전화번호 검증
       if (name == null || name!.isEmpty) {
+        setState(() {
+          _loading = false;
+        });
         CommonDialog.show(
             context: context,
             title: "입력 오류",
@@ -269,6 +285,9 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       }
 
       if (phoneNumber.isEmpty) {
+        setState(() {
+          _loading = false;
+        });
         CommonDialog.show(
             context: context,
             title: "입력 오류",
@@ -279,7 +298,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       }
 
       final emailCredential = EmailAuthProvider.credential(
-        email: email,
+        email: email + "@gifnut.com",
         password: password,
       );
       final phoneLogin = await FirebaseAuth.instance.signInWithCredential(
@@ -289,13 +308,18 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       final fbUser = phoneLogin.user;
 
       if (fbUser == null) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+        }
         CommonDialog.show(
             context: context,
             title: "오류",
             content: "전화번호 인증 실패",
             buttonText: "확인",
             onPressed: () {});
-        return null;
+        return;
       }
 
       final linkResult = await fbUser.linkWithCredential(emailCredential);
@@ -308,14 +332,19 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             name: name!,
             email: email,
             phone_number: phoneNumber,
+            uid: linkResult.user?.uid ?? fbUser.uid,
+            provider: "email",
           );
 
+          print(
+              "회원가입할 정보 name: ${name!}, email: $email, phone_number: $phoneNumber, uid: ${linkResult.user?.uid ?? fbUser.uid}");
+          print("registerUser.toJson(): ${registerUser.toJson()}");
           final registerResponse =
               await Api().client.registerUser(registerUser);
           print("회원가입 API 호출 후 response $registerResponse");
 
           // 회원가입 성공 후 로그인 API 호출
-          var response = await Api().client.loginUser(email);
+          var response = await Api().client.loginUser(email + "@gifnut.com");
           print("로그인 api 호출후 response $response");
 
           final user = my_app.User(
@@ -323,12 +352,18 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             name: response.name ?? name!,
             email: response.email ?? email,
             phone_number: response.phone_number ?? phoneNumber,
+            uid: linkResult.user?.uid ?? fbUser.uid,
           );
           Provider.of<UserProvider>(context, listen: false).setUser(user);
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const SignUpCompletePage()));
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const SignUpCompletePage()));
+          }
         } on DioException catch (e) {
           String errorMessage = "회원가입 중 서버 오류가 발생했습니다.";
           if (e.response != null) {
@@ -341,23 +376,38 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
               errorMessage = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
             }
           }
-          CommonDialog.show(
-              context: context,
-              title: "회원가입 오류",
-              content: errorMessage,
-              buttonText: "확인",
-              onPressed: () {});
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+            CommonDialog.show(
+                context: context,
+                title: "회원가입 오류",
+                content: errorMessage,
+                buttonText: "확인",
+                onPressed: () {});
+          }
         } catch (e) {
           print("회원가입 API 오류: $e");
-          CommonDialog.show(
-              context: context,
-              title: "오류",
-              content: "회원가입 중 오류가 발생했습니다.",
-              buttonText: "확인",
-              onPressed: () {});
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+            CommonDialog.show(
+                context: context,
+                title: "오류",
+                content: "회원가입 중 오류가 발생했습니다.",
+                buttonText: "확인",
+                onPressed: () {});
+          }
         }
       }
     } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
       String errorMessage = "회원가입 중 오류가 발생했습니다.";
       switch (e.code) {
         case 'weak-password':
@@ -377,7 +427,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
           break;
 
         case 'provider-already-linked':
-          errorMessage = "이미 이메일 로그인 방법이 연결된 계정입니다.";
+          errorMessage = "이미 가입된 계정입니다.";
           break;
 
         case 'requires-recent-login':
@@ -423,6 +473,20 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
     }
     return null;
   }
+
+  String _formatPhoneNumber(String phoneNumber) {
+    // +82 형식을 010 형식으로 변환
+    if (phoneNumber.startsWith('+82')) {
+      String number = phoneNumber.substring(3); // +82 제거
+      if (number.startsWith('10')) {
+        return '0$number';
+      } else if (number.startsWith('1')) {
+        return '0$number';
+      }
+      return '0$number';
+    }
+    return phoneNumber;
+  }
 }
 
 class IDVerificationWidget extends StatefulWidget {
@@ -448,7 +512,7 @@ class _IDVerificationWidgetState extends State<IDVerificationWidget> {
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Text(
-                "이메일",
+                "아이디",
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -460,7 +524,7 @@ class _IDVerificationWidgetState extends State<IDVerificationWidget> {
                 controller: idController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  hintText: "이메일을 입력하세요",
+                  hintText: "아이디 입력하세요",
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   border: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey[300]!),

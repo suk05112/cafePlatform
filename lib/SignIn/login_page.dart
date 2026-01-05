@@ -68,19 +68,20 @@ class _LoginPageState extends State<LoginPage> {
       _loading = true;
     });
 
-    print("로그인 시도 ${_emailController.text.trim()} ${_passwordController.text}");
+    final emailInput = _emailController.text.trim();
+    final emailWithDomain = emailInput + "@gifnut.com";
+    print("로그인 시도 $emailWithDomain ${_passwordController.text}");
 
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
+        email: emailWithDomain,
         password: _passwordController.text,
       );
 
       if (userCredential.user != null) {
         try {
           await Api().setBaseClient(Api.BASE_URL);
-          var response =
-              await Api().client.loginUser(_emailController.text.trim());
+          var response = await Api().client.loginUser(emailWithDomain);
 
           if (response.user_id != null) {
             final user = my_app.User(
@@ -88,6 +89,7 @@ class _LoginPageState extends State<LoginPage> {
               name: response.name ?? "name",
               email: response.email ?? "email",
               phone_number: response.phone_number ?? "",
+              uid: userCredential.user?.uid ?? "",
             );
             Provider.of<UserProvider>(context, listen: false).setUser(user);
 
@@ -197,20 +199,20 @@ class _LoginPageState extends State<LoginPage> {
 
                   SizedBox(height: 50),
                   // 상단 제목 영역
-                  Text.rich(
-                    TextSpan(
-                      children: const [
-                        TextSpan(text: '이 부분은 굵지 않고, '),
-                        TextSpan(
-                          text: '이 부분만 굵게',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextSpan(text: ' 표시됩니다.'),
-                      ],
-                    ),
-                  ),
+                  // Text.rich(
+                  //   TextSpan(
+                  //     children: const [
+                  //       TextSpan(text: '이 부분은 굵지 않고, '),
+                  //       TextSpan(
+                  //         text: '이 부분만 굵게',
+                  //         style: TextStyle(
+                  //           fontWeight: FontWeight.bold,
+                  //         ),
+                  //       ),
+                  //       TextSpan(text: ' 표시됩니다.'),
+                  //     ],
+                  //   ),
+                  // ),
                   SizedBox(height: 8),
                   Text(
                     '로그인',
@@ -226,7 +228,7 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      hintText: '이메일을 입력하세요',
+                      hintText: '아이디를 입력하세요',
                       hintStyle: TextStyle(color: Colors.grey[400]),
                       border: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey[300]!),
@@ -471,79 +473,248 @@ class _LoginPageState extends State<LoginPage> {
     // SNS 로그인 후 신규/기존 판단
     fb.UserCredential? userCredential;
 
+    // 로딩 인디케이터 표시
+    setState(() {
+      _loading = true;
+    });
+
+    try {
 // 메일이 같아도 최초한번은 번호인증 하도록
-    final needPhoneAuth = !await loginService.isRegisteredUser(email, provider);
+      bool needPhoneAuth;
+      try {
+        final isRegistered =
+            await loginService.isRegisteredUser(email, provider);
+        needPhoneAuth = !isRegistered;
+      } on DioException catch (e) {
+        // isRegisteredUser API 호출 실패 시 alert 표시하고 중단
+        String errorMessage = '네트워크 오류가 발생했습니다.';
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.sendTimeout) {
+          errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+        } else if (e.type == DioExceptionType.connectionError) {
+          errorMessage = '인터넷 연결을 확인해주세요.';
+        } else if (e.response != null) {
+          errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
+        }
 
-    print("needPhoneAuth $needPhoneAuth");
-    if (needPhoneAuth) {
-      // final fb.PhoneAuthCredential phoneCredential = await Navigator.push(
-      //   context,
-      //   MaterialPageRoute(builder: (_) => PhoneAuthPage()),
-      // );
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                title: Text('오류'),
+                content: Text(errorMessage),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('확인'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+        return; // 에러 발생 시 함수 종료
+      }
 
-      PhoneAuthResult? phoneAuthResult = await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const TermsAgreementPage()),
-      );
+      print("needPhoneAuth $needPhoneAuth");
+      if (needPhoneAuth) {
+        // 로딩 인디케이터 숨기기
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+        }
 
-      if (phoneAuthResult != null) {
-        userCredential = await loginService.phoneAuth(
-            phoneCredential: phoneAuthResult.credential,
-            snsCredential: credential,
-            onError: loginFail);
-        if (userCredential != null) {
-          print("updateDisplayName");
-          // 이름은 TermsAgreementPage에서 입력받은 이름을 사용
-          final userName = phoneAuthResult.name ?? name;
-          await userCredential.user?.updateDisplayName(userName);
+        // final fb.PhoneAuthCredential phoneCredential = await Navigator.push(
+        //   context,
+        //   MaterialPageRoute(builder: (_) => PhoneAuthPage()),
+        // );
 
-          // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
-          try {
-            await Api().setBaseClient(Api.BASE_URL);
-            final registerUser = my_app.User(
-              user_id: 0, // 회원가입 시에는 0으로 설정 (서버에서 생성)
-              name: userName,
-              email: email,
-              phone_number: phoneAuthResult.phoneNumber,
-            );
+        PhoneAuthResult? phoneAuthResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => const PhoneAuthPage(isSocialLogin: true)),
+        );
 
-            final registerResponse =
-                await Api().client.registerUser(registerUser);
-            print("간편로그인 회원가입 API 호출 후 response $registerResponse");
-          } catch (e) {
-            print("회원가입 API 오류 (이미 가입된 사용자일 수 있음): $e");
+        if (phoneAuthResult != null) {
+          userCredential = await loginService.phoneAuth(
+              phoneCredential: phoneAuthResult.credential,
+              snsCredential: credential,
+              onError: loginFail);
+          if (userCredential != null) {
+            print("updateDisplayName");
+            // 이름은 TermsAgreementPage에서 입력받은 이름을 사용
+            final userName = phoneAuthResult.name ?? name;
+            await userCredential.user?.updateDisplayName(userName);
+
+            // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
+            try {
+              await Api().setBaseClient(Api.BASE_URL);
+              final registerUser = my_app.User(
+                user_id: 0, // 회원가입 시에는 0으로 설정 (서버에서 생성)
+                name: userName,
+                email: email,
+                phone_number: phoneAuthResult.phoneNumber,
+                uid: userCredential.user?.uid ?? "",
+                provider: provider,
+              );
+
+              print("간편로그인 registerUser.toJson(): ${registerUser.toJson()}");
+              final registerResponse =
+                  await Api().client.registerUser(registerUser);
+              print("간편로그인 회원가입 API 호출 후 response $registerResponse");
+            } on DioException catch (e) {
+              String errorMessage = '회원가입 중 오류가 발생했습니다.';
+              if (e.type == DioExceptionType.connectionTimeout ||
+                  e.type == DioExceptionType.receiveTimeout ||
+                  e.type == DioExceptionType.sendTimeout) {
+                errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+              } else if (e.type == DioExceptionType.connectionError) {
+                errorMessage = '인터넷 연결을 확인해주세요.';
+              } else if (e.response != null) {
+                errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
+              }
+
+              if (mounted) {
+                await showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      backgroundColor: Colors.white,
+                      title: Text('오류'),
+                      content: Text(errorMessage),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text('확인'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }
+              return; // 에러 발생 시 함수 종료
+            } catch (e) {
+              String errorMessage = '회원가입 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
+              if (mounted) {
+                await showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      backgroundColor: Colors.white,
+                      title: Text('오류'),
+                      content: Text(errorMessage),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text('확인'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }
+              return; // 에러 발생 시 함수 종료
+            }
           }
         }
+      } else {
+        userCredential = await _auth.signInWithCredential(credential);
       }
-    } else {
-      userCredential = await _auth.signInWithCredential(credential);
-    }
 
-    print("displayname: ${userCredential?.user?.displayName ?? "none"}");
-    await Api().setBaseClient(Api.BASE_URL);
-    var response = await Api().client.loginUser(email);
-    print("로그인 api 호출후 response $response");
+      print("displayname: ${userCredential?.user?.displayName ?? "none"}");
+      await Api().setBaseClient(Api.BASE_URL);
+      var response = await Api().client.loginUser(email);
+      print("로그인 api 호출후 response $response");
 
-    final user = my_app.User(
-      user_id: response.user_id ?? -1,
-      name: response.name ?? "name",
-      email: response.email ?? "email",
-      phone_number: response.phone_number ?? "",
-    );
-    Provider.of<UserProvider>(context, listen: false).setUser(user);
-
-    // 푸시 토큰 등록
-    _registerPushToken(response.user_id ?? -1);
-
-    // 로그인 성공 시 TabPage로 이동 (매장보기 탭 선택)
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const TabPage(initialIndex: 0)),
+      final user = my_app.User(
+        user_id: response.user_id ?? -1,
+        name: response.name ?? "name",
+        email: response.email ?? "email",
+        phone_number: response.phone_number ?? "",
+        uid: userCredential?.user?.uid ?? "",
       );
-    }
+      Provider.of<UserProvider>(context, listen: false).setUser(user);
 
-    setState(() => _loading = false);
+      // 푸시 토큰 등록
+      _registerPushToken(response.user_id ?? -1);
+
+      // 로그인 성공 시 TabPage로 이동 (매장보기 탭 선택)
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const TabPage(initialIndex: 0)),
+        );
+      }
+    } on DioException catch (e) {
+      String errorMessage = '네트워크 오류가 발생했습니다.';
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMessage = '인터넷 연결을 확인해주세요.';
+      } else if (e.response != null) {
+        errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
+      }
+
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: Text('오류'),
+              content: Text(errorMessage),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('확인'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+      print("로그인 처리 중 오류: $e");
+    } catch (e) {
+      String errorMessage = '오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: Text('오류'),
+              content: Text(errorMessage),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('확인'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+      print("로그인 처리 중 오류: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   void appleLoginSuccess(credential, email, name) async {
@@ -578,8 +749,11 @@ class _LoginPageState extends State<LoginPage> {
                 name: userName,
                 email: email ?? "apple",
                 phone_number: phoneAuthResult.phoneNumber,
+                uid: userCredential.user?.uid ?? "",
+                provider: "apple",
               );
 
+              print("애플 간편로그인 registerUser.toJson(): ${registerUser.toJson()}");
               final registerResponse =
                   await Api().client.registerUser(registerUser);
               print("애플 간편로그인 회원가입 API 호출 후 response $registerResponse");
@@ -600,6 +774,7 @@ class _LoginPageState extends State<LoginPage> {
       name: response.name ?? "name",
       email: response.email ?? "email",
       phone_number: response.phone_number ?? "",
+      uid: userCredential?.user?.uid ?? "",
     );
     Provider.of<UserProvider>(context, listen: false).setUser(user);
 

@@ -8,7 +8,7 @@ part of 'store_post_response.dart';
 
 StorePostResponse _$StorePostResponseFromJson(Map<String, dynamic> json) =>
     StorePostResponse(
-      store_id: (json['store_id'] as num).toInt(),
+      store_id: json['store_id'] as int,
       store_logo_url: json['store_logo_url'] as String,
       store_photo_urls: (json['store_photo_urls'] as List<dynamic>)
           .map((e) => e as String)
@@ -67,9 +67,9 @@ Map<String, dynamic> _$SearchStoreGetResponseToJson(
 NaverStoreResponse _$NaverStoreResponseFromJson(Map<String, dynamic> json) =>
     NaverStoreResponse(
       lastBuildDate: json['lastBuildDate'] as String,
-      total: (json['total'] as num).toInt(),
-      start: (json['start'] as num).toInt(),
-      display: (json['display'] as num).toInt(),
+      total: json['total'] as int,
+      start: json['start'] as int,
+      display: json['display'] as int,
       items: (json['items'] as List<dynamic>)
           .map((e) => StoreItem.fromJson(e as Map<String, dynamic>))
           .toList(),

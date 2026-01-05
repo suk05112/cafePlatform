@@ -29,17 +29,19 @@ class MenuPostResponse {
 class Menu {
   int menu_id;
   int store_id;
+  @JsonKey(name: 'menu_name')
   String? name;
   int price;
+  @JsonKey(name: 'menu_photo')
   String? menu_image_url;
   String? description;
   String? status;
 
   Menu(
-      {required this.menu_id,
-      required this.store_id,
+      {this.menu_id = 0,
+      this.store_id = 0,
       this.name,
-      required this.price,
+      this.price = 0,
       this.menu_image_url,
       this.description,
       this.status});

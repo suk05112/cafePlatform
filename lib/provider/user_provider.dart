@@ -37,8 +37,10 @@ class UserProvider with ChangeNotifier {
         'name': user.name,
         'email': user.email,
         'phone': user.phone_number,
+        'uid': user.uid,
       });
       await _storage.write(key: "user", value: userJson);
+      _isLoggedIn = true;
       print("User saved to secure storage.");
     } catch (e) {
       print("Failed to save user to storage: $e");
@@ -56,6 +58,7 @@ class UserProvider with ChangeNotifier {
           name: userMap['name'],
           email: userMap['email'],
           phone_number: userMap['phone'],
+          uid: userMap['uid'] ?? '',
         );
         notifyListeners();
         print("User loaded from secure storage.");

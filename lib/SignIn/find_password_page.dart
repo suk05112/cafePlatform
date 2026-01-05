@@ -37,6 +37,13 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
           ));
 
   @override
+  void dispose() {
+    inputIDController.dispose();
+    inputPhoneNumbfController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
         onTap: () {
@@ -76,7 +83,7 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
                                   successCallback: (phoneAuthResult) {
                                 if (phoneAuthResult != null) {
                                   print(
-                                      "회원가입 전화번호 인증 성공: $phoneAuthResult.phoneNumber");
+                                      "전화번호 인증 성공: $phoneAuthResult.phoneNumber");
                                   setState(() {
                                     phone_number = phoneAuthResult.phoneNumber;
                                     phoneCredential =
@@ -97,7 +104,7 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
                                   ),
                                   onPressed: () async {
                                     bool emailExists = await checkEmailExists(
-                                        inputIDController.text,
+                                        inputIDController.text + "@gifnut.com",
                                         inputPhoneNumbfController.text);
 
                                     if (emailExists) {
