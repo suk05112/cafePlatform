@@ -4,15 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cafeplatform/model/Store.dart';
+import 'package:cafeplatform/model/region.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
 
 class CafeListMapView extends StatefulWidget {
-  const CafeListMapView({super.key, required this.storeList});
-
-  final List<Store> storeList;
+  const CafeListMapView({super.key});
 
   @override
   State<CafeListMapView> createState() => _CafeListMapViewState();
@@ -57,197 +56,613 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     ),
   ];
 
+  bool _isDisposed = false;
+  NLatLng? _initialTarget;
+
   @override
   void initState() {
     super.initState();
     _requestPermissionOnEnter();
-    // 작은 크기의 핀 아이콘 초기화 (비동기)
-    _initIcons();
+    // 초기 타겟 설정은 한 번만 수행
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) {
+        final storeProvider =
+            Provider.of<StoreProvider>(context, listen: false);
+        final storesForMap = _effectiveStores(storeProvider);
+        _initialTarget = await _resolveInitialTarget(storesForMap);
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    // 비동기 작업 취소
+    if (mapControllerCompleter.isCompleted) {
+      try {
+        // 지도 컨트롤러가 준비되어 있으면 정리
+        _mapController.dispose();
+      } catch (e) {
+        print('지도 컨트롤러 dispose 오류 (무시 가능): $e');
+      }
+    }
+    _selectedStore.dispose();
+    _activeMarker = null;
+    _defaultIcon = null;
+    _selectedIcon = null;
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // context가 준비된 후에 아이콘 초기화
+    if (_defaultIcon == null && _selectedIcon == null) {
+      _initIcons();
+    }
+    // 초기 데이터 로드 (지도 뷰 전용) - 위치 기반으로 매장 가져오기
+    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    // 지도 뷰에 데이터가 없으면 초기 위치 기반으로 데이터 로드
+    if (storeProvider.mapViewStores == null ||
+        storeProvider.mapViewStores!.isEmpty) {
+      // 초기 타겟 위치 결정 후 위치 기반으로 매장 가져오기
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (mounted) {
+          try {
+            // GPS 위치 시도
+            double? gpsLat;
+            double? gpsLng;
+
+            try {
+              final serviceEnabled =
+                  await Geolocator.isLocationServiceEnabled();
+              if (serviceEnabled) {
+                LocationPermission permission =
+                    await Geolocator.checkPermission();
+                if (permission == LocationPermission.denied) {
+                  permission = await Geolocator.requestPermission();
+                }
+                if (permission != LocationPermission.denied &&
+                    permission != LocationPermission.deniedForever) {
+                  final position = await Geolocator.getCurrentPosition(
+                    desiredAccuracy: LocationAccuracy.high,
+                  );
+                  gpsLat = position.latitude;
+                  gpsLng = position.longitude;
+                }
+              }
+            } catch (e) {
+              print('GPS 위치 가져오기 오류: $e');
+            }
+
+            // GPS 위치가 있으면 GPS 위치로, 없으면 서울로 매장 가져오기
+            final targetLat = gpsLat ?? 37.5665;
+            final targetLng = gpsLng ?? 126.9780;
+
+            print('지도 뷰 초기 데이터 로드: lat=$targetLat, lng=$targetLng');
+            storeProvider.fetchMapViewStoresByLocation(targetLat, targetLng);
+          } catch (e) {
+            print('초기 데이터 로드 오류: $e');
+            // 오류 시 기본 위치(서울)로 시도
+            storeProvider.fetchMapViewStoresByLocation(37.5665, 126.9780);
+          }
+        }
+      });
+    }
   }
 
   Future<void> _initIcons() async {
     if (!mounted) return;
-    // 작은 크기의 핀 아이콘 생성 (30x40 픽셀)
-    _defaultIcon = await NOverlayImage.fromWidget(
-      context: context,
-      widget: SizedBox(
-        width: 30,
-        height: 40,
-        child: Image.asset('assets/pin.png', fit: BoxFit.contain),
-      ),
-      size: const Size(30, 40),
-    );
-    _selectedIcon = await NOverlayImage.fromWidget(
-      context: context,
-      widget: SizedBox(
-        width: 30,
-        height: 40,
-        child: Image.asset('assets/selected_pin.png', fit: BoxFit.contain),
-      ),
-      size: const Size(30, 40),
-    );
-    if (mounted) {
-      setState(() {});
+
+    try {
+      // 작은 크기의 핀 아이콘 생성 (30x40 픽셀)
+      _defaultIcon = await NOverlayImage.fromWidget(
+        context: context,
+        widget: SizedBox(
+          width: 30,
+          height: 40,
+          child: Image.asset('assets/pin.png', fit: BoxFit.contain),
+        ),
+        size: const Size(30, 40),
+      );
+
+      if (!mounted) return;
+
+      _selectedIcon = await NOverlayImage.fromWidget(
+        context: context,
+        widget: SizedBox(
+          width: 30,
+          height: 40,
+          child: Image.asset('assets/selected_pin.png', fit: BoxFit.contain),
+        ),
+        size: const Size(30, 40),
+      );
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('아이콘 초기화 오류: $e');
+      // 오류가 발생해도 계속 진행
     }
   }
 
   @override
   void didUpdateWidget(covariant CafeListMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.storeList.isEmpty) {
-      _selectedStore.value = null;
-    } else if (_selectedStore.value != null &&
-        !widget.storeList.any(
-          (element) => element.store_id == _selectedStore.value!.store_id,
-        )) {
-      _selectedStore.value = null;
-    }
-    // 매장 리스트가 변경되면 마커 업데이트
-    if (oldWidget.storeList.length != widget.storeList.length ||
-        oldWidget.storeList.map((e) => e.store_id).join() !=
-            widget.storeList.map((e) => e.store_id).join()) {
-      _updateMarkers();
-    }
+    // Provider에서 가져온 데이터가 변경되면 마커 업데이트
+    _updateMarkers();
   }
 
   Future<void> _updateMarkers() async {
-    if (!mapControllerCompleter.isCompleted) return;
-    final storesForMap = _effectiveStores();
-    await _mapController.clearOverlays();
-    await _addMarkers(_mapController, storesForMap);
+    if (!mapControllerCompleter.isCompleted || !mounted || _isDisposed) return;
+    try {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      final storesForMap = _effectiveStores(storeProvider);
+      print('_updateMarkers: 매장 개수: ${storesForMap.length}');
+      if (!mounted || _isDisposed) return;
+      if (storesForMap.isEmpty) {
+        print('_updateMarkers: 매장 리스트가 비어있어 마커 업데이트를 건너뜁니다.');
+        return;
+      }
+      await _mapController.clearOverlays();
+      if (!mounted || _isDisposed) return;
+      await _addMarkers(_mapController, storesForMap);
+      print('_updateMarkers: 마커 업데이트 완료');
+    } catch (e) {
+      print('마커 업데이트 오류: $e');
+      print('스택 트레이스: ${StackTrace.current}');
+    }
+  }
+
+  // 유효한 좌표인지 검증 (한국 지역 범위)
+  bool _isValidCoordinate(double lat, double lng) {
+    // 한국 위도 범위: 약 33~38.6
+    // 한국 경도 범위: 약 124~132
+    return lat >= 33.0 && lat <= 38.6 && lng >= 124.0 && lng <= 132.0;
+  }
+
+  NLatLng _getValidInitialTarget(List<Store> stores) {
+    // _initialTarget이 있고 유효하면 사용
+    if (_initialTarget != null &&
+        _isValidCoordinate(
+            _initialTarget!.latitude, _initialTarget!.longitude)) {
+      return _initialTarget!;
+    }
+
+    // 매장 리스트에서 유효한 좌표 찾기
+    for (final store in stores) {
+      if (_isValidCoordinate(store.store_lat, store.store_lng)) {
+        return NLatLng(store.store_lat, store.store_lng);
+      }
+    }
+
+    // 모두 유효하지 않으면 기본 위치 (서울시청)
+    return const NLatLng(37.5665, 126.9780);
   }
 
   @override
   Widget build(BuildContext context) {
-    final storesForMap = _effectiveStores();
-    return FutureBuilder<NLatLng>(
-      future: _resolveInitialTarget(storesForMap),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final storeProvider = Provider.of<StoreProvider>(context);
+    final storesForMap = _effectiveStores(storeProvider);
 
-        final initialTarget = snapshot.data ?? _fallbackTarget(storesForMap);
+    // 유효한 좌표를 가진 초기 타겟 계산
+    final initialTarget = _getValidInitialTarget(storesForMap);
 
-        return Stack(
-          children: [
-            NaverMap(
-              key: ValueKey(storesForMap.map((e) => e.store_id).join()),
-              options: NaverMapViewOptions(
-                initialCameraPosition: NCameraPosition(
-                  target: initialTarget,
-                  zoom: 13,
-                ),
-                indoorEnable: true,
-                locationButtonEnable: true,
-              ),
-              onMapReady: (controller) {
-                _mapController = controller;
-                _addMarkers(_mapController, storesForMap);
-                if (mapControllerCompleter.isCompleted == false) {
-                  mapControllerCompleter.complete(controller);
+    print(
+        'build: initialTarget = ${initialTarget.latitude}, ${initialTarget.longitude}');
+    print('build: _initialTarget = $_initialTarget');
+    print('build: storesForMap.length = ${storesForMap.length}');
+    if (storesForMap.isNotEmpty) {
+      print(
+          'build: 첫 번째 매장 좌표 = ${storesForMap.first.store_lat}, ${storesForMap.first.store_lng}');
+    }
+
+    // Provider 데이터가 변경되면 마커 업데이트
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isDisposed && mapControllerCompleter.isCompleted) {
+        _updateMarkers();
+      }
+    });
+
+    return Stack(
+      children: [
+        NaverMap(
+          key: const ValueKey('naver_map'), // 고정된 key로 불필요한 재생성 방지
+          options: NaverMapViewOptions(
+            initialCameraPosition: NCameraPosition(
+              target: initialTarget,
+              zoom: 13,
+            ),
+            indoorEnable: true,
+            locationButtonEnable: true,
+            nightModeEnable: false, // 야간 모드 비활성화
+            liteModeEnable: false, // 라이트 모드 비활성화
+          ),
+          onMapReady: (controller) async {
+            print('onMapReady: 지도 준비 완료');
+            if (!mounted || _isDisposed) return;
+            _mapController = controller;
+            if (mapControllerCompleter.isCompleted == false) {
+              mapControllerCompleter.complete(controller);
+            }
+
+            // 지도가 준비된 후 현재 카메라 위치 확인
+            try {
+              final cameraPosition = await controller.getCameraPosition();
+              print(
+                  'onMapReady: 현재 카메라 위치 = ${cameraPosition.target.latitude}, ${cameraPosition.target.longitude}, zoom = ${cameraPosition.zoom}');
+            } catch (e) {
+              print('onMapReady: 카메라 위치 가져오기 오류: $e');
+            }
+
+            if (mounted && !_isDisposed) {
+              try {
+                print('onMapReady: 마커 추가 시작, 매장 개수: ${storesForMap.length}');
+                await _addMarkers(_mapController, storesForMap);
+                print('onMapReady: 마커 추가 완료');
+
+                // 마커가 있으면 카메라를 마커 위치로 이동
+                if (storesForMap.isNotEmpty) {
+                  // 유효한 좌표를 가진 매장만 필터링
+                  final validStores = storesForMap
+                      .where((store) =>
+                          _isValidCoordinate(store.store_lat, store.store_lng))
+                      .toList();
+
+                  if (validStores.isNotEmpty) {
+                    double sumLat = 0;
+                    double sumLng = 0;
+                    int count = 0;
+                    for (final store in validStores) {
+                      sumLat += store.store_lat;
+                      sumLng += store.store_lng;
+                      count++;
+                    }
+                    if (count > 0) {
+                      final centerLat = sumLat / count;
+                      final centerLng = sumLng / count;
+
+                      print('onMapReady: 마커 중심 위치 = $centerLat, $centerLng');
+
+                      // 카메라를 마커 중심으로 이동 (약간의 딜레이 후)
+                      Future.delayed(Duration(milliseconds: 500), () async {
+                        if (mounted && !_isDisposed) {
+                          try {
+                            await controller.updateCamera(
+                              NCameraUpdate.withParams(
+                                target: NLatLng(centerLat, centerLng),
+                                zoom: 13,
+                              ),
+                            );
+                            print('onMapReady: 카메라를 마커 중심으로 이동 완료');
+                          } catch (e) {
+                            print('onMapReady: 카메라 이동 오류: $e');
+                          }
+                        }
+                      });
+                    }
+                  } else {
+                    // 유효한 매장이 없으면 서울로 이동
+                    print('onMapReady: 유효한 매장 좌표가 없어 서울로 이동');
+                    Future.delayed(Duration(milliseconds: 500), () async {
+                      if (mounted && !_isDisposed) {
+                        try {
+                          await controller.updateCamera(
+                            NCameraUpdate.withParams(
+                              target: const NLatLng(37.5665, 126.9780),
+                              zoom: 13,
+                            ),
+                          );
+                          print('onMapReady: 서울로 카메라 이동 완료');
+                        } catch (e) {
+                          print('onMapReady: 서울 카메라 이동 오류: $e');
+                        }
+                      }
+                    });
+                  }
+                } else {
+                  // 마커가 없으면 초기 타겟으로 카메라 이동
+                  if (_initialTarget != null) {
+                    Future.delayed(Duration(milliseconds: 500), () async {
+                      if (mounted && !_isDisposed) {
+                        try {
+                          await controller.updateCamera(
+                            NCameraUpdate.withParams(
+                              target: _initialTarget!,
+                              zoom: 13,
+                            ),
+                          );
+                          print('onMapReady: 초기 타겟으로 카메라 이동 완료');
+                        } catch (e) {
+                          print('onMapReady: 초기 타겟 카메라 이동 오류: $e');
+                        }
+                      }
+                    });
+                  }
                 }
-              },
-              onSymbolTapped: (_) => _clearSelection(),
-              onMapTapped: (_, __) => _clearSelection(),
+              } catch (e) {
+                print('onMapReady 마커 추가 오류: $e');
+                print('스택 트레이스: ${StackTrace.current}');
+              }
+            }
+          },
+          onSymbolTapped: (_) => _clearSelection(),
+          onMapTapped: (_, __) => _clearSelection(),
+        ),
+        // 현위치에서 검색 버튼 (하단 배치)
+        SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 100), // 하단 카드 위에 배치
+              child: _buildLocationSearchButton(),
             ),
-            // 현위치에서 검색 버튼
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: _buildLocationSearchButton(),
-                ),
-              ),
-            ),
-            ValueListenableBuilder<Store?>(
-              valueListenable: _selectedStore,
-              builder: (_, store, __) {
-                if (store == null) return const SizedBox.shrink();
-                return Align(
-                  alignment: Alignment.bottomCenter,
-                  child: _buildBottomCard(store),
-                );
-              },
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+        ValueListenableBuilder<Store?>(
+          valueListenable: _selectedStore,
+          builder: (_, store, __) {
+            if (store == null) return const SizedBox.shrink();
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: _buildBottomCard(store),
+            );
+          },
+        ),
+      ],
     );
   }
 
-  List<Store> _effectiveStores() {
+  List<Store> _effectiveStores(StoreProvider storeProvider) {
     // 검색된 매장이 있으면 우선 표시
     if (_searchedStores.isNotEmpty) return _searchedStores;
-    if (widget.storeList.isNotEmpty) return widget.storeList;
+    // Provider에서 지도 뷰 전용 데이터 가져오기
+    if (storeProvider.mapViewStores != null &&
+        storeProvider.mapViewStores!.isNotEmpty) {
+      return storeProvider.mapViewStores!;
+    }
     return _dummyStores;
   }
 
   Future<NLatLng> _resolveInitialTarget(List<Store> stores) async {
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return _fallbackTarget(stores);
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      final availableRegions = storeProvider.availableRegions;
+      final selectedRegionCode = storeProvider.selectedRegionCode;
+
+      // 1. 매장이 존재하는 지역이 있으면 그 지역 마커 보여주기
+      if (stores.isNotEmpty) {
+        // 매장들의 중심점 계산
+        double sumLat = 0;
+        double sumLng = 0;
+        int count = 0;
+        for (final store in stores) {
+          sumLat += store.store_lat;
+          sumLng += store.store_lng;
+          count++;
+        }
+        return NLatLng(sumLat / count, sumLng / count);
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+      // 위치 권한 확인
+      bool hasLocationPermission = false;
+      double? gpsLat;
+      double? gpsLng;
+
+      try {
+        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (serviceEnabled) {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission == LocationPermission.denied ||
+              permission == LocationPermission.deniedForever) {
+            hasLocationPermission = false;
+          } else {
+            hasLocationPermission = true;
+            final position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high,
+            );
+            gpsLat = position.latitude;
+            gpsLng = position.longitude;
+          }
+        }
+      } catch (e) {
+        print('위치 권한 확인 오류: $e');
+        hasLocationPermission = false;
       }
 
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        return _fallbackTarget(stores);
+      // 위치 권한이 있는 경우
+      if (hasLocationPermission && gpsLat != null && gpsLng != null) {
+        // 6. 위치권한 있고, gps위치에 매장 있으면 gps위치 보여주기
+        try {
+          await Api().setBaseClient(Api.BASE_URL);
+          final response =
+              await Api().client.getStoreListByLocation(gpsLat, gpsLng);
+          if (response.store.isNotEmpty) {
+            print('GPS 위치에 매장 있음, GPS 위치 표시');
+            return NLatLng(gpsLat, gpsLng);
+          }
+        } catch (e) {
+          print('GPS 위치 매장 확인 오류: $e');
+        }
+
+        // 5. 위치권한 있고, gps위치에 매장 없으면
+        // 5-2. 매장 존재하는 다른 지역 보여주기(regioncode 적은 지역)
+        if (availableRegions.isNotEmpty) {
+          // region_code가 가장 작은 지역 선택
+          final sortedRegions = List<Region>.from(availableRegions)
+            ..sort((a, b) => a.region_code.compareTo(b.region_code));
+
+          for (final region in sortedRegions) {
+            if (region.districts?.isNotEmpty == true) {
+              try {
+                final districtCode = region.districts!.first.district_code;
+                await Api().setBaseClient(Api.BASE_URL);
+                final response = await Api()
+                    .client
+                    .getStoreListByDistrict(districtCode, 0, 1);
+                if (response.store.isNotEmpty) {
+                  // 매장이 있는 지역의 첫 번째 매장 위치 반환
+                  print('매장 존재하는 지역 찾음: ${region.region_name}');
+                  final store = response.store.first;
+                  return NLatLng(store.store_lat, store.store_lng);
+                }
+              } catch (e) {
+                print('지역별 매장 확인 오류: $e');
+                continue;
+              }
+            }
+          }
+        }
+
+        // 5-1. 전체지역에 매장 없으면 gps위치 보여주기
+        print('전체 지역에 매장 없음, GPS 위치 표시');
+        return NLatLng(gpsLat, gpsLng);
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      return NLatLng(position.latitude, position.longitude);
-    } catch (_) {
-      return _fallbackTarget(stores);
+      // 위치 권한이 없는 경우
+      // 3. 위치권한 없고, 존재하는 지역 1개면 그 지역 보여주기
+      if (availableRegions.length == 1) {
+        final region = availableRegions.first;
+        if (region.districts?.isNotEmpty == true) {
+          try {
+            final districtCode = region.districts!.first.district_code;
+            await Api().setBaseClient(Api.BASE_URL);
+            final response =
+                await Api().client.getStoreListByDistrict(districtCode, 0, 1);
+            if (response.store.isNotEmpty) {
+              print('지역 1개에 매장 있음: ${region.region_name}');
+              final store = response.store.first;
+              return NLatLng(store.store_lat, store.store_lng);
+            }
+          } catch (e) {
+            print('지역 1개 매장 확인 오류: $e');
+          }
+        }
+      }
+
+      // 4. 위치권한 없고, 존재하는 지역 여러개면 regioncode 지역 보여주기
+      if (availableRegions.length > 1 && selectedRegionCode != null) {
+        Region? selectedRegion;
+        try {
+          selectedRegion = availableRegions.firstWhere(
+            (r) => r.region_code == selectedRegionCode,
+          );
+        } catch (e) {
+          selectedRegion = availableRegions.first;
+        }
+        if (selectedRegion.districts?.isNotEmpty == true) {
+          try {
+            final districtCode = selectedRegion.districts!.first.district_code;
+            await Api().setBaseClient(Api.BASE_URL);
+            final response =
+                await Api().client.getStoreListByDistrict(districtCode, 0, 1);
+            if (response.store.isNotEmpty) {
+              print('선택된 지역에 매장 있음: ${selectedRegion.region_name}');
+              final store = response.store.first;
+              return NLatLng(store.store_lat, store.store_lng);
+            }
+          } catch (e) {
+            print('선택된 지역 매장 확인 오류: $e');
+          }
+        }
+      }
+
+      // 2. 위치권한 없고, 존재하는 매장도 없으면 기본위치 서울
+      print('기본 위치 서울 표시');
+      return const NLatLng(37.5665, 126.9780);
+    } catch (e) {
+      print('_resolveInitialTarget 오류: $e');
+      // 오류 발생 시 기본 위치
+      if (stores.isNotEmpty) {
+        final store = stores.first;
+        return NLatLng(store.store_lat, store.store_lng);
+      }
+      return const NLatLng(37.5665, 126.9780);
     }
-  }
-
-  NLatLng _fallbackTarget(List<Store> stores) {
-    if (stores.isNotEmpty) {
-      final store = stores.first;
-      return NLatLng(store.store_lat, store.store_lng);
-    }
-    // 서울시청 좌표
-    return const NLatLng(37.5665, 126.9780);
   }
 
   Future<void> _addMarkers(
       NaverMapController controller, List<Store> stores) async {
-    for (final store in stores) {
-      final marker = NMarker(
-        id: store.store_id.toString(),
-        position: NLatLng(store.store_lat, store.store_lng),
-      );
+    if (!mounted || _isDisposed) return;
 
-      marker.setOnTapListener((overlay) {
-        if (_selectedStore.value?.store_id == store.store_id) {
-          _clearSelection();
-        } else {
-          _selectedStore.value = store;
-          if (_activeMarker != null && _activeMarker != overlay) {
-            _activeMarker!.setIcon(_defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
+    if (stores.isEmpty) {
+      print('_addMarkers: 매장 리스트가 비어있습니다.');
+      return;
+    }
+
+    // 유효한 좌표를 가진 매장만 필터링
+    final validStores = stores
+        .where((store) => _isValidCoordinate(store.store_lat, store.store_lng))
+        .toList();
+
+    if (validStores.isEmpty) {
+      print('_addMarkers: 유효한 좌표를 가진 매장이 없습니다.');
+      print('_addMarkers: 전체 ${stores.length}개 매장 중 유효한 좌표가 있는 매장: 0개');
+      for (final store in stores) {
+        print(
+            '  - ${store.store_name} (ID: ${store.store_id}): lat=${store.store_lat}, lng=${store.store_lng}');
+      }
+      return;
+    }
+
+    print(
+        '_addMarkers: ${validStores.length}개 매장에 대한 마커 추가 시작 (전체 ${stores.length}개 중)');
+
+    try {
+      int addedCount = 0;
+      for (final store in validStores) {
+        if (!mounted || _isDisposed) return;
+
+        final marker = NMarker(
+          id: store.store_id.toString(),
+          position: NLatLng(store.store_lat, store.store_lng),
+        );
+
+        marker.setOnTapListener((overlay) {
+          if (_selectedStore.value?.store_id == store.store_id) {
+            _clearSelection();
+          } else {
+            _selectedStore.value = store;
+            if (_activeMarker != null && _activeMarker != overlay) {
+              _activeMarker!.setIcon(_defaultIcon ??
+                  NOverlayImage.fromAssetImage('assets/pin.png'));
+            }
+            overlay.setIcon(_selectedIcon ??
+                NOverlayImage.fromAssetImage('assets/selected_pin.png'));
+            _activeMarker = overlay;
           }
-          overlay.setIcon(_selectedIcon ?? NOverlayImage.fromAssetImage('assets/selected_pin.png'));
-          _activeMarker = overlay;
-        }
-      });
+        });
 
-      marker.setIcon(_defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
-      controller.addOverlay(marker);
+        marker.setIcon(
+            _defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
+
+        try {
+          await controller.addOverlay(marker);
+          addedCount++;
+          print('마커 추가 성공: ${store.store_name} (ID: ${store.store_id})');
+        } catch (e) {
+          print('마커 추가 오류 (${store.store_name}): $e');
+          // 지도가 destroy된 경우 무시
+        }
+      }
+      print('_addMarkers: 총 ${addedCount}/${validStores.length}개 마커 추가 완료');
+    } catch (e) {
+      print('마커 추가 중 오류: $e');
+      print('스택 트레이스: ${StackTrace.current}');
     }
   }
 
   void _clearSelection() {
     if (_activeMarker != null) {
-      _activeMarker!.setIcon(_defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
+      _activeMarker!.setIcon(
+          _defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
       _activeMarker = null;
     }
     _selectedStore.value = null;
@@ -260,7 +675,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
         (logoUrl.startsWith('http://') || logoUrl.startsWith('https://'))) {
       return logoUrl;
     }
-    
+
     // 로고가 없으면 매장 사진의 첫 번째 이미지 사용
     if (store.store_photo_urls.isNotEmpty) {
       String? photoUrl = store.store_photo_urls[0].trim();
@@ -269,7 +684,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
         return photoUrl;
       }
     }
-    
+
     // 둘 다 없으면 빈 문자열 반환 (기본 이미지 사용)
     return '';
   }
@@ -425,165 +840,179 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   Widget _buildLocationSearchButton() {
     return ElevatedButton.icon(
       icon: const Icon(Icons.my_location, size: 18),
+      label: const Text(
+        '현위치에서 검색',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       onPressed: () async {
         try {
           // 지도 컨트롤러가 준비될 때까지 대기
           if (!mapControllerCompleter.isCompleted) {
             await mapControllerCompleter.future;
           }
+          if (!mounted || _isDisposed) return;
 
-          // 실제 GPS 위치 가져오기
-          double? currentLat;
-          double? currentLng;
+          // 지도의 현재 중심 위치 가져오기
+          final cameraPosition = await _mapController.getCameraPosition();
+          final centerLat = cameraPosition.target.latitude;
+          final centerLng = cameraPosition.target.longitude;
 
-          try {
-            final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-            if (!serviceEnabled) {
-              throw Exception('위치 서비스가 비활성화되어 있습니다.');
-            }
+          print('지도 중심 위치로 검색: lat=$centerLat, lng=$centerLng');
 
-            LocationPermission permission = await Geolocator.checkPermission();
-            if (permission == LocationPermission.denied) {
-              permission = await Geolocator.requestPermission();
-            }
-
-            if (permission == LocationPermission.denied ||
-                permission == LocationPermission.deniedForever) {
-              throw Exception('위치 권한이 필요합니다.');
-            }
-
-            final position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high,
+          // 유효한 좌표인지 확인
+          if (!_isValidCoordinate(centerLat, centerLng)) {
+            print('⚠️ 지도 중심 위치가 유효하지 않습니다. 서울로 이동합니다.');
+            // 유효하지 않은 좌표면 서울로 이동
+            await _mapController.updateCamera(
+              NCameraUpdate.withParams(
+                target: const NLatLng(37.5665, 126.9780),
+                zoom: 13,
+              ),
             );
-            currentLat = position.latitude;
-            currentLng = position.longitude;
-          } catch (locationError) {
-            print("위치 가져오기 오류: $locationError");
-            if (mounted) {
+            if (mounted && !_isDisposed) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('현재 위치를 가져올 수 없습니다. 지도 중심 위치로 검색합니다.'),
-                  duration: const Duration(seconds: 2),
+                const SnackBar(
+                  content: Text('지도 위치가 유효하지 않아 서울로 이동했습니다.'),
+                  duration: Duration(seconds: 2),
                 ),
               );
-              // 위치를 가져올 수 없으면 지도 중심 좌표 사용
-              final cameraPosition = await _mapController.getCameraPosition();
-              currentLat = cameraPosition.target.latitude;
-              currentLng = cameraPosition.target.longitude;
             }
-          }
-
-          if (currentLat == null || currentLng == null) {
             return;
           }
 
-          // 현위치에서 검색 API 호출
+          // mounted 체크 후 API 호출
+          if (!mounted || _isDisposed) return;
+
+          // 지도 중심 위치에서 검색 API 호출
           await Api().setBaseClient(Api.BASE_URL);
           final response = await Api().client.getStoreListByLocation(
-                currentLat,
-                currentLng,
+                centerLat,
+                centerLng,
               );
 
-          // Provider에 매장 리스트 업데이트
-          final storeProvider =
-              Provider.of<StoreProvider>(context, listen: false);
-          storeProvider.setStoreCard(response.store);
+          // API 호출 후 mounted 체크
+          if (!mounted || _isDisposed) return;
 
-          // 검색된 매장 리스트 저장 및 마커 업데이트
-          if (mounted) {
-            setState(() {
-              _searchedStores = response.store;
-            });
+          // 검색된 매장 리스트를 먼저 저장 (타이밍 문제 방지)
+          _searchedStores = response.store;
 
-            // 기존 마커 제거 후 새 마커 추가
-            await _mapController.clearOverlays();
-            await _addMarkers(_mapController, response.store);
+          // 유효한 좌표를 가진 매장만 필터링
+          final validStores = response.store
+              .where((store) =>
+                  _isValidCoordinate(store.store_lat, store.store_lng))
+              .toList();
 
-            // 검색된 매장이 있으면 모든 매장이 보이도록 카메라 조정
-            if (response.store.isNotEmpty) {
-              // 모든 매장의 경계 계산
-              double minLat = response.store.first.store_lat;
-              double maxLat = response.store.first.store_lat;
-              double minLng = response.store.first.store_lng;
-              double maxLng = response.store.first.store_lng;
-
-              for (final store in response.store) {
-                if (store.store_lat < minLat) minLat = store.store_lat;
-                if (store.store_lat > maxLat) maxLat = store.store_lat;
-                if (store.store_lng < minLng) minLng = store.store_lng;
-                if (store.store_lng > maxLng) maxLng = store.store_lng;
-              }
-
-              // 현위치도 포함하도록 경계 확장
-              if (currentLat < minLat) minLat = currentLat;
-              if (currentLat > maxLat) maxLat = currentLat;
-              if (currentLng < minLng) minLng = currentLng;
-              if (currentLng > maxLng) maxLng = currentLng;
-
-              // 경계의 중심점 계산
-              final centerLat = (minLat + maxLat) / 2;
-              final centerLng = (minLng + maxLng) / 2;
-
-              // 경계의 크기에 따라 줌 레벨 조정
-              final latDiff = maxLat - minLat;
-              final lngDiff = maxLng - minLng;
-              final maxDiff = latDiff > lngDiff ? latDiff : lngDiff;
-
-              double zoom = 14;
-              if (maxDiff > 0.1) {
-                zoom = 12;
-              } else if (maxDiff > 0.05) {
-                zoom = 13;
-              } else if (maxDiff < 0.01) {
-                zoom = 15;
-              }
-
-              await _mapController.updateCamera(
-                NCameraUpdate.withParams(
-                  target: NLatLng(centerLat, centerLng),
-                  zoom: zoom,
-                ),
-              );
-            } else {
-              // 검색된 매장이 없으면 현위치로 이동
-              await _mapController.updateCamera(
-                NCameraUpdate.withParams(
-                  target: NLatLng(currentLat, currentLng),
-                  zoom: 14,
+          if (validStores.isEmpty) {
+            print('⚠️ 유효한 좌표를 가진 매장이 없습니다.');
+            if (mounted && !_isDisposed) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('주변에 매장이 없습니다.'),
+                  duration: Duration(seconds: 2),
                 ),
               );
             }
+            return;
           }
 
-          // 성공 메시지 표시
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('현위치 주변 매장 ${response.store.length}개를 찾았습니다.'),
-                duration: const Duration(seconds: 2),
-              ),
-            );
+          // 기존 마커 제거 후 새 마커 추가
+          if (mounted && !_isDisposed) {
+            try {
+              await _mapController.clearOverlays();
+              if (!mounted || _isDisposed) return;
+
+              await _addMarkers(_mapController, validStores);
+              if (!mounted || _isDisposed) return;
+
+              print('마커 추가 완료: ${validStores.length}개');
+
+              // 검색된 매장이 있으면 모든 매장이 보이도록 카메라 조정
+              if (validStores.isNotEmpty) {
+                // 모든 매장의 경계 계산
+                double minLat = validStores.first.store_lat;
+                double maxLat = validStores.first.store_lat;
+                double minLng = validStores.first.store_lng;
+                double maxLng = validStores.first.store_lng;
+
+                for (final store in validStores) {
+                  if (store.store_lat < minLat) minLat = store.store_lat;
+                  if (store.store_lat > maxLat) maxLat = store.store_lat;
+                  if (store.store_lng < minLng) minLng = store.store_lng;
+                  if (store.store_lng > maxLng) maxLng = store.store_lng;
+                }
+
+                // 경계의 중심점 계산
+                final boundsCenterLat = (minLat + maxLat) / 2;
+                final boundsCenterLng = (minLng + maxLng) / 2;
+
+                // 경계의 크기에 따라 줌 레벨 조정
+                final latDiff = maxLat - minLat;
+                final lngDiff = maxLng - minLng;
+                final maxDiff = latDiff > lngDiff ? latDiff : lngDiff;
+
+                double zoom = 14;
+                if (maxDiff > 0.1) {
+                  zoom = 12;
+                } else if (maxDiff > 0.05) {
+                  zoom = 13;
+                } else if (maxDiff < 0.01) {
+                  zoom = 15;
+                }
+
+                if (mounted && !_isDisposed) {
+                  try {
+                    if (!mapControllerCompleter.isCompleted) {
+                      await mapControllerCompleter.future;
+                    }
+                    if (mounted && !_isDisposed) {
+                      await _mapController.updateCamera(
+                        NCameraUpdate.withParams(
+                          target: NLatLng(boundsCenterLat, boundsCenterLng),
+                          zoom: zoom,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    print('카메라 업데이트 오류 (무시 가능): $e');
+                  }
+                }
+              }
+
+              // 마커 추가 및 카메라 조정 완료 후 Provider 업데이트
+              // 이렇게 하면 _updateMarkers가 호출되어도 이미 마커가 있음
+              final storeProvider =
+                  Provider.of<StoreProvider>(context, listen: false);
+              storeProvider.setMapViewStores(validStores);
+
+              // 성공 메시지 표시
+              if (mounted && !_isDisposed) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content:
+                        Text('지도 중심 위치 주변 매장 ${validStores.length}개를 찾았습니다.'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            } catch (e) {
+              print('마커 업데이트 오류: $e');
+            }
           }
         } catch (error) {
-          print("현위치 검색 오류: $error");
-          if (mounted) {
+          print("지도 중심 위치 검색 오류: $error");
+          if (mounted && !_isDisposed) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('매장 검색에 실패했습니다: ${error.toString()}'),
+                content: Text('검색 중 오류가 발생했습니다: $error'),
                 duration: const Duration(seconds: 2),
               ),
             );
           }
         }
       },
-      label: const Text(
-        '현위치에서 검색',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-      ),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,

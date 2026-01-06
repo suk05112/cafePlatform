@@ -18,7 +18,7 @@ class TermsPage extends StatelessWidget {
             _buildTermsItem(
               context,
               title: '서비스 이용약관',
-              url: 'https://www.naver.com',
+              url: 'https://www.520company.com/term/user/service/',
               onTap: () {
                 Navigator.push(
                   context,

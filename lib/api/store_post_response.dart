@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:cafeplatform/model/Store.dart';
 
@@ -64,15 +63,71 @@ class StoreCardList {
 }
 
 @JsonSerializable()
-class SearchStoreGetResponse {
-  List<StoreCard> storeList;
+class SearchStorePagination {
+  @JsonKey(name: 'cursor')
+  int? cursor;
+  
+  @JsonKey(name: 'next_cursor')
+  int? next_cursor;
+  
+  @JsonKey(name: 'limit')
+  int limit;
+  
+  @JsonKey(name: 'has_next')
+  bool has_next;
 
-  SearchStoreGetResponse({
-    required this.storeList,
+  SearchStorePagination({
+    this.cursor,
+    this.next_cursor,
+    required this.limit,
+    required this.has_next,
   });
 
-  factory SearchStoreGetResponse.fromJson(Map<String, dynamic> json) =>
-      _$SearchStoreGetResponseFromJson(json);
+  factory SearchStorePagination.fromJson(Map<String, dynamic> json) =>
+      _$SearchStorePaginationFromJson(json);
+  Map<String, dynamic> toJson() => _$SearchStorePaginationToJson(this);
+}
+
+@JsonSerializable()
+class SearchStoreGetResponse {
+  @JsonKey(name: 'store')
+  List<StoreCard> store;
+  
+  @JsonKey(name: 'pagination')
+  SearchStorePagination? pagination;
+
+  SearchStoreGetResponse({
+    required this.store,
+    this.pagination,
+  });
+
+  factory SearchStoreGetResponse.fromJson(Map<String, dynamic> json) {
+    // 'store' 필드 확인
+    var storeListData = json['store'];
+    
+    if (storeListData == null || storeListData is! List) {
+      return SearchStoreGetResponse(
+        store: [],
+        pagination: json['pagination'] != null
+            ? SearchStorePagination.fromJson(json['pagination'] as Map<String, dynamic>)
+            : null,
+      );
+    }
+    
+    final storeList = storeListData
+        .map((e) => StoreCard.fromJson(e as Map<String, dynamic>))
+        .toList();
+    
+    final pagination = json['pagination'] != null
+        ? SearchStorePagination.fromJson(json['pagination'] as Map<String, dynamic>)
+        : null;
+    
+    return SearchStoreGetResponse(
+      store: storeList,
+      pagination: pagination,
+    );
+  }
+  
   Map<String, dynamic> toJson() => _$SearchStoreGetResponseToJson(this);
 }
 

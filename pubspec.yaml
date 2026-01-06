@@ -52,7 +52,7 @@ dependencies:
   amplify_flutter: ^1.7.0
   amplify_core: ^1.7.0
   amplify_analytics_pinpoint: ^1.7.0
-  amplify_auth_cognito: ^1.7.0
+  amplify_auth_cognito: ^1.7.2
   # amplify_secure_storage_dart: ^0.4.4
 
 
@@ -148,6 +148,15 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+flavors:
+    dev:
+      ios:
+        bundleId: com.yourcompany.gfinut.dev
+    prod:
+      ios:
+        bundleId: com.yourcompany.gfinut
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:

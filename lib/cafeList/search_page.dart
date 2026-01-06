@@ -3,8 +3,6 @@ import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -15,14 +13,36 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<StoreCard> storeCards = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   bool _hasSearched = false;
+  String? _currentQuery;
+  int? _nextCursor;
+  bool _hasMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    // 스크롤이 하단에 가까워지면 다음 페이지 로드
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingMore && _hasMore && _currentQuery != null) {
+        _loadMoreStores();
+      }
+    }
   }
 
   @override
@@ -140,6 +160,10 @@ class _SearchPageState extends State<SearchPage> {
     setState(() {
       _isLoading = true;
       _hasSearched = true;
+      _currentQuery = query;
+      _nextCursor = null;
+      _hasMore = false;
+      storeCards = [];
     });
     searchStore(query).then((_) {
       if (mounted) {
@@ -216,9 +240,19 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildSearchResults() {
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: storeCards.length,
+      itemCount: storeCards.length + (_isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
+        // 로딩 인디케이터 표시
+        if (index == storeCards.length) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
         final storeCard = storeCards[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -248,45 +282,62 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
 
-    return Image.network(
-      cleanedUrl,
-      width: width,
-      height: height,
-      fit: BoxFit.fill,
-      headers: {
-        'User-Agent':
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          width: width,
-          height: height,
-          color: Colors.grey[200],
-          child: Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        cleanedUrl,
+        width: width,
+        height: height,
+        fit: BoxFit.cover, // 비율 유지하면서 컨테이너 채우기
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.grey[200],
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
               ),
             ),
-          ),
-        );
-      },
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded) return child;
-        if (frame != null) return child;
-        // 프레임이 null이면 로딩 중이거나 에러
-        return Container(
-          width: width,
-          height: height,
-          color: Colors.grey[200],
-          child: Container(
+          );
+        },
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          if (frame != null) return child;
+          // 프레임이 null이면 로딩 중이거나 에러
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.grey[200],
+            child: Container(
+              width: width,
+              height: height,
+              color: Colors.grey[100],
+              child: Icon(
+                Icons.storefront,
+                size: width > height ? height * 0.6 : width * 0.6,
+                color: Colors.grey[400],
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('이미지 로드 오류: $error, URL: $cleanedUrl');
+          print('스택 트레이스: $stackTrace');
+          return Container(
             width: width,
             height: height,
             color: Colors.grey[100],
@@ -295,27 +346,13 @@ class _SearchPageState extends State<SearchPage> {
               size: width > height ? height * 0.6 : width * 0.6,
               color: Colors.grey[400],
             ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        print('이미지 로드 오류: $error, URL: $cleanedUrl');
-        print('스택 트레이스: $stackTrace');
-        return Container(
-          width: width,
-          height: height,
-          color: Colors.grey[100],
-          child: Icon(
-            Icons.storefront,
-            size: width > height ? height * 0.6 : width * 0.6,
-            color: Colors.grey[400],
-          ),
-        );
-      },
-      // 캐시 최적화
-      cacheWidth: width.toInt(),
-      cacheHeight: height.toInt(),
-      filterQuality: FilterQuality.medium,
+          );
+        },
+        // 캐시 최적화
+        cacheWidth: width.toInt(),
+        cacheHeight: height.toInt(),
+        filterQuality: FilterQuality.medium,
+      ),
     );
   }
 
@@ -350,11 +387,9 @@ class _SearchPageState extends State<SearchPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 매장 이미지
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
+            SizedBox(
+              width: 120,
+              height: 120,
               child: _buildStoreImage(storeCard.store_logo, 120, 120),
             ),
             // 매장 정보
@@ -386,7 +421,7 @@ class _SearchPageState extends State<SearchPage> {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            '위치 정보',
+                            storeCard.store_address ?? '위치 정보 없음',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey[600],
@@ -416,71 +451,93 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Future<void> searchStore(String item) async {
-    const String baseUrl = 'https://openapi.naver.com/v1/search/local.json';
-    const int display = 1; // 표시할 검색 결과 수
-    double mapx, mapy;
-    // 헤더 추가
-    const headers = {
-      'X-Naver-Client-Id': 'ipCnGcVKtSJXvUmXKkit',
-      'X-Naver-Client-Secret': 'xMb38FealO',
-    };
-
-    // API 호출 URL
-    final url = Uri.parse('$baseUrl?query=$item&display=$display');
-
+  Future<void> searchStore(String query) async {
     try {
-      // GET 요청 전송
-      final response = await http.get(url, headers: headers);
+      // cursor는 null로 첫 페이지 요청, limit은 10 사용
+      final searchResponse =
+          await Api().client.searchStoreByQuery(query, null, 10);
+      final storeList = searchResponse.store;
+      print("검색 결과: ${storeList.length}개");
 
-      if (response.statusCode == 200) {
-        // 성공적인 응답
-        final body = json.decode(response.body);
-        final items = body['items'] as List;
+      if (searchResponse.pagination != null) {
+        final pagination = searchResponse.pagination!;
+        print(
+            "페이지네이션 정보 - has_next: ${pagination.has_next}, next_cursor: ${pagination.next_cursor}");
 
-        for (var item in items) {
-          print("${item['mapx']}, ${item['mapy']}");
-
-          final mapxString = item['mapx'] as String;
-          final mapyString = item['mapy'] as String;
-          print("$mapxString, $mapyString");
-          // double로 변환
-          mapx = double.parse(mapxString) / 1e7;
-          mapy = double.parse(mapyString) / 1e7;
-        }
-
-        if (items.isNotEmpty) {
-          // items 내 첫 번째 아이템에서 mapx, mapy를 가져옴
-          final firstItem = items.first;
-          final mapxString = firstItem['mapx'] as String;
-          final mapyString = firstItem['mapy'] as String;
-          final parsedMapx = double.parse(mapxString) / 1e7;
-          final parsedMapy = double.parse(mapyString) / 1e7;
-
-          var searchResponse =
-              await Api().client.searchStore(item, parsedMapy, parsedMapx);
-          var storeList = searchResponse.storeList;
-          print("${searchResponse.storeList}");
+        if (mounted) {
           setState(() {
             storeCards = storeList;
-          });
-        } else {
-          // items가 비어있는 경우 예외 처리
-          print('검색 결과가 없습니다.');
-          setState(() {
-            storeCards = [];
+            _nextCursor = pagination.next_cursor;
+            _hasMore = pagination.has_next;
           });
         }
-
-        // StoreCardList storeList = searchResponse.storeList;
-        // print("검색결과 ${storeList}");
       } else {
-        // 에러 처리
-        print('에러: ${response.statusCode} - ${response.reasonPhrase}');
+        if (mounted) {
+          setState(() {
+            storeCards = storeList;
+            _nextCursor = null;
+            _hasMore = false;
+          });
+        }
       }
     } catch (e) {
-      // 네트워크 오류 처리
-      print('예외 발생: $e');
+      print('검색 API 오류: $e');
+      if (mounted) {
+        setState(() {
+          storeCards = [];
+          _nextCursor = null;
+          _hasMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreStores() async {
+    if (_currentQuery == null || _nextCursor == null || _isLoadingMore) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final searchResponse = await Api()
+          .client
+          .searchStoreByQuery(_currentQuery!, _nextCursor, 10);
+      final storeList = searchResponse.store;
+      print("추가 검색 결과: ${storeList.length}개");
+
+      if (searchResponse.pagination != null) {
+        final pagination = searchResponse.pagination!;
+        print(
+            "추가 페이지네이션 정보 - has_next: ${pagination.has_next}, next_cursor: ${pagination.next_cursor}");
+
+        if (mounted) {
+          setState(() {
+            storeCards.addAll(storeList);
+            _nextCursor = pagination.next_cursor;
+            _hasMore = pagination.has_next;
+            _isLoadingMore = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            storeCards.addAll(storeList);
+            _nextCursor = null;
+            _hasMore = false;
+            _isLoadingMore = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('추가 검색 API 오류: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 }

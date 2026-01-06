@@ -50,18 +50,41 @@ Map<String, dynamic> _$StoreCardListToJson(StoreCardList instance) =>
       'storeList': instance.storeList,
     };
 
+SearchStorePagination _$SearchStorePaginationFromJson(
+        Map<String, dynamic> json) =>
+    SearchStorePagination(
+      cursor: json['cursor'] as int?,
+      next_cursor: json['next_cursor'] as int?,
+      limit: json['limit'] as int,
+      has_next: json['has_next'] as bool,
+    );
+
+Map<String, dynamic> _$SearchStorePaginationToJson(
+        SearchStorePagination instance) =>
+    <String, dynamic>{
+      'cursor': instance.cursor,
+      'next_cursor': instance.next_cursor,
+      'limit': instance.limit,
+      'has_next': instance.has_next,
+    };
+
 SearchStoreGetResponse _$SearchStoreGetResponseFromJson(
         Map<String, dynamic> json) =>
     SearchStoreGetResponse(
-      storeList: (json['storeList'] as List<dynamic>)
+      store: (json['store'] as List<dynamic>)
           .map((e) => StoreCard.fromJson(e as Map<String, dynamic>))
           .toList(),
+      pagination: json['pagination'] == null
+          ? null
+          : SearchStorePagination.fromJson(
+              json['pagination'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$SearchStoreGetResponseToJson(
         SearchStoreGetResponse instance) =>
     <String, dynamic>{
-      'storeList': instance.storeList,
+      'store': instance.store,
+      'pagination': instance.pagination,
     };
 
 NaverStoreResponse _$NaverStoreResponseFromJson(Map<String, dynamic> json) =>

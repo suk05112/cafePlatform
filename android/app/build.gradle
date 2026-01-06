@@ -67,6 +67,8 @@ dependencies {
     implementation platform("com.google.firebase:firebase-bom:33.4.0")
     // implementation 'com.google.firebase:firebase-analytics:21.5.0'
     
+    // Firebase Crashlytics 의존성 명시적으로 추가
+    implementation 'com.google.firebase:firebase-crashlytics'
 }
 
 // LeakCanary 완전 비활성화 - 모든 전이 의존성에서 제외

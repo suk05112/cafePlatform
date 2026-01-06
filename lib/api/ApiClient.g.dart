@@ -189,9 +189,17 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<StoreListResponse> getStoreListByDistrict(String districtCode) async {
+  Future<StoreListResponse> getStoreListByDistrict(
+    String districtCode,
+    String? cursor,
+    int? limit,
+  ) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'cursor': cursor,
+      r'limit': limit,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _result = await _dio
@@ -249,13 +257,18 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<SearchStoreGetResponse> searchStore(
-    String item,
-    double lat,
-    double lng,
+  Future<SearchStoreGetResponse> searchStoreByQuery(
+    String query,
+    int? cursor,
+    int? limit,
   ) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'query': query,
+      r'cursor': cursor,
+      r'limit': limit,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _result = await _dio.fetch<Map<String, dynamic>>(
@@ -266,7 +279,7 @@ class _ApiClient implements ApiClient {
     )
             .compose(
               _dio.options,
-              '/store/search/${item}/${lat}/${lng}',
+              '/store/search',
               queryParameters: queryParameters,
               data: _data,
             )

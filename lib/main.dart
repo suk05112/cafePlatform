@@ -61,7 +61,14 @@ FutureOr<void> main() async {
   // 백그라운드 메시지 핸들러 등록 (Firebase 초기화 전에 등록해야 함)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  await Firebase.initializeApp();
+  // Firebase가 이미 초기화되지 않은 경우에만 초기화
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    // 이미 초기화된 경우 무시
+    print("Firebase 이미 초기화됨 또는 초기화 오류: $e");
+  }
+  
   await _initialize();
 
   runApp(MyApp());
@@ -88,25 +95,30 @@ Future<void> _initialize() async {
     javaScriptAppKey: javaScriptAppKey,
   );
 
-  // Firebase Crashlytics 에러 핸들러 설정 (안전하게)
+  // Firebase Crashlytics 초기화 및 에러 핸들러 설정
   try {
+    // Crashlytics 수집 활성화/비활성화 설정
+    // Debug 모드에서도 테스트를 위해 활성화 (필요시 false로 변경)
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+    
+    // Flutter 에러 핸들러 설정
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-      FlutterError.presentError(errorDetails);
+      // 디버그 모드에서는 원래 에러도 표시
+      if (kDebugMode) {
+        FlutterError.presentError(errorDetails);
+      }
     };
 
+    // 플랫폼 레벨 에러 핸들러 설정
     PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
+    
+    print("✅ Firebase Crashlytics 초기화 완료");
   } catch (e) {
-    print("Firebase Crashlytics 에러 핸들러 설정 오류: $e");
-  }
-
-  if (kDebugMode) {
-    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
-  } else {
-    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+    print("❌ Firebase Crashlytics 에러 핸들러 설정 오류: $e");
   }
 
   // FCM 토큰 초기화 및 저장
@@ -114,9 +126,6 @@ Future<void> _initialize() async {
 
   getPermission();
   await Api().setBaseClient(Api.BASE_URL);
-
-  // Crashlytics 초기화를 기다린 후 테스트 실행
-  await Future.delayed(const Duration(milliseconds: 500));
 }
 
 void handleDeepLink(Uri uri) async {

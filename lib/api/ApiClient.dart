@@ -61,6 +61,8 @@ abstract class ApiClient {
   @GET("/store/list/by-district/{district_code}")
   Future<StoreListResponse> getStoreListByDistrict(
     @Path('district_code') String districtCode,
+    @Query('cursor') String? cursor,
+    @Query('limit') int? limit,
   );
 
   @GET("/store/list/by-location")
@@ -69,11 +71,11 @@ abstract class ApiClient {
     @Query('lng') double lng,
   );
 
-  @GET("/store/search/{item}/{lat}/{lng}")
-  Future<SearchStoreGetResponse> searchStore(
-    @Path('item') String item,
-    @Path('lat') double lat,
-    @Path('lng') double lng,
+  @GET("/store/search")
+  Future<SearchStoreGetResponse> searchStoreByQuery(
+    @Query('query') String query,
+    @Query('cursor') int? cursor,
+    @Query('limit') int? limit,
   );
   @GET("/menu/list/{store_id}")
   Future<MenuGetResponse> getMenuList(

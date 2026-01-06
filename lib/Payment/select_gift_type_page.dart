@@ -215,7 +215,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                           backgroundColor: ColorAssset.mainColor,
                         ),
                         child: const Text(
-                          '지금 바로 주문하기',
+                          '지금 바로 결제하기',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         onPressed: () {

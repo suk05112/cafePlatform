@@ -244,7 +244,8 @@ class AuthInterceptor extends Interceptor {
             appCheckToken = appCheck.toString();
           }
         } catch (e) {
-          print('⚠️ Firebase App Check Token 가져오기 실패: $e');
+          // 개발 모드에서는 App Check 토큰이 없어도 정상 동작
+          print('⚠️ Firebase App Check Token 가져오기 실패 (무시 가능): $e');
         }
 
         // print("app check token ${appCheckToken}");

@@ -5,9 +5,9 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 
 enum TermsType {
-  service('https://www.naver.com'),
-  privacy('https://www.naver.com'),
-  marketing('https://www.naver.com');
+  service('https://www.520company.com/term/user/service/'),
+  privacy('https://www.520company.com/term/user/privacy-consent/'),
+  marketing('https://www.520company.com/term/user/marketing/');
   // service('https://www.502company.com/terms/service'),
   // privacy('https://www.502company.com/terms/privacy'),
   // marketing('https://www.502company.com/terms/marketing');

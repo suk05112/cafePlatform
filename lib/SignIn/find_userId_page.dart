@@ -59,7 +59,7 @@ class _FindUserIDPageState extends State<FindUserIDPage> {
                         // 여기서 phoneNumber 변수에 인증된 전화번호가 들어옵니다.
                         if (phoneAuthResult != null) {
                           print(
-                              "회원가입 전화번호 인증 성공: $phoneAuthResult.phoneNumber");
+                              "전화번호 인증 성공: $phoneAuthResult.phoneNumber");
                           setState(() {
                             phone_number = phoneAuthResult.phoneNumber;
                             phoneCredential = phoneAuthResult.credential;

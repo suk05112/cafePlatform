@@ -673,9 +673,24 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
   late NaverMapController _mapController;
   final Completer<NaverMapController> mapControllerCompleter = Completer();
   bool _isMapReady = false;
+  bool _isDisposed = false;
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    // 지도 컨트롤러 정리
+    if (_isMapReady && mapControllerCompleter.isCompleted) {
+      try {
+        _mapController.dispose();
+      } catch (e) {
+        print('NaverMapWidget dispose 오류 (무시 가능): $e');
+      }
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -693,14 +708,16 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
           consumeSymbolTapEvents: false,
         ),
         onMapReady: (controller) async {
-          if (_isMapReady) return;
+          if (_isMapReady || _isDisposed) return;
           _isMapReady = true;
 
+          if (_isDisposed) return;
           _mapController = controller;
           if (!mapControllerCompleter.isCompleted) {
             mapControllerCompleter.complete(controller);
           }
 
+          if (_isDisposed) return;
           // 마커 추가
           final marker = NMarker(
             id: 'store',
@@ -729,14 +746,16 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
                   consumeSymbolTapEvents: false,
                 ),
                 onMapReady: (controller) async {
-                  if (_isMapReady) return;
+                  if (_isMapReady || _isDisposed) return;
                   _isMapReady = true;
 
+                  if (_isDisposed) return;
                   _mapController = controller;
                   if (!mapControllerCompleter.isCompleted) {
                     mapControllerCompleter.complete(controller);
                   }
 
+                  if (_isDisposed) return;
                   // 마커 추가
                   final marker = NMarker(
                     id: 'store',
