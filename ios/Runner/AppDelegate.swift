@@ -1,5 +1,7 @@
 import Flutter
 import UIKit
+import FirebaseCore
+import FirebaseCrashlytics
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -7,6 +9,9 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Firebase 초기화 (Flutter에서도 초기화되지만, 여기서도 명시적으로 초기화)
+    FirebaseApp.configure()
+    
     GeneratedPluginRegistrant.register(with: self)
 
     let controller = window.rootViewController as! FlutterViewController

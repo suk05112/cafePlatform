@@ -5,9 +5,9 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 
 enum TermsType {
-  service('https://www.520company.com/term/user/service/'),
-  privacy('https://www.520company.com/term/user/privacy-consent/'),
-  marketing('https://www.520company.com/term/user/marketing/');
+  service('https://www.502company.com/term/user/service/'),
+  privacy('https://www.502company.com/term/user/privacy-consent/'),
+  marketing('https://www.502company.com/term/user/marketing/');
   // service('https://www.502company.com/terms/service'),
   // privacy('https://www.502company.com/terms/privacy'),
   // marketing('https://www.502company.com/terms/marketing');
@@ -292,18 +292,31 @@ class _TermsWebViewPageState extends State<TermsWebViewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const CommonAppBar(title: '약관 상세'),
-      body: Stack(
-        children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-            onLoadStart: (controller, url) => setState(() => _isLoading = true),
-            onLoadStop: (controller, url) => setState(() => _isLoading = false),
-          ),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            SizedBox.expand(
+              child: InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+                initialSettings: InAppWebViewSettings(
+                  javaScriptEnabled: true,
+                  domStorageEnabled: true,
+                  useHybridComposition: true,
+                  transparentBackground: false,
+                  enableViewportScale: true,
+                ),
+                onLoadStart: (controller, url) =>
+                    setState(() => _isLoading = true),
+                onLoadStop: (controller, url) =>
+                    setState(() => _isLoading = false),
+              ),
             ),
-        ],
+            if (_isLoading)
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
+          ],
+        ),
       ),
     );
   }

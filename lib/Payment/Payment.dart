@@ -4,8 +4,8 @@
 // import 'package:bootpay/model/extra.dart' as bt_ex;
 // import 'package:bootpay/model/item.dart';
 import 'package:flutter/material.dart';
-import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:cafeplatform/Payment/CompletePayment.dart';
+import 'package:cafeplatform/utils/kakao_share_helper.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/gifticon_response.dart';
@@ -350,30 +350,42 @@ class _PaymentState extends State<Payment> {
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: (menu.menu_image_url != null &&
-                      menu.menu_image_url!.isNotEmpty)
-                  ? Image.network(
-                      menu.menu_image_url!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Image.asset(
-                          'assets/coffee.jpeg',
-                          fit: BoxFit.cover,
-                        );
-                      },
-                    )
-                  : Image.asset(
-                      'assets/coffee.jpeg',
-                      fit: BoxFit.cover,
-                    ),
+          // 메뉴 이미지가 있을 때만 표시
+          if (menu.menu_image_url != null &&
+              menu.menu_image_url!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: Image.network(
+                  menu.menu_image_url!,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const SizedBox.shrink();
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    // 이미지 로드 실패 시에도 표시하지 않음
+                    print('메뉴 이미지 로드 오류: $error');
+                    return const SizedBox.shrink();
+                  },
+                  // 이미지 프레임이 없거나 유효하지 않을 때 처리
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded) return child;
+                    return AnimatedOpacity(
+                      opacity: frame == null ? 0.0 : 1.0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      child: child,
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1000,68 +1012,15 @@ class _PaymentState extends State<Payment> {
   }
 
   Future<void> shareKaKaotalk(Gifticon gifticon) async {
-    final FeedTemplate defaultFeed = FeedTemplate(
-      content: Content(
-        title: '${gifticon.sender}님으로부터 선물이 도착했어요!',
-        description: '${gifticon.sender}님이 선물을 보냈어요. 앱에서 바로 확인해보세요!',
-        // imageUrl: Uri.parse(gifticon.),
-        link: Link(
-            webUrl: Uri.parse('https://developers.kakao.com'),
-            mobileWebUrl: Uri.parse('https://developers.kakao.com')),
-      ),
-      itemContent: ItemContent(
-        profileText: 'Gifnut',
-        profileImageUrl: Uri.parse(
-            'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-        titleImageUrl: Uri.parse(
-            'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-        titleImageText: gifticon.name,
-        titleImageCategory: gifticon.store_name,
-      ),
-      buttons: [
-        Button(
-          title: '사용방법',
-          link: Link(
-            webUrl: Uri.parse(
-                'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-            mobileWebUrl: Uri.parse(
-                'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-          ),
-        ),
-        Button(
-          title: '선물받기',
-          link: Link(
-            // webUrl: Uri.parse('https: //developers.kakao.com'),
-            // mobileWebUrl: Uri.parse('https: //developers.kakao.com'),
-            androidExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
-            iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
-          ),
-        ),
-      ],
-    );
-
-    // 카카오톡 실행 가능 여부 확인
-    bool isKakaoTalkSharingAvailable =
-        await ShareClient.instance.isKakaoTalkSharingAvailable();
-
-    if (isKakaoTalkSharingAvailable) {
-      try {
-        Uri uri =
-            await ShareClient.instance.shareDefault(template: defaultFeed);
-        await ShareClient.instance.launchKakaoTalk(uri);
+    await KakaoShareHelper.shareGifticon(
+      gifticon,
+      onSuccess: () {
         print('카카오톡 공유 완료');
-      } catch (error) {
-        print('카카오톡 공유 실패 $error');
-      }
-    } else {
-      try {
-        Uri shareUrl = await WebSharerClient.instance
-            .makeDefaultUrl(template: defaultFeed);
-        await launchBrowserTab(shareUrl, popupOpen: true);
-      } catch (error) {
-        print('카카오톡 공유 실패 $error');
-      }
-    }
+      },
+      onError: (error) {
+        print('카카오톡 공유 실패: $error');
+      },
+    );
   }
 }
 

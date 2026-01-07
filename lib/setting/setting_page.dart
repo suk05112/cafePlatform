@@ -17,6 +17,9 @@ import 'package:cafeplatform/setting/notification_setting_page.dart';
 import 'package:cafeplatform/setting/terms_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:cafeplatform/utils/kakao_share_helper.dart';
+import 'package:cafeplatform/model/gifticon.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -72,6 +75,7 @@ class _SettingPageState extends State<SettingPage> {
       "문의하기",
       "주문내역",
       "약관 보기",
+      "카카오 공유 테스트",
       "버전",
       "라이선스",
     ];
@@ -86,6 +90,7 @@ class _SettingPageState extends State<SettingPage> {
       Icons.contact_support_outlined,
       Icons.receipt_long_outlined,
       Icons.description_outlined,
+      Icons.share_outlined,
       Icons.info_outline,
       Icons.description_outlined,
     ];
@@ -100,6 +105,7 @@ class _SettingPageState extends State<SettingPage> {
       const InquiryPage(),
       OrderListPage(),
       const TermsPage(),
+      null, // 카카오 공유 테스트는 별도 처리
       const LicensePage(),
       OssLicensesPage(),
     ];
@@ -266,8 +272,47 @@ class _SettingPageState extends State<SettingPage> {
       child: Column(
         children: [
           for (int index = 0; index < allItems.length; index++)
-            if (index == 6)
+            if (index == 7)
               version()
+            else if (index == 6)
+              // 카카오 공유 테스트 버튼
+              GestureDetector(
+                onTap: () => _testKakaoShare(),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          icons[index],
+                          size: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          allItems[index],
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.grey[400],
+                      ),
+                    ],
+                  ),
+                ),
+              )
             else
               GestureDetector(
                 onTap: () => Navigator.push(
@@ -376,6 +421,52 @@ class _SettingPageState extends State<SettingPage> {
   Future<String> getVersion() async {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
     return packageInfo.version;
+  }
+
+  /// 카카오톡 공유 테스트 함수
+  void _testKakaoShare() {
+    // 테스트용 Gifticon 객체 생성
+    final testGifticon = Gifticon(
+      gifticon_id: 999,
+      order_id: 1,
+      name: '테스트 기프티콘',
+      sender: '테스트 보낸사람',
+      receiver: '테스트 받는사람',
+      receiver_phone_number: '01012345678',
+      store_name: '테스트 매장',
+      menu_url: null, // 테스트용으로 null
+      total_price: 5000,
+      description: '카카오 공유 테스트용 기프티콘입니다',
+      validity: DateTime.now().add(Duration(days: 30)),
+      status: 'ACTIVE',
+      type: 1,
+      store_id: 1,
+      store_lat: 37.5665,
+      store_lng: 126.9780,
+    );
+
+    // 카카오톡 공유 실행
+    KakaoShareHelper.shareGifticon(
+      testGifticon,
+      onSuccess: () {
+        Fluttertoast.showToast(
+          msg: '카카오톡 공유 테스트 완료',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.black87,
+          textColor: Colors.white,
+        );
+      },
+      onError: (error) {
+        Fluttertoast.showToast(
+          msg: '카카오톡 공유 실패: $error',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+      },
+    );
   }
 
   Future<BusinessInfoResponse> getBusinessInfo() async {

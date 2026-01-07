@@ -107,14 +107,69 @@ class _MenuPageState extends State<MenuPage>
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Image.asset(
-                          'assets/menu.png',
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return SizedBox(
                           width: 80,
                           height: 80,
-                          fit: BoxFit.cover),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        print('메뉴 이미지 로드 오류: $error');
+                        try {
+                          return Image.asset(
+                            'assets/menu.png',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 80,
+                                height: 80,
+                                color: Colors.grey[200],
+                              );
+                            },
+                          );
+                        } catch (e) {
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey[200],
+                          );
+                        }
+                      },
+                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded) return child;
+                        return AnimatedOpacity(
+                          opacity: frame == null ? 0.0 : 1.0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                          child: child,
+                        );
+                      },
                     )
-                  : Image.asset('assets/menu.png',
-                      width: 80, height: 80, fit: BoxFit.cover),
+                  : Image.asset(
+                      'assets/menu.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[200],
+                        );
+                      },
+                    ),
             ),
             const SizedBox(width: 18),
             // 오른쪽 텍스트 영역 (세로정렬)

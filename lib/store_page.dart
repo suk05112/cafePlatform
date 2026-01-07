@@ -436,9 +436,37 @@ class _StorePageState extends State<StorePage> {
                         width: 80,
                         height: 80,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => SizedBox.shrink(),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          print("메뉴 이미지 로드 오류: $error");
+                          return const SizedBox.shrink();
+                        },
+                        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                          if (wasSynchronouslyLoaded) return child;
+                          return AnimatedOpacity(
+                            opacity: frame == null ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                            child: child,
+                          );
+                        },
                       )
-                    : SizedBox.shrink(),
+                    : const SizedBox.shrink(),
               ),
             ],
           ],
@@ -540,7 +568,9 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
     return tempFile;
   }
 
-  Widget imageSlider(image, int index) => Container(
+  Widget imageSlider(image, int index) {
+    try {
+      return Container(
         width: double.infinity,
         height: 240,
         color: Colors.white,
@@ -552,15 +582,43 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             print("이미지 로드 오류남.$error");
-            return Image(
-              image: AssetImage('assets/coffee.jpeg'),
-              width: double.infinity,
-              height: 240,
-              fit: BoxFit.cover,
-            );
+            // AssetImage도 실패할 수 있으므로 try-catch 처리
+            try {
+              return Image(
+                image: const AssetImage('assets/coffee.jpeg'),
+                width: double.infinity,
+                height: 240,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // Asset 이미지도 실패하면 빈 컨테이너 반환
+                  return Container(
+                    width: double.infinity,
+                    height: 240,
+                    color: Colors.grey[200],
+                  );
+                },
+              );
+            } catch (e) {
+              // Asset 이미지 로드 실패 시 빈 컨테이너 반환
+              return Container(
+                width: double.infinity,
+                height: 240,
+                color: Colors.grey[200],
+              );
+            }
           },
         ),
       );
+    } catch (e) {
+      print("이미지 슬라이더 오류: $e");
+      // 전체적으로 실패하면 빈 컨테이너 반환
+      return Container(
+        width: double.infinity,
+        height: 240,
+        color: Colors.grey[200],
+      );
+    }
+  }
 
   Widget indicator(length) => Container(
       margin: const EdgeInsets.only(bottom: 20.0),

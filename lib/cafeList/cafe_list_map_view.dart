@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -58,6 +59,9 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
   bool _isDisposed = false;
   NLatLng? _initialTarget;
+  bool _isInitialLoadDone = false; // 초기 로드 완료 플래그
+  bool _isUpdatingMarkers = false; // 마커 업데이트 중 플래그
+  DateTime? _lastUpdateTime; // 마지막 업데이트 시간
 
   @override
   void initState() {
@@ -103,54 +107,61 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     if (_defaultIcon == null && _selectedIcon == null) {
       _initIcons();
     }
-    // 초기 데이터 로드 (지도 뷰 전용) - 위치 기반으로 매장 가져오기
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    // 지도 뷰에 데이터가 없으면 초기 위치 기반으로 데이터 로드
-    if (storeProvider.mapViewStores == null ||
-        storeProvider.mapViewStores!.isEmpty) {
-      // 초기 타겟 위치 결정 후 위치 기반으로 매장 가져오기
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (mounted) {
-          try {
-            // GPS 위치 시도
-            double? gpsLat;
-            double? gpsLng;
-
+    // 초기 데이터 로드 (지도 뷰 전용) - 한 번만 실행
+    if (!_isInitialLoadDone) {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      // 지도 뷰에 데이터가 없으면 초기 위치 기반으로 데이터 로드
+      if (storeProvider.mapViewStores == null ||
+          storeProvider.mapViewStores!.isEmpty) {
+        _isInitialLoadDone = true; // 플래그 설정
+        // 초기 타겟 위치 결정 후 위치 기반으로 매장 가져오기
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (mounted && !_isDisposed) {
             try {
-              final serviceEnabled =
-                  await Geolocator.isLocationServiceEnabled();
-              if (serviceEnabled) {
-                LocationPermission permission =
-                    await Geolocator.checkPermission();
-                if (permission == LocationPermission.denied) {
-                  permission = await Geolocator.requestPermission();
+              // GPS 위치 시도
+              double? gpsLat;
+              double? gpsLng;
+
+              try {
+                final serviceEnabled =
+                    await Geolocator.isLocationServiceEnabled();
+                if (serviceEnabled) {
+                  LocationPermission permission =
+                      await Geolocator.checkPermission();
+                  if (permission == LocationPermission.denied) {
+                    permission = await Geolocator.requestPermission();
+                  }
+                  if (permission != LocationPermission.denied &&
+                      permission != LocationPermission.deniedForever) {
+                    final position = await Geolocator.getCurrentPosition(
+                      desiredAccuracy: LocationAccuracy.high,
+                    );
+                    gpsLat = position.latitude;
+                    gpsLng = position.longitude;
+                  }
                 }
-                if (permission != LocationPermission.denied &&
-                    permission != LocationPermission.deniedForever) {
-                  final position = await Geolocator.getCurrentPosition(
-                    desiredAccuracy: LocationAccuracy.high,
-                  );
-                  gpsLat = position.latitude;
-                  gpsLng = position.longitude;
-                }
+              } catch (e) {
+                print('GPS 위치 가져오기 오류: $e');
               }
+
+              // GPS 위치가 있으면 GPS 위치로, 없으면 서울로 매장 가져오기
+              final targetLat = gpsLat ?? 37.5665;
+              final targetLng = gpsLng ?? 126.9780;
+
+              print('지도 뷰 초기 데이터 로드: lat=$targetLat, lng=$targetLng');
+              storeProvider.fetchMapViewStoresByLocation(targetLat, targetLng);
             } catch (e) {
-              print('GPS 위치 가져오기 오류: $e');
+              print('초기 데이터 로드 오류: $e');
+              // 오류 시 기본 위치(서울)로 시도
+              if (mounted && !_isDisposed) {
+                storeProvider.fetchMapViewStoresByLocation(37.5665, 126.9780);
+              }
             }
-
-            // GPS 위치가 있으면 GPS 위치로, 없으면 서울로 매장 가져오기
-            final targetLat = gpsLat ?? 37.5665;
-            final targetLng = gpsLng ?? 126.9780;
-
-            print('지도 뷰 초기 데이터 로드: lat=$targetLat, lng=$targetLng');
-            storeProvider.fetchMapViewStoresByLocation(targetLat, targetLng);
-          } catch (e) {
-            print('초기 데이터 로드 오류: $e');
-            // 오류 시 기본 위치(서울)로 시도
-            storeProvider.fetchMapViewStoresByLocation(37.5665, 126.9780);
           }
-        }
-      });
+        });
+      } else {
+        _isInitialLoadDone = true; // 이미 데이터가 있으면 플래그만 설정
+      }
     }
   }
 
@@ -158,28 +169,39 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     if (!mounted) return;
 
     try {
-      // 작은 크기의 핀 아이콘 생성 (30x40 픽셀)
-      _defaultIcon = await NOverlayImage.fromWidget(
-        context: context,
-        widget: SizedBox(
-          width: 30,
-          height: 40,
-          child: Image.asset('assets/pin.png', fit: BoxFit.contain),
-        ),
-        size: const Size(30, 40),
-      );
+      // iOS에서는 fromAssetImage 사용, Android에서는 fromWidget 사용
+      if (Platform.isIOS) {
+        // iOS: asset 이미지를 직접 사용 (크기 파라미터 없음)
+        _defaultIcon = await NOverlayImage.fromAssetImage('assets/pin.png');
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      _selectedIcon = await NOverlayImage.fromWidget(
-        context: context,
-        widget: SizedBox(
-          width: 30,
-          height: 40,
-          child: Image.asset('assets/selected_pin.png', fit: BoxFit.contain),
-        ),
-        size: const Size(30, 40),
-      );
+        _selectedIcon =
+            await NOverlayImage.fromAssetImage('assets/selected_pin.png');
+      } else {
+        // Android: fromWidget 사용 (크기 조정 가능)
+        _defaultIcon = await NOverlayImage.fromWidget(
+          context: context,
+          widget: SizedBox(
+            width: 45,
+            height: 60,
+            child: Image.asset('assets/pin.png', fit: BoxFit.contain),
+          ),
+          size: const Size(45, 60),
+        );
+
+        if (!mounted) return;
+
+        _selectedIcon = await NOverlayImage.fromWidget(
+          context: context,
+          widget: SizedBox(
+            width: 45,
+            height: 60,
+            child: Image.asset('assets/selected_pin.png', fit: BoxFit.contain),
+          ),
+          size: const Size(45, 60),
+        );
+      }
 
       if (mounted) {
         setState(() {});
@@ -187,34 +209,78 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     } catch (e) {
       print('아이콘 초기화 오류: $e');
       // 오류가 발생해도 계속 진행
+      // fallback으로 asset 이미지 직접 사용 시도
+      try {
+        if (_defaultIcon == null) {
+          _defaultIcon = await NOverlayImage.fromAssetImage('assets/pin.png');
+        }
+        if (_selectedIcon == null && mounted) {
+          _selectedIcon =
+              await NOverlayImage.fromAssetImage('assets/selected_pin.png');
+        }
+        if (mounted) {
+          setState(() {});
+        }
+      } catch (fallbackError) {
+        print('Fallback 아이콘 초기화 오류: $fallbackError');
+      }
     }
   }
 
   @override
   void didUpdateWidget(covariant CafeListMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Provider에서 가져온 데이터가 변경되면 마커 업데이트
-    _updateMarkers();
+    // Provider에서 가져온 데이터가 변경되면 마커 업데이트 (중복 방지)
+    _updateMarkersDebounced();
+  }
+
+  Future<void> _updateMarkersDebounced() async {
+    // 500ms 이내에 업데이트가 있었으면 스킵
+    final now = DateTime.now();
+    if (_lastUpdateTime != null &&
+        now.difference(_lastUpdateTime!) < const Duration(milliseconds: 500)) {
+      print('_updateMarkersDebounced: 너무 빠른 업데이트 요청, 스킵');
+      return;
+    }
+    _lastUpdateTime = now;
+    await _updateMarkers();
   }
 
   Future<void> _updateMarkers() async {
+    // 이미 업데이트 중이면 스킵
+    if (_isUpdatingMarkers) {
+      print('_updateMarkers: 이미 업데이트 중, 스킵');
+      return;
+    }
+
     if (!mapControllerCompleter.isCompleted || !mounted || _isDisposed) return;
+
+    _isUpdatingMarkers = true;
     try {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
       final storesForMap = _effectiveStores(storeProvider);
       print('_updateMarkers: 매장 개수: ${storesForMap.length}');
-      if (!mounted || _isDisposed) return;
+      if (!mounted || _isDisposed) {
+        _isUpdatingMarkers = false;
+        return;
+      }
       if (storesForMap.isEmpty) {
         print('_updateMarkers: 매장 리스트가 비어있어 마커 업데이트를 건너뜁니다.');
+        _isUpdatingMarkers = false;
         return;
       }
       await _mapController.clearOverlays();
-      if (!mounted || _isDisposed) return;
+      if (!mounted || _isDisposed) {
+        _isUpdatingMarkers = false;
+        return;
+      }
       await _addMarkers(_mapController, storesForMap);
       print('_updateMarkers: 마커 업데이트 완료');
     } catch (e) {
       print('마커 업데이트 오류: $e');
       print('스택 트레이스: ${StackTrace.current}');
+    } finally {
+      _isUpdatingMarkers = false;
     }
   }
 
@@ -261,10 +327,10 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           'build: 첫 번째 매장 좌표 = ${storesForMap.first.store_lat}, ${storesForMap.first.store_lng}');
     }
 
-    // Provider 데이터가 변경되면 마커 업데이트
+    // Provider 데이터가 변경되면 마커 업데이트 (중복 방지)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && !_isDisposed && mapControllerCompleter.isCompleted) {
-        _updateMarkers();
+        _updateMarkersDebounced();
       }
     });
 
@@ -301,9 +367,27 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
             if (mounted && !_isDisposed) {
               try {
-                print('onMapReady: 마커 추가 시작, 매장 개수: ${storesForMap.length}');
-                await _addMarkers(_mapController, storesForMap);
-                print('onMapReady: 마커 추가 완료');
+                // 아이콘이 초기화되지 않았으면 초기화 대기
+                if (_defaultIcon == null || _selectedIcon == null) {
+                  print('onMapReady: 아이콘 초기화 대기 중...');
+                  // 아이콘 초기화가 완료될 때까지 대기
+                  for (int i = 0; i < 30; i++) {
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    if (_defaultIcon != null && _selectedIcon != null) {
+                      print('onMapReady: 아이콘 초기화 완료');
+                      break;
+                    }
+                    if (!mounted || _isDisposed) return;
+                  }
+                }
+
+                // onMapReady에서는 마커가 이미 있으면 추가하지 않음
+                if (!_isUpdatingMarkers) {
+                  print('onMapReady: 마커 추가 시작, 매장 개수: ${storesForMap.length}');
+                  await _mapController.clearOverlays();
+                  await _addMarkers(_mapController, storesForMap);
+                  print('onMapReady: 마커 추가 완료');
+                }
 
                 // 마커가 있으면 카메라를 마커 위치로 이동
                 if (storesForMap.isNotEmpty) {
@@ -398,7 +482,8 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 100), // 하단 카드 위에 배치
+              padding:
+                  const EdgeInsets.only(bottom: 140), // 하단 카드 위에 배치 (위로 올림)
               child: _buildLocationSearchButton(),
             ),
           ),
@@ -597,6 +682,39 @@ class _CafeListMapViewState extends State<CafeListMapView> {
       return;
     }
 
+    // 아이콘이 초기화되지 않았으면 초기화 대기
+    if (_defaultIcon == null || _selectedIcon == null) {
+      print('_addMarkers: 아이콘 초기화 대기 중...');
+      // 최대 3초 대기
+      for (int i = 0; i < 30; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (_defaultIcon != null && _selectedIcon != null) {
+          print('_addMarkers: 아이콘 초기화 완료');
+          break;
+        }
+        if (!mounted || _isDisposed) return;
+      }
+
+      // 여전히 아이콘이 없으면 fallback으로 직접 생성 시도
+      if (_defaultIcon == null) {
+        try {
+          _defaultIcon = await NOverlayImage.fromAssetImage('assets/pin.png');
+          print('_addMarkers: Fallback 아이콘 생성 완료 (default)');
+        } catch (e) {
+          print('_addMarkers: Fallback 아이콘 생성 실패: $e');
+        }
+      }
+      if (_selectedIcon == null) {
+        try {
+          _selectedIcon =
+              await NOverlayImage.fromAssetImage('assets/selected_pin.png');
+          print('_addMarkers: Fallback 아이콘 생성 완료 (selected)');
+        } catch (e) {
+          print('_addMarkers: Fallback 아이콘 생성 실패: $e');
+        }
+      }
+    }
+
     // 유효한 좌표를 가진 매장만 필터링
     final validStores = stores
         .where((store) => _isValidCoordinate(store.store_lat, store.store_lng))
@@ -614,6 +732,8 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
     print(
         '_addMarkers: ${validStores.length}개 매장에 대한 마커 추가 시작 (전체 ${stores.length}개 중)');
+    print(
+        '_addMarkers: 아이콘 상태 - defaultIcon: ${_defaultIcon != null}, selectedIcon: ${_selectedIcon != null}');
 
     try {
       int addedCount = 0;
@@ -631,17 +751,39 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           } else {
             _selectedStore.value = store;
             if (_activeMarker != null && _activeMarker != overlay) {
-              _activeMarker!.setIcon(_defaultIcon ??
-                  NOverlayImage.fromAssetImage('assets/pin.png'));
+              try {
+                _activeMarker!.setIcon(_defaultIcon ??
+                    NOverlayImage.fromAssetImage('assets/pin.png'));
+              } catch (e) {
+                print('마커 아이콘 변경 오류: $e');
+              }
             }
-            overlay.setIcon(_selectedIcon ??
-                NOverlayImage.fromAssetImage('assets/selected_pin.png'));
+            try {
+              overlay.setIcon(_selectedIcon ??
+                  NOverlayImage.fromAssetImage('assets/selected_pin.png'));
+            } catch (e) {
+              print('선택된 마커 아이콘 설정 오류: $e');
+            }
             _activeMarker = overlay;
           }
         });
 
-        marker.setIcon(
-            _defaultIcon ?? NOverlayImage.fromAssetImage('assets/pin.png'));
+        // 마커 아이콘 설정 (아이콘이 없어도 마커는 표시되도록)
+        try {
+          if (_defaultIcon != null) {
+            marker.setIcon(_defaultIcon!);
+          } else {
+            // 아이콘이 없으면 기본 마커 사용 시도
+            try {
+              marker.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+            } catch (e) {
+              print('기본 마커 아이콘 설정 실패: $e');
+              // 아이콘 없이도 마커는 표시됨
+            }
+          }
+        } catch (e) {
+          print('마커 아이콘 설정 오류: $e');
+        }
 
         try {
           await controller.addOverlay(marker);

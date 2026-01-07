@@ -4,7 +4,7 @@ import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
+import 'package:cafeplatform/utils/kakao_share_helper.dart';
 
 class CompletePayment extends StatefulWidget {
   final int? giftType; // 0: 나에게 선물하기, 1: 선물하기
@@ -144,65 +144,19 @@ class _CompletePaymentState extends State<CompletePayment>
     });
 
     try {
-      final gifticon = widget.gifticon!;
-      final FeedTemplate defaultFeed = FeedTemplate(
-        content: Content(
-          title: '${gifticon.sender}님으로부터 선물이 도착했어요!',
-          description: '${gifticon.sender}님이 선물을 보냈어요. 앱에서 바로 확인해보세요!',
-          link: Link(
-            webUrl: Uri.parse('https://developers.kakao.com'),
-            mobileWebUrl: Uri.parse('https://developers.kakao.com'),
-          ),
-        ),
-        itemContent: ItemContent(
-          profileText: 'Gifnut',
-          profileImageUrl: Uri.parse(
-              'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-          titleImageUrl: Uri.parse(
-              'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-          titleImageText: gifticon.name,
-          titleImageCategory: gifticon.store_name,
-        ),
-        buttons: [
-          Button(
-            title: '사용방법',
-            link: Link(
-              webUrl: Uri.parse(
-                  'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-              mobileWebUrl: Uri.parse(
-                  'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-            ),
-          ),
-          Button(
-            title: '선물받기',
-            link: Link(
-              androidExecutionParams: {
-                'gifticon_id': '${gifticon.gifticon_id}'
-              },
-              iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
-            ),
-          ),
-        ],
+      await KakaoShareHelper.shareGifticon(
+        widget.gifticon!,
+        onSuccess: () {
+          print('카카오톡 공유 완료');
+          // 공유 성공 시 저장된 정보 제거
+          _clearUnsentGift();
+        },
+        onError: (error) {
+          print('카카오톡 공유 실패: $error');
+        },
       );
-
-      bool isKakaoTalkSharingAvailable =
-          await ShareClient.instance.isKakaoTalkSharingAvailable();
-
-      if (isKakaoTalkSharingAvailable) {
-        Uri uri =
-            await ShareClient.instance.shareDefault(template: defaultFeed);
-        await ShareClient.instance.launchKakaoTalk(uri);
-        print('카카오톡 공유 완료');
-        // 공유 성공 시 저장된 정보 제거
-        await _clearUnsentGift();
-      } else {
-        Uri shareUrl = await WebSharerClient.instance
-            .makeDefaultUrl(template: defaultFeed);
-        // 웹 공유는 카카오톡 앱이 없을 때만 사용
-        print('카카오톡 미설치 - 웹 공유 URL: $shareUrl');
-      }
     } catch (error) {
-      print('카카오톡 공유 실패 $error');
+      print('카카오톡 공유 오류: $error');
     } finally {
       setState(() {
         _isSharing = false;

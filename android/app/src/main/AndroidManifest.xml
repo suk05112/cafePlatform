@@ -34,6 +34,28 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- 딥링크 처리 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- <data android:host="www.502company.com" /> -->
+                <data android:scheme="https" android:host="www.502company.com" android:pathPrefix="/gift" />
+                <data android:scheme="https" android:host="www.502company.com" android:pathPrefix="/share" />
+                <!-- 카카오톡 딥링크 -->
+                <data android:scheme="kakao" android:host="open" />
+                <data android:scheme="kakao" android:host="www.502company.com" android:pathPrefix="/gift" />
+                <data android:scheme="kakao" android:host="www.502company.com" android:pathPrefix="/share" />
+                <!-- 커스텀 스킴 -->
+                <data android:scheme="gifnut" android:host="gift" />
+            </intent-filter>
+            <!-- 앱링크 처리 (HTTPS) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.502company.com" android:pathPrefix="/gift" />
+            </intent-filter>
         </activity>
            <!-- 카카오 로그인 커스텀 URL 스킴 설정 -->
         <activity 
