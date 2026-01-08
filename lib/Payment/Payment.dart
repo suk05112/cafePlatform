@@ -46,6 +46,30 @@ class _PaymentState extends State<Payment> {
   PaymentMethodWidgetControl? _paymentMethodWidgetControl;
   AgreementWidgetControl? _agreementWidgetControl;
 
+  /// 한국 전화번호를 국제 형식으로 변환 (01012345678 -> +821012345678)
+  String _convertToInternationalFormat(String phoneNumber) {
+    // 하이픈, 공백 등 모든 비숫자 제거
+    final digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    
+    String internationalFormat;
+    
+    // 첫 번째 0을 제거하고 82를 앞에 추가
+    if (digitsOnly.startsWith('0')) {
+      internationalFormat = '82${digitsOnly.substring(1)}';
+    }
+    // 이미 82로 시작하는 경우 그대로 사용
+    else if (digitsOnly.startsWith('82')) {
+      internationalFormat = digitsOnly;
+    }
+    // 그 외의 경우 82를 앞에 추가
+    else {
+      internationalFormat = '82$digitsOnly';
+    }
+    
+    // + 기호 추가
+    return '+$internationalFormat';
+  }
+
   // 주문 정보 저장
   int? _orderId;
 
@@ -578,7 +602,10 @@ class _PaymentState extends State<Payment> {
             gifticon.name = widget.menu.name ?? "";
             gifticon.sender = user.name;
             gifticon.receiver = receiver;
-            gifticon.receiver_phone_number = receiverPhoneNumber;
+            // 전화번호를 국제 형식으로 변환 (01012345678 -> 821012345678)
+            final internationalPhone = _convertToInternationalFormat(receiverPhoneNumber);
+            print('전화번호 변환: $receiverPhoneNumber -> $internationalPhone');
+            gifticon.receiver_phone_number = internationalPhone;
             gifticon.payment = paymentValue;
             gifticon.menu_id = widget.menu.menu_id;
             gifticon.total_price = widget.menu.price;

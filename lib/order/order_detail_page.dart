@@ -190,11 +190,16 @@ class _OrderDetailPageState extends State<OrderDetailPage>
             ),
           ),
           SizedBox(height: 16),
-          ...orderDetail.gifticons.map((gifticon) => Padding(
-                padding: EdgeInsets.only(bottom: 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          ...orderDetail.gifticons.map((gifticon) {
+            final hasImage =
+                gifticon.menu_url != null && gifticon.menu_url!.isNotEmpty;
+            return Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 메뉴 이미지가 있을 경우에만 표시
+                  if (hasImage)
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
@@ -202,77 +207,58 @@ class _OrderDetailPageState extends State<OrderDetailPage>
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: gifticon.menu_url != null &&
-                                gifticon.menu_url!.isNotEmpty
-                            ? Image.network(
-                                gifticon.menu_url!,
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 100,
-                                    height: 100,
-                                    color: Colors.grey[100],
-                                    child: Icon(
-                                      Icons.card_giftcard,
-                                      size: 50,
-                                      color: Colors.grey[400],
-                                    ),
-                                  );
-                                },
-                              )
-                            : Container(
-                                width: 100,
-                                height: 100,
-                                color: Colors.grey[100],
-                                child: Icon(
-                                  Icons.card_giftcard,
-                                  size: 50,
-                                  color: Colors.grey[400],
-                                ),
-                              ),
+                        child: Image.network(
+                          gifticon.menu_url!,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return SizedBox.shrink();
+                          },
+                        ),
                       ),
                     ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
+                  // 이미지가 있을 때와 없을 때 텍스트 정렬을 맞추기 위해 간격 추가
+                  SizedBox(width: hasImage ? 16 : 0),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          gifticon.menu_name ?? '메뉴명 없음',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          "${gifticon.menu_price ?? 0}원",
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (gifticon.type == 2) ...[
+                          SizedBox(height: 4),
                           Text(
-                            gifticon.menu_name ?? '메뉴명 없음',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
+                            '선물: ${gifticon.receiver ?? ""}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            "${gifticon.menu_price ?? 0}원",
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (gifticon.type == 2) ...[
-                            SizedBox(height: 4),
-                            Text(
-                              '선물: ${gifticon.receiver ?? ""}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
                         ],
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

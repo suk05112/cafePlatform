@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -392,9 +393,13 @@ class _GifticonPageState extends State<GifticonPage>
               // '선물주문일', '${gifticon.created_time?.toDateTimeString}'),
               gifticonInfoRow('쿠폰상태',
                   gifticonStatus(gifticon.status ?? "", gifticon.validity)),
+              gifticonInfoRow('교환처', gifticon.store_address ?? '정보 없음'),
             ],
           ),
         ),
+        SizedBox(height: 16),
+        // 유의사항 섹션
+        _buildPrecautionsSection(),
         SizedBox(height: 16),
         Container(
           padding: EdgeInsets.all(16),
@@ -430,6 +435,87 @@ class _GifticonPageState extends State<GifticonPage>
           longitude: gifticon.store_lng,
         ),
       ],
+    );
+  }
+
+  Widget _buildPrecautionsSection() {
+    final precautions = [
+      '해당 상품권의 경우 잔액 환불 불가합니다.',
+      '해당 상품권은 잔액관리 기능을 제공하지 않습니다.',
+      '모바일 상품권은 구매 시 현금영수증이 발행되지 않으며, 발행 여부는 실제 사용처에 문의 부탁 드립니다.',
+      '한시적으로 제공되는 무료 상품권 및 프로모션 연계 상품의 경우 유효기간 연장 및 환불이 불가합니다.',
+      '교환권은 사용처 매장의 재고 상황에 따라 동일 상품으로 교환이 어려울 수 있습니다.',
+      '일부 상품의 경우 각 매장별 금액이 상이할 수 있으며, 일부 매장에서는 추가 금액 결제가 필요할 수 있습니다.',
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: Colors.orange[700],
+                ),
+                SizedBox(width: 6),
+                Text(
+                  '유의사항',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: Colors.grey[200]),
+          ...precautions.map((precaution) => Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: 2, right: 8),
+                      child: Text(
+                        '•',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        precaution,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[700],
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          SizedBox(height: 4),
+        ],
+      ),
     );
   }
 
@@ -929,9 +1015,109 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
   final Completer<NaverMapController> mapControllerCompleter = Completer();
   bool _isMapReady = false;
   bool _isDisposed = false;
+  NOverlayImage? _markerIcon;
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_markerIcon == null) {
+      _initMarkerIcon();
+    }
+  }
+
+  Future<void> _initMarkerIcon() async {
+    if (!mounted) return;
+
+    try {
+      // iOS에서는 fromAssetImage 사용, Android에서는 fromWidget 사용
+      if (Platform.isIOS) {
+        // iOS: asset 이미지를 직접 사용 (크기 파라미터 없음)
+        _markerIcon = await NOverlayImage.fromAssetImage('assets/pin.png');
+      } else {
+        // Android: fromWidget 사용 (크기 조정 가능)
+        if (!mounted) return;
+        _markerIcon = await NOverlayImage.fromWidget(
+          context: context,
+          widget: SizedBox(
+            width: 45,
+            height: 60,
+            child: Image.asset('assets/pin.png', fit: BoxFit.contain),
+          ),
+          size: const Size(45, 60),
+        );
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('아이콘 초기화 오류: $e');
+      // 오류가 발생해도 계속 진행
+      // fallback으로 asset 이미지 직접 사용 시도
+      try {
+        if (_markerIcon == null) {
+          _markerIcon = await NOverlayImage.fromAssetImage('assets/pin.png');
+        }
+        if (mounted) {
+          setState(() {});
+        }
+      } catch (fallbackError) {
+        print('Fallback 아이콘 초기화 오류: $fallbackError');
+      }
+    }
+  }
+
+  Future<void> _addMarker() async {
+    if (_isDisposed || !_isMapReady) {
+      print('마커 추가 스킵: disposed=$_isDisposed, mapReady=$_isMapReady');
+      return;
+    }
+
+    // 마커 아이콘이 없으면 초기화 시도
+    if (_markerIcon == null) {
+      print('마커 아이콘이 없어서 초기화 시도');
+      await _initMarkerIcon();
+      if (_markerIcon == null || _isDisposed || !_isMapReady) {
+        print('마커 아이콘 초기화 실패 또는 disposed');
+        return;
+      }
+    }
+
+    try {
+      print('마커 추가 시도: lat=${widget.latitude}, lng=${widget.longitude}');
+      final marker = NMarker(
+        id: 'store',
+        position: NLatLng(widget.latitude, widget.longitude),
+      );
+
+      // 아이콘 설정
+      if (_markerIcon != null) {
+        marker.setIcon(_markerIcon!);
+        print('마커 아이콘 설정 완료');
+      } else {
+        // 아이콘이 여전히 null이면 기본 아이콘 생성 시도
+        print('마커 아이콘이 null, 기본 아이콘 생성 시도');
+        try {
+          final defaultIcon =
+              await NOverlayImage.fromAssetImage('assets/pin.png');
+          marker.setIcon(defaultIcon);
+          _markerIcon = defaultIcon; // 캐시에 저장
+        } catch (iconError) {
+          print('기본 아이콘 생성 실패: $iconError');
+          // 아이콘 없이 마커 추가 시도 (기본 마커 사용)
+        }
+      }
+
+      await _mapController.addOverlay(marker);
+      print("마커 추가 완료: lat=${widget.latitude}, lng=${widget.longitude}");
+    } catch (e) {
+      print('마커 추가 오류: $e');
+      print('마커 추가 오류 스택: ${e.toString()}');
+    }
+  }
 
   @override
   void dispose() {
@@ -951,7 +1137,6 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
   Widget build(BuildContext context) {
     super.build(context); // AutomaticKeepAliveClientMixin 요구사항
 
-    print("호출");
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       height: MediaQuery.of(context).size.height / 3,
@@ -978,7 +1163,7 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
             consumeSymbolTapEvents: false,
           ),
           onMapReady: (controller) async {
-            if (_isMapReady || _isDisposed) return; // 이미 초기화된 경우 중복 호출 방지
+            if (_isMapReady || _isDisposed) return;
             _isMapReady = true;
 
             if (_isDisposed) return;
@@ -987,16 +1172,28 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
               mapControllerCompleter.complete(controller);
             }
 
-            if (_isDisposed) return;
-            // 마커 추가
-            final marker = NMarker(
-              id: 'store',
-              position: NLatLng(widget.latitude, widget.longitude),
-            );
-            marker.setIcon(NOverlayImage.fromAssetImage("assets/pin.png"));
-            controller.addOverlay(marker);
-
             print("Naver Map is ready.");
+
+            // 지도가 준비되면 마커 추가
+            if (!_isDisposed) {
+              // 마커 아이콘이 없으면 먼저 초기화
+              if (_markerIcon == null) {
+                await _initMarkerIcon();
+              }
+
+              // 아이콘이 준비될 때까지 대기 (최대 3초)
+              int retryCount = 0;
+              while (_markerIcon == null && retryCount < 30 && !_isDisposed) {
+                await Future.delayed(Duration(milliseconds: 100));
+                retryCount++;
+              }
+
+              // 약간의 지연 후 마커 추가 (지도 렌더링 완료 대기)
+              await Future.delayed(Duration(milliseconds: 300));
+              if (!_isDisposed && _isMapReady) {
+                await _addMarker();
+              }
+            }
           },
         ),
       ),

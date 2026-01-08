@@ -444,7 +444,8 @@ class _StorePageState extends State<StorePage> {
                             child: Center(
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                value: loadingProgress.expectedTotalBytes != null
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
                                     ? loadingProgress.cumulativeBytesLoaded /
                                         loadingProgress.expectedTotalBytes!
                                     : null,
@@ -456,7 +457,8 @@ class _StorePageState extends State<StorePage> {
                           print("메뉴 이미지 로드 오류: $error");
                           return const SizedBox.shrink();
                         },
-                        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                        frameBuilder:
+                            (context, child, frame, wasSynchronouslyLoaded) {
                           if (wasSynchronouslyLoaded) return child;
                           return AnimatedOpacity(
                             opacity: frame == null ? 0.0 : 1.0,
@@ -525,47 +527,106 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
 
   Future<List<File>> _loadImages() async {
     print("_loadImages ${widget.store?.store_id}");
-    late List<String> storePhotoUrls;
+    List<String> storePhotoUrls;
     final storeId = widget.store?.store_id ?? 0;
 
     if (widget.store != null && widget.store!.store_id < 0) {
-      storePhotoUrls = [
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAsW8gyaLjwcFohPr_m6sWhErYl8NTohIcWMNUzhQR-yl4qjqzeEdPvNy99U-bvTgp5TA&usqp=CAU",
-        "https://media.istockphoto.com/id/1428594094/ko/%EC%82%AC%EC%A7%84/%EB%82%98%EB%AC%B4-%ED%85%8C%EC%9D%B4%EB%B8%94-%EC%BB%A4%ED%94%BC-%EB%A9%94%EC%9D%B4%EC%BB%A4-%ED%8C%A8%EC%8A%A4%ED%8A%B8%EB%A6%AC-%EB%B0%8F-%ED%8E%9C%EB%8D%98%ED%8A%B8-%EC%A1%B0%EB%AA%85%EC%9D%B4%EC%9E%88%EB%8A%94-%EB%B9%88-%EC%BB%A4%ED%94%BC-%EC%88%8D-%EC%9D%B8%ED%85%8C%EB%A6%AC%EC%96%B4.jpg?s=612x612&w=0&k=20&c=5bHJXVEZ4D9zsN_ZV-XVZsTxwxL5GdUOo5D0PPs3fsI=",
-        "https://img.freepik.com/free-photo/cup-coffee-cookie-put-windowsill_181624-22130.jpg?semt=ais_hybrid&w=740&q=80"
-      ];
+      // 더미 데이터인 경우에도 빈 리스트 반환 (기본 이미지 1장만 표시)
+      storePhotoUrls = [];
     } else {
+      // 실제 매장 사진 URL이 있으면 사용, 없으면 빈 리스트
       storePhotoUrls = widget.store?.store_photo_urls ?? [];
+      // store_photo_urls가 비어있거나 모든 URL이 유효하지 않은 경우 빈 리스트 유지
+      storePhotoUrls = storePhotoUrls.where((url) => url.isNotEmpty).toList();
     }
+
     print(":: $storePhotoUrls");
+
+    // 사진이 없으면 빈 리스트 반환 (build에서 기본 이미지 표시)
+    if (storePhotoUrls.isEmpty) {
+      return [];
+    }
+
     List<File> images = [];
     await Future.wait(storePhotoUrls.asMap().entries.map((e) async {
       var idx = e.key;
       var url = e.value;
-      images.add(await getImageFileFromUrl(url, storeId, idx));
+      try {
+        images.add(await getImageFileFromUrl(url, storeId, idx));
+      } catch (e) {
+        print("이미지 로드 실패: $url, 오류: $e");
+        // 이미지 로드 실패 시 해당 이미지는 제외
+      }
     }));
     return images;
   }
 
   Future<File> getImageFileFromUrl(
       String imageUrl, int storeId, int idx) async {
-    // 매장 ID와 인덱스를 포함한 고유한 파일명 생성
-    final fileName =
-        'store_${storeId}_image_${idx}_${DateTime.now().millisecondsSinceEpoch}.png';
-    final tempFile = File('${(await getTemporaryDirectory()).path}/$fileName');
+    final tempDir = await getTemporaryDirectory();
 
-    // 캐시 방지를 위한 헤더 추가
-    final response = await http.get(
-      Uri.parse(imageUrl),
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    );
-    final bytes = response.bodyBytes;
-    await tempFile.writeAsBytes(bytes);
-    return tempFile;
+    // 매장 ID와 인덱스를 포함한 고유한 파일명 생성 (타임스탬프 없이 고정 이름 사용)
+    final fileName = 'store_${storeId}_image_${idx}.png';
+    final tempFile = File('${tempDir.path}/$fileName');
+
+    // 기존 파일이 있으면 유효성 검사
+    if (await tempFile.exists()) {
+      try {
+        // 파일 크기가 0이 아니고, 읽을 수 있는지 확인
+        final fileSize = await tempFile.length();
+        if (fileSize > 0) {
+          // 이미지 파일인지 간단히 확인 (PNG 시그니처 체크)
+          final bytes = await tempFile.readAsBytes();
+          if (bytes.length >= 8 &&
+              bytes[0] == 0x89 &&
+              bytes[1] == 0x50 &&
+              bytes[2] == 0x4E &&
+              bytes[3] == 0x47) {
+            // 유효한 PNG 파일인 것 같음
+            return tempFile;
+          }
+        }
+        // 유효하지 않은 파일이면 삭제
+        print('손상된 이미지 파일 발견, 삭제 후 다시 다운로드: ${tempFile.path}');
+        await tempFile.delete();
+      } catch (e) {
+        // 파일 읽기 실패 시 삭제 후 다시 다운로드
+        print('이미지 파일 유효성 검사 실패, 삭제 후 다시 다운로드: $e');
+        try {
+          await tempFile.delete();
+        } catch (_) {
+          // 삭제 실패는 무시
+        }
+      }
+    }
+
+    // 파일이 없거나 손상된 경우 새로 다운로드
+    try {
+      final response = await http.get(
+        Uri.parse(imageUrl),
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        // 빈 바이트 배열이 아닌지 확인
+        if (bytes.isNotEmpty) {
+          await tempFile.writeAsBytes(bytes);
+          return tempFile;
+        } else {
+          throw Exception('빈 이미지 데이터');
+        }
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      print('이미지 다운로드 실패: $imageUrl, 오류: $e');
+      rethrow;
+    }
   }
 
   Widget imageSlider(image, int index) {
@@ -581,31 +642,33 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
           height: 240,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            print("이미지 로드 오류남.$error");
-            // AssetImage도 실패할 수 있으므로 try-catch 처리
+            print("이미지 로드 오류: $error, 파일: ${image.path}");
+            // 손상된 파일 삭제 시도 (비동기이지만 결과는 기다리지 않음)
             try {
-              return Image(
-                image: const AssetImage('assets/coffee.jpeg'),
-                width: double.infinity,
-                height: 240,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  // Asset 이미지도 실패하면 빈 컨테이너 반환
-                  return Container(
-                    width: double.infinity,
-                    height: 240,
-                    color: Colors.grey[200],
-                  );
-                },
-              );
+              File(image.path).delete().then((_) {
+                print('손상된 이미지 파일 삭제 완료: ${image.path}');
+              }).catchError((e) {
+                print('파일 삭제 실패: $e');
+              });
             } catch (e) {
-              // Asset 이미지 로드 실패 시 빈 컨테이너 반환
-              return Container(
-                width: double.infinity,
-                height: 240,
-                color: Colors.grey[200],
-              );
+              print('파일 삭제 시도 중 오류: $e');
             }
+
+            // AssetImage로 대체
+            return Image(
+              image: const AssetImage('assets/coffee.jpeg'),
+              width: double.infinity,
+              height: 240,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                // Asset 이미지도 실패하면 빈 컨테이너 반환
+                return Container(
+                  width: double.infinity,
+                  height: 240,
+                  color: Colors.grey[200],
+                );
+              },
+            );
           },
         ),
       );

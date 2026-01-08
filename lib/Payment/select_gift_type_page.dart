@@ -83,7 +83,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
-                                '[주문/결제 → 상품권 수신 → 선물함 - QR코드 제시]',
+                                '[주문/결제 → 상품권 수신 → 선물함 → QR코드 제시]',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,

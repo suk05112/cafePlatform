@@ -11,7 +11,7 @@ import FirebaseCrashlytics
   ) -> Bool {
     // Firebase 초기화 (Flutter에서도 초기화되지만, 여기서도 명시적으로 초기화)
     FirebaseApp.configure()
-    
+    FirebaseConfiguration.shared.setLoggerLevel(.min)
     GeneratedPluginRegistrant.register(with: self)
 
     let controller = window.rootViewController as! FlutterViewController

@@ -5,6 +5,9 @@ import 'package:cafeplatform/api/business_info_response.dart';
 import 'package:cafeplatform/api/order_detail_response.dart';
 import 'package:cafeplatform/api/link_gifticon_request.dart';
 import 'package:cafeplatform/api/link_gifticon_response.dart';
+import 'package:cafeplatform/api/logo_presigned_url_response.dart';
+import 'package:cafeplatform/api/notice_response.dart';
+import 'package:cafeplatform/api/gifnut_image_url_response.dart';
 import 'package:cafeplatform/model/Inquiry.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/gifticon.dart';
@@ -157,4 +160,15 @@ abstract class ApiClient {
   Future<LinkGifticonResponse> linkGifticonToUser(
     @Body() LinkGifticonRequest request,
   );
+
+  @GET("/common-resources/logo/presigned-url")
+  Future<LogoPresignedUrlResponse> getLogoPresignedUrl();
+
+  @GET("/user/notice")
+  Future<UserNoticeListResponse> getUserNotice();
+
+  @GET("/gifnut-image")
+  Future<GifnutImageUrlResponse> getGifnutImageUrl({
+    @Query('expires_in') int? expiresIn,
+  });
 }

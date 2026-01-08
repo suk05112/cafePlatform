@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:cafeplatform/model/gifticon.dart';
+import 'package:cafeplatform/api/API.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// 카카오톡 링크 공유를 위한 공통 유틸리티 클래스
@@ -16,8 +17,9 @@ class KakaoShareHelper {
     Function(String)? onError,
   }) async {
     try {
-      // FeedTemplate 생성
-      final FeedTemplate defaultFeed = _createGifticonFeedTemplate(gifticon);
+      // FeedTemplate 생성 (비동기로 presigned URL 가져오기)
+      final FeedTemplate defaultFeed =
+          await _createGifticonFeedTemplate(gifticon);
 
       // 카카오톡 실행 가능 여부 확인
       bool isKakaoTalkSharingAvailable =
@@ -55,7 +57,24 @@ class KakaoShareHelper {
   }
 
   /// 기프티콘 정보를 기반으로 FeedTemplate 생성
-  static FeedTemplate _createGifticonFeedTemplate(Gifticon gifticon) {
+  static Future<FeedTemplate> _createGifticonFeedTemplate(
+      Gifticon gifticon) async {
+    // API에서 로고 presigned URL 가져오기
+    Uri? profileImageUri;
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+      final response = await Api().client.getGifnutImageUrl(
+            expiresIn: 3600, // 1시간 (기본값)
+          );
+      if (response.url.isNotEmpty) {
+        profileImageUri = Uri.parse(response.url);
+        print('로고 presigned URL API 호출 성공: ${response.url}');
+      }
+    } catch (e) {
+      print('로고 presigned URL API 호출 실패: $e');
+      // 실패 시 null로 설정 (카카오톡 기본 프로필 이미지 사용)
+    }
+
     return FeedTemplate(
       content: Content(
         title: '${gifticon.sender}님으로부터 선물이 도착했어요!',
@@ -68,26 +87,26 @@ class KakaoShareHelper {
       ),
       itemContent: ItemContent(
         profileText: 'Gifnut',
-        // TODO: S3 버킷을 public으로 설정하거나, CloudFront나 다른 public 호스팅 사용 필요
-        // 현재는 임시로 null 설정 (카카오톡 기본 프로필 이미지 사용)
-        profileImageUrl: Uri.parse(
-            'https://cafeplatform-dev.s3.amazonaws.com/gifnut-common-resouces/gifnut-logo.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQD4W7YEDZS7TU7NB%2F20260104%2Fap-northeast-2%2Fs3%2Faws4_request&X-Amz-Date=20260104T223347Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=2039fc9fca3ecd09a89ba95eddbb93311515acbf340558d0a247876db7d5f5dc'),
+        // S3에서 가져온 presigned URL 사용, 없으면 null (카카오톡 기본 프로필 이미지 사용)
+        profileImageUrl: profileImageUri,
         // 메뉴 이미지가 있으면 사용, 없으면 null로 설정하여 표시하지 않음
         titleImageUrl:
             (gifticon.menu_url != null && gifticon.menu_url!.isNotEmpty)
                 ? Uri.parse(gifticon.menu_url!)
                 : null,
+        // 메뉴 이름과 매장명 함께 표시
         titleImageText: gifticon.name,
-        titleImageCategory: gifticon.store_name,
+        titleImageCategory:
+            gifticon.store_name.isNotEmpty ? gifticon.store_name : null,
       ),
       buttons: [
         Button(
           title: '사용방법',
           link: Link(
             webUrl: Uri.parse(
-                'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
+                'https://jewel-bathtub-e52.notion.site/Gifnut-2e25f581503d803e9223f488367a9e3d?source=copy_link'),
             mobileWebUrl: Uri.parse(
-                'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
+                'https://jewel-bathtub-e52.notion.site/Gifnut-2e25f581503d803e9223f488367a9e3d?source=copy_link'),
           ),
         ),
         Button(

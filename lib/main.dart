@@ -127,77 +127,90 @@ void handleDeepLink(Uri uri) async {
   print('  - path: ${uri.path}');
   print('  - queryParameters: ${uri.queryParameters}');
 
+  // 카카오 링크 처리 (kakaoc...://kakaolink?gifticon_id=...)
+  bool isKakaoLink = uri.scheme.startsWith('kakaoc') && uri.host == 'kakaolink';
+
   // gifnut:// 스킴 또는 https://www.502company.com/gift 경로 처리
-  if (uri.scheme == 'gifnut' ||
+  bool isGifnutLink = uri.scheme == 'gifnut' ||
       (uri.scheme == 'https' &&
           uri.host == 'www.502company.com' &&
-          uri.path == '/gift')) {
-    // gifnut://gift?gifticon_id=... 또는 gifnut://share?type=store&id=... 형식 처리
-    if (uri.host == 'gift' || uri.path == '/gift') {
-      // 기프티콘 선물받기 처리
-      final gifticonId = uri.queryParameters['gifticon_id'];
-      print('기프티콘 선물받기 - gifticon_id: $gifticonId');
+          uri.path == '/gift');
 
-      if (gifticonId != null && gifticonId.isNotEmpty) {
-        final gifticonIdInt = int.tryParse(gifticonId);
-        if (gifticonIdInt != null) {
-          // Get.context를 통해 Provider에 접근
-          final context = Get.context;
-          if (context != null) {
-            try {
-              final userProvider =
-                  Provider.of<UserProvider>(context, listen: false);
+  if (isKakaoLink || isGifnutLink) {
+    // 기프티콘 선물받기 처리
+    final gifticonId = uri.queryParameters['gifticon_id'];
+    print('기프티콘 선물받기 - gifticon_id: $gifticonId (카카오 링크: $isKakaoLink)');
 
-              if (userProvider.isLoggedIn) {
-                // 로그인 되어있으면 기프티콘 등록 페이지로 이동
-                print("로그인 상태: 기프티콘 등록 페이지로 이동");
-                // 현재 화면을 모두 제거하고 새로운 페이지로 이동 (앱이 실행 중일 때)
-                Get.offAll(
-                    () => RegisterGifticonPage(gifticon_id: gifticonIdInt));
-              } else {
-                // 로그인 안되어있으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-                print("비로그인 상태: 딥링크 정보 저장 후 로그인 페이지로 이동");
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setInt('pending_gifticon_id', gifticonIdInt);
-                Get.offAll(() => LoginPage());
-              }
-            } catch (e) {
-              print("Provider 접근 오류: $e");
-              // 오류 발생 시 딥링크 정보 저장 후 로그인 페이지로 이동
+    if (gifticonId != null && gifticonId.isNotEmpty) {
+      final gifticonIdInt = int.tryParse(gifticonId);
+      if (gifticonIdInt != null) {
+        // context가 준비될 때까지 대기
+        final context = Get.context;
+        if (context == null) {
+          print("Context가 없음: 잠시 대기 후 재시도");
+          await Future.delayed(const Duration(milliseconds: 800));
+        }
+
+        final retryContext = Get.context;
+        if (retryContext != null) {
+          try {
+            final userProvider =
+                Provider.of<UserProvider>(retryContext, listen: false);
+
+            // UserProvider에서 로그인 상태를 다시 확인 (비동기 로드 완료 대기)
+            await userProvider.fetchUser();
+
+            // 로그인 상태 확인 (재확인)
+            if (userProvider.isLoggedIn && userProvider.user != null) {
+              // 로그인 되어있으면 기프티콘 등록 페이지로 이동
+              print("로그인 상태 확인됨: 기프티콘 등록 페이지로 이동");
+              Get.offAll(
+                  () => RegisterGifticonPage(gifticon_id: gifticonIdInt));
+            } else {
+              // 로그인 안되어있으면 딥링크 정보를 저장하고 로그인 페이지로 이동
+              print("비로그인 상태: 딥링크 정보 저장 후 로그인 페이지로 이동");
               final prefs = await SharedPreferences.getInstance();
               await prefs.setInt('pending_gifticon_id', gifticonIdInt);
               Get.offAll(() => LoginPage());
             }
-          } else {
-            // context가 없으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-            print("Context가 없음: 딥링크 정보 저장 후 로그인 페이지로 이동");
+          } catch (e) {
+            print("Provider 접근 오류: $e");
+            // 오류 발생 시 딥링크 정보 저장 후 로그인 페이지로 이동
             final prefs = await SharedPreferences.getInstance();
             await prefs.setInt('pending_gifticon_id', gifticonIdInt);
-            // context가 없으면 잠시 대기 후 다시 시도
-            await Future.delayed(const Duration(milliseconds: 500));
-            final retryContext = Get.context;
-            if (retryContext != null) {
-              Get.offAll(() => LoginPage());
-            }
+            Get.offAll(() => LoginPage());
           }
-          return;
+        } else {
+          // context가 여전히 없으면 딥링크 정보를 저장하고 로그인 페이지로 이동
+          print("Context가 여전히 없음: 딥링크 정보 저장 후 로그인 페이지로 이동");
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('pending_gifticon_id', gifticonIdInt);
+          Get.offAll(() => LoginPage());
         }
+        return;
       }
-    } else if (uri.host == 'share') {
-      // gifnut://share?type=store&id=... 형식 처리
-      final type = uri.queryParameters['type'];
-      final id = uri.queryParameters['id'];
-      print('공유 링크 - type: $type, id: $id');
+    } else {
+      // gifticon_id가 없으면 매장 리스트 페이지로 이동
+      print("gifticon_id가 없음: 매장 리스트 페이지로 이동");
+      Get.offAll(() => TabPage(initialIndex: 0));
+      return;
+    }
+  }
 
-      if (type == 'store' && id != null) {
-        final storeId = int.tryParse(id);
-        if (storeId != null) {
-          // 매장 상세 페이지로 이동
-          print("매장 상세 페이지로 이동: store_id=$storeId");
-          // TODO: StorePage로 이동하는 로직 추가 필요
-          // Get.offAll(() => StorePage(storeId: storeId, storeName: ''));
-          return;
-        }
+  // gifnut://share?type=store&id=... 형식 처리
+  if (uri.scheme == 'gifnut' && uri.host == 'share') {
+    final type = uri.queryParameters['type'];
+    final id = uri.queryParameters['id'];
+    print('공유 링크 - type: $type, id: $id');
+
+    if (type == 'store' && id != null) {
+      final storeId = int.tryParse(id);
+      if (storeId != null) {
+        // 매장 상세 페이지로 이동
+        print("매장 상세 페이지로 이동: store_id=$storeId");
+        // TODO: StorePage로 이동하는 로직 추가 필요
+        // Get.offAll(() => StorePage(storeId: storeId, storeName: ''));
+        return;
       }
     }
   }

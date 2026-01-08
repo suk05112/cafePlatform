@@ -24,17 +24,44 @@ class _UserInfoPageState extends State<UserInfoPage> {
     if (phoneNumber == null || phoneNumber.isEmpty) {
       return "phone";
     }
-    // +82를 0101로 변환
+    
+    // 숫자만 추출
+    String digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // +82로 시작하면 0으로 변환
     if (phoneNumber.startsWith("+82")) {
-      String number = phoneNumber.substring(3);
-      if (number.startsWith("10")) {
-        return "010${number.substring(2)}";
-      } else if (number.startsWith("1")) {
-        return "010${number.substring(1)}";
+      digitsOnly = phoneNumber.substring(3).replaceAll(RegExp(r'[^\d]'), '');
+      if (digitsOnly.startsWith("10")) {
+        digitsOnly = "0${digitsOnly}";
+      } else if (digitsOnly.startsWith("1")) {
+        digitsOnly = "0${digitsOnly}";
+      } else {
+        digitsOnly = "0$digitsOnly";
       }
-      return "010$number";
     }
+    
+    // 010으로 시작하는 11자리 번호를 010-1234-1234 형식으로 변환
+    if (digitsOnly.length == 11 && digitsOnly.startsWith("010")) {
+      return "${digitsOnly.substring(0, 3)}-${digitsOnly.substring(3, 7)}-${digitsOnly.substring(7)}";
+    }
+    
+    // 다른 형식은 그대로 반환
     return phoneNumber;
+  }
+
+  String _formatEmailToId(String? email) {
+    if (email == null || email.isEmpty) {
+      return "id";
+    }
+    // @gifnut.com 부분 제거
+    if (email.contains("@gifnut.com")) {
+      return email.replaceAll("@gifnut.com", "");
+    }
+    // 다른 도메인이면 @ 앞부분만 반환
+    if (email.contains("@")) {
+      return email.split("@")[0];
+    }
+    return email;
   }
 
   @override
@@ -90,7 +117,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
                       SizedBox(height: 16),
                       Divider(height: 1, color: Colors.grey[200]),
                       SizedBox(height: 16),
-                      _buildInfoRow("이메일", user?.email ?? "email"),
+                      _buildInfoRow("아이디", _formatEmailToId(user?.email)),
                       SizedBox(height: 16),
                       Divider(height: 1, color: Colors.grey[200]),
                       SizedBox(height: 16),

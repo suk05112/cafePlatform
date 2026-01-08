@@ -55,6 +55,15 @@ class _OrderListPageState extends State<OrderListPage>
   Widget orderList() {
     return Consumer<OrderProvider>(
       builder: (context, orderProvider, child) {
+        // 로딩 중일 때 프로그레스바 표시
+        if (orderProvider.isLoading && (orderProvider.orderCards == null || orderProvider.orderCards!.isEmpty)) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFFFE7831), // 메인 컬러
+            ),
+          );
+        }
+
         List<Order> orderList = orderProvider.orderCards ?? [];
 
         print('orderList length: ${orderList.length}');

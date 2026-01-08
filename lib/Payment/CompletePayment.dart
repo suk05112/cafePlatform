@@ -20,6 +20,7 @@ class _CompletePaymentState extends State<CompletePayment>
     with WidgetsBindingObserver {
   bool _isSharing = false;
   bool _hasShownUnsentGiftDialog = false;
+  bool _showGiftCompleteScreen = false;
 
   @override
   void initState() {
@@ -39,12 +40,37 @@ class _CompletePaymentState extends State<CompletePayment>
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       // 앱이 포그라운드로 돌아왔을 때
-      _checkUnsentGift();
+      _checkSharingComplete();
+      // 공유가 완료되지 않은 경우에만 안보낸 선물 체크
+      if (!_showGiftCompleteScreen) {
+        _checkUnsentGift();
+      }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       // 앱이 백그라운드로 갔을 때
-      if (_isSharing) {
+      // 공유가 진행 중이고 아직 완료 화면이 표시되지 않은 경우에만 저장
+      if (_isSharing && !_showGiftCompleteScreen) {
         _saveUnsentGift();
+      }
+    }
+  }
+
+  Future<void> _checkSharingComplete() async {
+    if (widget.giftType != 1 || widget.gifticon == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final sharingInProgress = prefs.getBool('sharing_in_progress') ?? false;
+
+    // 공유 중이었다가 앱으로 돌아온 경우 완료 화면 표시
+    if (sharingInProgress && _isSharing) {
+      await prefs.remove('sharing_in_progress');
+      // 공유 완료 시 안보낸 선물 정보도 제거
+      await _clearUnsentGift();
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+          _showGiftCompleteScreen = true;
+        });
       }
     }
   }
@@ -81,23 +107,7 @@ class _CompletePaymentState extends State<CompletePayment>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.card_giftcard, color: ColorAssset.mainColor),
-            SizedBox(width: 8),
-            Text(
-              '안보낸 선물이 있어요',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
+        backgroundColor: Colors.white,
         content: Text(
           '카카오톡 선물 보내기를 완료하지 못했습니다.\n다시 보내시겠어요?',
           style: TextStyle(
@@ -143,29 +153,127 @@ class _CompletePaymentState extends State<CompletePayment>
       _isSharing = true;
     });
 
+    // 공유 시작 플래그 저장
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('sharing_in_progress', true);
+
     try {
       await KakaoShareHelper.shareGifticon(
         widget.gifticon!,
-        onSuccess: () {
+        onSuccess: () async {
           print('카카오톡 공유 완료');
-          // 공유 성공 시 저장된 정보 제거
-          _clearUnsentGift();
+          // 공유 성공 시 저장된 정보 모두 제거
+          await _clearUnsentGift();
+          await prefs.remove('sharing_in_progress');
+          if (mounted) {
+            setState(() {
+              _isSharing = false;
+            });
+          }
         },
-        onError: (error) {
+        onError: (error) async {
           print('카카오톡 공유 실패: $error');
+          // 공유 실패 시 플래그 제거
+          await prefs.remove('sharing_in_progress');
+          if (mounted) {
+            setState(() {
+              _isSharing = false;
+            });
+          }
         },
       );
     } catch (error) {
       print('카카오톡 공유 오류: $error');
-    } finally {
-      setState(() {
-        _isSharing = false;
-      });
+      prefs.remove('sharing_in_progress');
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+        });
+      }
     }
+    // onSuccess나 onError에서 처리하지 않고 앱 복귀 시 처리
   }
 
   @override
   Widget build(BuildContext context) {
+    // 선물하기 완료 화면 표시
+    if (_showGiftCompleteScreen) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Spacer(),
+                // 성공 아이콘
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: ColorAssset.mainColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Icon(
+                      Icons.card_giftcard,
+                      size: 80,
+                      color: ColorAssset.mainColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // 제목
+                const Text(
+                  "선물하기가 완료되었어요!",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+
+                const SizedBox(height: 48),
+                // 홈으로 돌아가기 버튼
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      foregroundColor: Colors.white,
+                      backgroundColor: ColorAssset.mainColor,
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      '홈으로 돌아가기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => TabPage()),
+                        (route) => false,
+                      );
+                    },
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 기존 결제 완료 화면
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(

@@ -18,6 +18,7 @@ import 'package:cafeplatform/Payment/register_gifticon_page.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -282,7 +283,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: ElevatedButton(
                       onPressed: _loading ? null : _handleEmailLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: ColorAssset.mainColor,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),

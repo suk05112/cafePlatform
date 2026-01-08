@@ -123,15 +123,15 @@ class _CafeListState extends State<CafeList>
                       children: [
                         Expanded(child: _buildRegionAndSearchRow()),
                         const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: crashtest,
-                          icon: const Icon(Icons.bug_report, size: 20),
-                          tooltip: '크래시 테스트',
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.red.withOpacity(0.1),
-                            padding: const EdgeInsets.all(8),
-                          ),
-                        ),
+                        // IconButton(
+                        //   onPressed: crashtest,
+                        //   icon: const Icon(Icons.bug_report, size: 20),
+                        //   tooltip: '크래시 테스트',
+                        //   style: IconButton.styleFrom(
+                        //     backgroundColor: Colors.red.withOpacity(0.1),
+                        //     padding: const EdgeInsets.all(8),
+                        //   ),
+                        // ),
                       ],
                     ),
                     const SizedBox(height: 8),

@@ -33,6 +33,7 @@ Gifticon _$GifticonFromJson(Map<String, dynamic> json) => Gifticon(
       store_lat: (json['store_lat'] as num?)?.toDouble() ?? 0.0,
       store_lng: (json['store_lng'] as num?)?.toDouble() ?? 0.0,
       store_name: json['store_name'] as String? ?? "",
+      store_address: json['store_address'] as String?,
     )..paymentKey = json['payment_key'] as String?;
 
 Map<String, dynamic> _$GifticonToJson(Gifticon instance) => <String, dynamic>{
@@ -59,6 +60,7 @@ Map<String, dynamic> _$GifticonToJson(Gifticon instance) => <String, dynamic>{
       'store_lat': instance.store_lat,
       'store_lng': instance.store_lng,
       'store_name': instance.store_name,
+      'store_address': instance.store_address,
     };
 
 GifticonListResponse _$GifticonListResponseFromJson(

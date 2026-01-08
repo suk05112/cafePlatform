@@ -5,6 +5,7 @@ import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/user_response.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class NotificationSettingPage extends StatefulWidget {
   const NotificationSettingPage({super.key});
@@ -209,7 +210,7 @@ class _NotificationSettingPageState extends State<NotificationSettingPage> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: Colors.blue,
+            activeColor: ColorAssset.mainColor,
           ),
         ],
       ),

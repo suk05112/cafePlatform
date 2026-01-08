@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cafeplatform/api/API.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cafeplatform/Payment/register_gifticon_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,22 +30,45 @@ class _SplashScreenState extends State<SplashScreen> {
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // UserProvider에서 로그인 상태를 먼저 확인 (비동기 로드 완료 대기)
+      await userProvider.fetchUser();
+
       final firebaseUser = fb.FirebaseAuth.instance.currentUser;
 
       // Firebase Auth 세션이 있고, UserProvider에도 사용자 정보가 있으면 자동 로그인
-      if (firebaseUser != null && userProvider.user != null) {
+      if (firebaseUser != null &&
+          userProvider.isLoggedIn &&
+          userProvider.user != null) {
         // Firebase Auth 세션이 유효한지 확인
         try {
           await firebaseUser.getIdToken();
           // 세션이 유효하면 API 클라이언트 설정
           await Api().setBaseClient(Api.BASE_URL);
-          // 자동 로그인 성공 - 메인 화면으로 이동
+
+          // pending_gifticon_id가 있는지 확인
+          final prefs = await SharedPreferences.getInstance();
+          final pendingGifticonId = prefs.getInt('pending_gifticon_id');
+
           if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const TabPage(initialIndex: 0)),
-            );
+            if (pendingGifticonId != null) {
+              // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
+              await prefs.remove('pending_gifticon_id');
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      RegisterGifticonPage(gifticon_id: pendingGifticonId),
+                ),
+              );
+            } else {
+              // 자동 로그인 성공 - 메인 화면으로 이동
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const TabPage(initialIndex: 0)),
+              );
+            }
             return;
           }
         } catch (e) {

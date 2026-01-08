@@ -32,8 +32,8 @@ class Api {
     final options = BaseOptions(
       baseUrl: AppConfig.baseUrl,
       headers: headers,
-      connectTimeout: Duration(seconds: 5),
-      receiveTimeout: Duration(seconds: 5),
+      connectTimeout: Duration(seconds: 15),
+      receiveTimeout: Duration(seconds: 15),
     );
     dio = Dio(options)..interceptors.add(CustomLogInterceptor());
     client = ApiClient(Dio(options)..interceptors.add(CustomLogInterceptor()));
@@ -41,7 +41,9 @@ class Api {
 
   static const String STAGING_URL = "https://www.502company.com/dev";
   static const String STAGING_URL_V2 = "http://18.221.2.135";
-  static const String BASE_URL = "https://www.502company.com/dev";
+
+  // Flavor에 따른 BASE_URL 반환 (dev: /dev, prod: /prod)
+  static String get BASE_URL => AppConfig.baseUrl;
 
   /// User-Agent를 생성하는 함수
   static Future<String> _getUserAgent() async {
@@ -196,9 +198,9 @@ class Api {
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       headers: headers,
-      connectTimeout: Duration(seconds: 5),
-      receiveTimeout: Duration(seconds: 5),
-      sendTimeout: Duration(seconds: 5),
+      connectTimeout: Duration(seconds: 15),
+      receiveTimeout: Duration(seconds: 15),
+      sendTimeout: Duration(seconds: 15),
     ))
       ..interceptors.add(CustomLogInterceptor());
 
@@ -227,9 +229,9 @@ class Api {
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       headers: headers,
-      connectTimeout: Duration(seconds: 5),
-      receiveTimeout: Duration(seconds: 5),
-      sendTimeout: Duration(seconds: 5),
+      connectTimeout: Duration(seconds: 15),
+      receiveTimeout: Duration(seconds: 15),
+      sendTimeout: Duration(seconds: 15),
     ))
       ..interceptors.add(CustomLogInterceptor())
       ..interceptors.add(AuthInterceptor());
@@ -352,6 +354,9 @@ class AuthInterceptor extends Interceptor {
         Dio dio = Dio(BaseOptions(
           baseUrl: requestOptions.baseUrl, // 원래 baseUrl 사용
           headers: headers,
+          connectTimeout: Duration(seconds: 15),
+          receiveTimeout: Duration(seconds: 15),
+          sendTimeout: Duration(seconds: 15),
         ));
 
         print('[401 interceptor] 재요청');

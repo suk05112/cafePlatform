@@ -5,6 +5,9 @@ import 'package:cafeplatform/model/order.dart';
 
 class OrderProvider extends ChangeNotifier {
   late List<Order>? orderCards = [];
+  bool _isLoading = false;
+
+  bool get isLoading => _isLoading;
 
   void setOrderCard(List<Order>? orderCards) {
     this.orderCards = orderCards ?? [];
@@ -44,6 +47,9 @@ class OrderProvider extends ChangeNotifier {
       return;
     }
 
+    _isLoading = true;
+    notifyListeners();
+
     try {
       print("order_provider::fetchOrderList:: fetch 호출, user_id: $userId");
       await Api().setBaseClient(Api.BASE_URL);
@@ -59,6 +65,9 @@ class OrderProvider extends ChangeNotifier {
       print("order_provider::fetchOrderList:: fetch 오류: $error");
       print("order_provider::fetchOrderList:: 스택 트레이스: ${error.toString()}");
       setOrderCard([]);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

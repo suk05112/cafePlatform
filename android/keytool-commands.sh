@@ -55,3 +55,4 @@ echo "=== 카카오 개발자 콘솔에 등록할 키 해시 ==="
 echo "위의 SHA1 Base64 값을 카카오 개발자 콘솔에 등록하세요."
 echo "URL: https://developers.kakao.com/"
 
+

@@ -55,6 +55,9 @@ class _SettingPageState extends State<SettingPage> {
                     // SizedBox(height: 20),
                     getUserInfo(),
                     SizedBox(height: 24),
+                    // 카카오 공유 테스트 버튼 (테스트용 - 주석처리로 쉽게 제거 가능)
+                    _buildKakaoShareTestButton(),
+                    SizedBox(height: 16),
                     getsettingListView(),
                     SizedBox(height: 20),
                   ],
@@ -75,9 +78,9 @@ class _SettingPageState extends State<SettingPage> {
       "문의하기",
       "주문내역",
       "약관 보기",
-      "카카오 공유 테스트",
-      "버전",
+      // "카카오 공유 테스트",
       "라이선스",
+      "버전",
     ];
     return items;
   }
@@ -90,9 +93,10 @@ class _SettingPageState extends State<SettingPage> {
       Icons.contact_support_outlined,
       Icons.receipt_long_outlined,
       Icons.description_outlined,
-      Icons.share_outlined,
-      Icons.info_outline,
+      // Icons.share_outlined,
       Icons.description_outlined,
+
+      Icons.info_outline,
     ];
   }
 
@@ -105,8 +109,8 @@ class _SettingPageState extends State<SettingPage> {
       const InquiryPage(),
       OrderListPage(),
       const TermsPage(),
-      null, // 카카오 공유 테스트는 별도 처리
-      const LicensePage(),
+      // null, // 카카오 공유 테스트는 별도 처리
+      // const LicensePage(),
       OssLicensesPage(),
     ];
 
@@ -274,7 +278,8 @@ class _SettingPageState extends State<SettingPage> {
           for (int index = 0; index < allItems.length; index++)
             if (index == 7)
               version()
-            else if (index == 6)
+            // else if (index == 6)
+            /*
               // 카카오 공유 테스트 버튼
               GestureDetector(
                 onTap: () => _testKakaoShare(),
@@ -313,6 +318,7 @@ class _SettingPageState extends State<SettingPage> {
                   ),
                 ),
               )
+            */
             else
               GestureDetector(
                 onTap: () => Navigator.push(
@@ -421,6 +427,76 @@ class _SettingPageState extends State<SettingPage> {
   Future<String> getVersion() async {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
     return packageInfo.version;
+  }
+
+  /// 카카오 공유 테스트 버튼 위젯 (독립적으로 주석처리 가능)
+  Widget _buildKakaoShareTestButton() {
+    // 이 전체 블록을 주석처리하면 테스트 버튼이 사라집니다
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange[200]!, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _testKakaoShare,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.share_outlined,
+                    size: 20,
+                    color: Colors.orange[800],
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '카카오 공유 테스트',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange[900],
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        '테스트용 버튼',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: Colors.orange[400],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    // 주석처리 예시:
+    // return SizedBox.shrink();
   }
 
   /// 카카오톡 공유 테스트 함수
