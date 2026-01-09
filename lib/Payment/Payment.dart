@@ -50,9 +50,9 @@ class _PaymentState extends State<Payment> {
   String _convertToInternationalFormat(String phoneNumber) {
     // 하이픈, 공백 등 모든 비숫자 제거
     final digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-    
+
     String internationalFormat;
-    
+
     // 첫 번째 0을 제거하고 82를 앞에 추가
     if (digitsOnly.startsWith('0')) {
       internationalFormat = '82${digitsOnly.substring(1)}';
@@ -65,7 +65,7 @@ class _PaymentState extends State<Payment> {
     else {
       internationalFormat = '82$digitsOnly';
     }
-    
+
     // + 기호 추가
     return '+$internationalFormat';
   }
@@ -507,6 +507,16 @@ class _PaymentState extends State<Payment> {
           onPressed: () async {
             // 키보드 닫기
             FocusScope.of(context).unfocus();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CompletePayment(
+                  giftType: widget.type,
+                  gifticon: Gifticon(),
+                ),
+              ),
+            );
+            return;
 
             // 약관 동의 확인
             if (_agreementWidgetControl == null ||
@@ -603,7 +613,8 @@ class _PaymentState extends State<Payment> {
             gifticon.sender = user.name;
             gifticon.receiver = receiver;
             // 전화번호를 국제 형식으로 변환 (01012345678 -> 821012345678)
-            final internationalPhone = _convertToInternationalFormat(receiverPhoneNumber);
+            final internationalPhone =
+                _convertToInternationalFormat(receiverPhoneNumber);
             print('전화번호 변환: $receiverPhoneNumber -> $internationalPhone');
             gifticon.receiver_phone_number = internationalPhone;
             gifticon.payment = paymentValue;

@@ -28,7 +28,7 @@ class LoginService {
   Future<UserCredential?> phoneAuth(
       {required AuthCredential phoneCredential,
       required AuthCredential snsCredential,
-      required Function(AuthError error) onError}) async {
+      required Function(Future<AuthError> error) onError}) async {
     try {
       final phoneLogin = await _auth.signInWithCredential(phoneCredential);
 
@@ -111,7 +111,7 @@ class LoginService {
       // return true;
     } catch (error) {
       print("google error catch $error");
-      onError(AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(e));
     }
   }
 
@@ -140,7 +140,7 @@ class LoginService {
       }
     } catch (error) {
       print("google error catch $error");
-      onError(AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(e));
     }
   }
 
@@ -166,7 +166,7 @@ class LoginService {
           print('카카오계정으로 로그인 성공');
         } catch (error) {
           print('카카오계정으로 로그인 실패 $error');
-          onError(AuthErrorHandler.handle(e));
+          onError(await AuthErrorHandler.handle(e));
         }
       }
     } else {
@@ -175,7 +175,7 @@ class LoginService {
         print('카카오계정으로 로그인 성공');
       } catch (error) {
         print('카카오계정으로 로그인 실패 $error');
-        onError(AuthErrorHandler.handle(e));
+        onError(await AuthErrorHandler.handle(e));
       }
     }
 // 계정 가리기 -> 삭제 -> 계정보이고 로그인 : 새로운 유저 -> 전화번호 인증 -> 재검사
@@ -197,7 +197,7 @@ class LoginService {
           credential.providerId);
     } catch (error) {
       print('카카오계정으로 로그인 실패 $error');
-      onError(AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(e));
     }
     return;
   }
@@ -205,7 +205,7 @@ class LoginService {
   Future<void> signInApple({
     required Function(AuthCredential credential, String? email, String? name)
         onSuccess,
-    required Function(AuthError error) onError,
+    required Function(Future<AuthError> error) onError,
   }) async {
     try {
       final credential = await SignInWithApple.getAppleIDCredential(
@@ -230,7 +230,7 @@ class LoginService {
       onSuccess(oauthCredential, credential.email, name);
     } catch (error) {
       print('애플계정으로 로그인 실패 $error');
-      onError(AuthErrorHandler.handle(e));
+      onError(AuthErrorHandler.handle(error));
       return;
     }
     return;
@@ -297,7 +297,7 @@ extension AuthErrorMessage on AuthError {
 }
 
 class AuthErrorHandler {
-  static AuthError handle(Object e) {
+  static Future<AuthError> handle(Object e) async {
     if (e is FirebaseAuthException) {
       if (e.code == "network-request-failed") return AuthError.network;
       if (e.code == "user-not-found") return AuthError.accountNotFound;
@@ -305,7 +305,12 @@ class AuthErrorHandler {
     }
 
     if (e.toString().contains("CANCELED")) return AuthError.cancelled;
-
+    FirebaseAuth auth = FirebaseAuth.instance;
+    User? currentUser = auth.currentUser;
+    if (currentUser != null) {
+      await currentUser.delete();
+      auth.signOut();
+    }
     return AuthError.unknown;
   }
 }

@@ -42,7 +42,7 @@ class _OrderListPageState extends State<OrderListPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: const CommonAppBar(title: '주문내역'),
+      appBar: const CommonAppBar(title: '결제내역'),
       body: SafeArea(
         child: NetworkAwareWidget(
           onRetry: _loadOrderList,
@@ -56,7 +56,9 @@ class _OrderListPageState extends State<OrderListPage>
     return Consumer<OrderProvider>(
       builder: (context, orderProvider, child) {
         // 로딩 중일 때 프로그레스바 표시
-        if (orderProvider.isLoading && (orderProvider.orderCards == null || orderProvider.orderCards!.isEmpty)) {
+        if (orderProvider.isLoading &&
+            (orderProvider.orderCards == null ||
+                orderProvider.orderCards!.isEmpty)) {
           return Center(
             child: CircularProgressIndicator(
               color: Color(0xFFFE7831), // 메인 컬러
@@ -215,31 +217,32 @@ class _OrderListPageState extends State<OrderListPage>
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: (order.menu_url != null && order.menu_url!.isNotEmpty)
-                        ? Image.network(
-                            order.menu_url!,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
+                    child:
+                        (order.menu_url != null && order.menu_url!.isNotEmpty)
+                            ? Image.network(
+                                order.menu_url!,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey[100],
+                                    child: Icon(
+                                      Icons.card_giftcard,
+                                      size: 40,
+                                      color: Colors.grey[400],
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
                                 color: Colors.grey[100],
                                 child: Icon(
                                   Icons.card_giftcard,
                                   size: 40,
                                   color: Colors.grey[400],
                                 ),
-                              );
-                            },
-                          )
-                        : Container(
-                            color: Colors.grey[100],
-                            child: Icon(
-                              Icons.card_giftcard,
-                              size: 40,
-                              color: Colors.grey[400],
-                            ),
-                          ),
+                              ),
                   ),
                 ),
                 SizedBox(width: 12),

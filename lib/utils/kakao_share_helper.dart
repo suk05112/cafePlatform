@@ -3,6 +3,7 @@ import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
 
 /// 카카오톡 링크 공유를 위한 공통 유틸리티 클래스
 class KakaoShareHelper {
@@ -70,9 +71,25 @@ class KakaoShareHelper {
         profileImageUri = Uri.parse(response.url);
         print('로고 presigned URL API 호출 성공: ${response.url}');
       }
-    } catch (e) {
-      print('로고 presigned URL API 호출 실패: $e');
+    } on DioException catch (e) {
+      // DioException 타입별로 구체적인 오류 메시지 출력
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        print('로고 presigned URL API 호출 실패 (타임아웃): ${e.type}');
+      } else if (e.type == DioExceptionType.badResponse) {
+        print('로고 presigned URL API 호출 실패 (서버 오류): ${e.response?.statusCode}');
+      } else if (e.type == DioExceptionType.connectionError) {
+        print('로고 presigned URL API 호출 실패 (연결 오류): ${e.message}');
+      } else {
+        print('로고 presigned URL API 호출 실패: ${e.type} - ${e.message}');
+      }
       // 실패 시 null로 설정 (카카오톡 기본 프로필 이미지 사용)
+      profileImageUri = null;
+    } catch (e) {
+      print('로고 presigned URL API 호출 실패 (예외): $e');
+      // 실패 시 null로 설정 (카카오톡 기본 프로필 이미지 사용)
+      profileImageUri = null;
     }
 
     return FeedTemplate(

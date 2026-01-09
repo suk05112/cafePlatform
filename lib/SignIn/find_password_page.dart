@@ -5,9 +5,9 @@ import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/find_account_request.dart';
 import 'package:cafeplatform/widget/CommonDialog.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
-import 'package:cafeplatform/widget/input_info_widget.dart';
 
 class FindPasswordPage extends StatefulWidget {
   const FindPasswordPage({super.key});
@@ -20,12 +20,18 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
   final _auth = FirebaseAuth.instance;
   final formKey = GlobalKey<FormState>();
 
+  TextEditingController nameController = TextEditingController();
   TextEditingController inputIDController = TextEditingController();
-  TextEditingController inputPhoneNumbfController = TextEditingController();
-  String? phone_number;
-  late final PhoneAuthCredential phoneCredential;
-  String? password;
-  String? inputId;
+  TextEditingController newPasswordController = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
+
+  String? verifiedPhoneNumber;
+  PhoneAuthCredential? phoneCredential;
+  bool _isLoading = false;
+  bool _showPasswordReset = false; // 비밀번호 재설정 화면 표시 여부
+
+  bool _obscurePassword = true; // 비밀번호 숨김/표시
+  bool _obscureConfirmPassword = true; // 비밀번호 확인 숨김/표시
 
   final inputDecoration = InputDecoration(
       border: UnderlineInputBorder(
@@ -38,13 +44,21 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
 
   @override
   void dispose() {
+    nameController.dispose();
     inputIDController.dispose();
-    inputPhoneNumbfController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // 비밀번호 재설정 화면
+    if (_showPasswordReset) {
+      return _buildPasswordResetScreen();
+    }
+
+    // 이름, 전화번호 입력 화면
     return GestureDetector(
         onTap: () {
           FocusScope.of(context).unfocus();
@@ -54,149 +68,456 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
             appBar: const CommonAppBar(title: "비밀번호 찾기"),
             backgroundColor: Colors.white,
             body: SafeArea(
-                child: SingleChildScrollView(
-                    reverse: true,
-                    padding:
-                        const EdgeInsets.only(left: 27, right: 27, bottom: 10),
-                    child: Form(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(27, 20, 27, 20),
+                      child: Form(
                         key: formKey,
                         child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              InputInfoWidget(
-                                title: "아이디 입력",
-                                hintText: "아이디를 입력해주세요",
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "아이디를 입력해주세요";
-                                  }
-                                  return null;
-                                },
-                                onChanged: (id) {
-                                  setState(() {
-                                    inputId = id;
-                                  });
-                                },
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "이름",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
                               ),
-                              PhoneNumberVerificationWidget(
-                                  successCallback: (phoneAuthResult) {
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: nameController,
+                              keyboardType: TextInputType.name,
+                              decoration: inputDecoration.copyWith(
+                                hintText: "이름을 입력해주세요",
+                              ),
+                              enabled: !_isLoading,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return "이름을 입력해주세요";
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 30),
+                            const Text(
+                              "아이디 입력",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: inputIDController,
+                              keyboardType: TextInputType.text,
+                              decoration: inputDecoration.copyWith(
+                                hintText: "아이디를 입력해주세요",
+                              ),
+                              enabled: !_isLoading,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return "아이디를 입력해주세요";
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            PhoneNumberVerificationWidget(
+                              hideButton: true,
+                              skipRegistrationCheck: true,
+                              successCallback: (phoneAuthResult) {
                                 if (phoneAuthResult != null) {
                                   print(
-                                      "전화번호 인증 성공: $phoneAuthResult.phoneNumber");
+                                      "전화번호 인증 성공: ${phoneAuthResult.phoneNumber}");
                                   setState(() {
-                                    phone_number = phoneAuthResult.phoneNumber;
+                                    verifiedPhoneNumber =
+                                        phoneAuthResult.phoneNumber;
                                     phoneCredential =
                                         phoneAuthResult.credential;
                                   });
                                 } else {
                                   print("전화번호 인증 실패");
                                 }
-                              }),
-                              const SizedBox(height: 40),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    backgroundColor: ColorAssset.mainColor,
-                                  ),
-                                  onPressed: () async {
-                                    bool emailExists = await checkEmailExists(
-                                        inputIDController.text + "@gifnut.com",
-                                        inputPhoneNumbfController.text);
-
-                                    if (emailExists) {
-                                      if (formKey.currentState!.validate()) {
-                                        final phoneLogin =
-                                            await _auth.signInWithCredential(
-                                                phoneCredential);
-
-                                        if (phoneLogin.user != null) {
-                                          if (password != null) {
-                                            phoneLogin.user!
-                                                .updatePassword(password!);
-                                            print(
-                                                "success update pw $password");
-                                            CommonDialog.show(
-                                                context: context,
-                                                title: "비밀번호가 변경되었습니다.",
-                                                content: "로그인해주세요.",
-                                                buttonText: "확인",
-                                                onPressed: () {
-                                                  Navigator.pop(context);
-                                                });
-                                          } else {
-                                            CommonDialog.show(
-                                                context: context,
-                                                title: "비밀번호를 다시 확인해주세요.",
-                                                content: "다시한번 확인해주세요.",
-                                                buttonText: "확인",
-                                                onPressed: () {});
-                                          }
-                                        } else {
-                                          print("phoneLogin.user null");
-                                        }
-                                      } else {
-                                        return;
-                                      }
-                                    }
-                                  },
-                                  child: const Text("확인"),
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                    width: double.infinity,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          foregroundColor: Colors.white,
+                          backgroundColor: ColorAssset.mainColor,
+                          disabledBackgroundColor: Colors.grey[300],
+                          disabledForegroundColor: Colors.grey[600],
+                        ),
+                        onPressed: (_isLoading ||
+                                nameController.text.isEmpty ||
+                                inputIDController.text.isEmpty ||
+                                verifiedPhoneNumber == null)
+                            ? null
+                            : () async {
+                                await _verifyAccount();
+                              },
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
-                              ),
-                              const SizedBox(height: 20),
-                            ]))))));
+                              )
+                            : const Text("확인"),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )));
   }
 
-  Future<bool> checkEmailExists(String email, String phoneNumber) async {
-    try {
-      final response = await Api().client.getIsRegisteredUser(email, "email");
+  Widget _buildPasswordResetScreen() {
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        appBar: const CommonAppBar(title: "비밀번호 재설정"),
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(27, 20, 27, 20),
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "새 비밀번호",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: newPasswordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            hintText: "새 비밀번호를 입력해주세요",
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: Colors.grey[600],
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                          enabled: !_isLoading,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "비밀번호를 입력해주세요";
+                            }
+                            if (value.length < 6) {
+                              return "비밀번호는 6자 이상이어야 합니다";
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          "비밀번호 확인",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: confirmPasswordController,
+                          obscureText: _obscureConfirmPassword,
+                          decoration: InputDecoration(
+                            hintText: "비밀번호를 다시 입력해주세요",
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: Colors.grey[600],
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureConfirmPassword =
+                                      !_obscureConfirmPassword;
+                                });
+                              },
+                            ),
+                          ),
+                          enabled: !_isLoading,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "비밀번호를 다시 입력해주세요";
+                            }
+                            if (value != newPasswordController.text) {
+                              return "비밀번호가 일치하지 않습니다";
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                width: double.infinity,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      foregroundColor: Colors.white,
+                      backgroundColor: ColorAssset.mainColor,
+                      disabledBackgroundColor: Colors.grey[300],
+                      disabledForegroundColor: Colors.grey[600],
+                    ),
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            await _resetPassword();
+                          },
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text("비밀번호 변경"),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-      // final response = await Api().client.findOwnerPw(
-      //       OwnerFindPw(email: email, phone_number: phone_number),
-      //     );
-      // final Map<String, dynamic> data = jsonDecode(response);
-      // if (data['msg'] == "success") {
-      //   return true;
-      // } else {
-      //   return false;
-      // }
-      return response.isRegistered;
-    } on DioException catch (e) {
-      String errorMsg = "";
-      if (e.response != null) {
-        // 서버에서 받은 상태 코드에 따른 처리
-        if (e.response!.statusCode == 401) {
-          // 인증 실패
-          print("인증 실패: ${e.response!.data}");
-          errorMsg = "[401]인증에 실패했습니다. 잠시 후 다시 실행해주세요.\n ${e.response!.data}";
-        } else if (e.response!.statusCode == 500) {
-          // 서버 오류
-          print("서버 오류: ${e.response!.data}");
-          errorMsg =
-              "[500]서버에 오류가 발행했습니다.잠시 후 다시 실행해주세요.\n ${e.response!.data}";
+  Future<void> _verifyAccount() async {
+    if (!formKey.currentState!.validate()) return;
+    if (nameController.text.isEmpty ||
+        inputIDController.text.isEmpty ||
+        verifiedPhoneNumber == null) {
+      CommonDialog.show(
+        context: context,
+        title: "입력 오류",
+        content: "모든 정보를 입력해주세요.",
+        buttonText: "확인",
+        onPressed: () {},
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+
+      // 전화번호를 서버 형식으로 변환 (010-1234-5678 -> +821012345678)
+      final phoneDigits = verifiedPhoneNumber!.replaceAll(RegExp(r'[^\d]'), '');
+      String formattedPhone;
+      if (phoneDigits.startsWith('0')) {
+        // 010으로 시작하면 0을 제거하여 +8210... 형식으로 변환
+        formattedPhone = '+82${phoneDigits.substring(1)}';
+      } else if (phoneDigits.startsWith('82')) {
+        formattedPhone = '+$phoneDigits';
+      } else {
+        formattedPhone = '+82$phoneDigits';
+      }
+
+      final request = FindAccountRequest(
+        name: nameController.text.trim(),
+        phoneNumber: formattedPhone,
+        type: 'find_password',
+      );
+
+      final response = await Api().client.findAccount(request);
+
+      if (response.success &&
+          response.type == 'find_password' &&
+          response.verified == true) {
+        // Firebase 전화번호 인증으로 로그인
+        if (phoneCredential != null) {
+          final phoneLogin = await _auth.signInWithCredential(phoneCredential!);
+          if (phoneLogin.user != null) {
+            // 비밀번호 재설정 화면 표시
+            if (mounted) {
+              setState(() {
+                _showPasswordReset = true;
+                _isLoading = false;
+              });
+            }
+          } else {
+            throw Exception("Firebase 로그인 실패");
+          }
         } else {
-          // 기타 오류
-          print("기타 오류: ${e.response!.data}");
-          errorMsg = "오류가 발생했습니다. 잠시 후 다시 실행해주세요.\n ${e.response!.data}";
+          throw Exception("전화번호 인증이 완료되지 않았습니다");
         }
       } else {
-        // 네트워크 연결 실패 등
-        print("네트워크 오류: ${e.message}");
-        errorMsg = "네트워크 오류가 발생했습니다. 잠시 후 다시 실행해주세요.\n ${e.message}";
+        CommonDialog.show(
+          context: context,
+          title: "인증 실패",
+          content: response.message,
+          buttonText: "확인",
+          onPressed: () {},
+        );
+      }
+    } on DioException catch (e) {
+      String errorMsg = "오류가 발생했습니다.";
+      if (e.response != null) {
+        if (e.response!.statusCode == 404 || e.response!.statusCode == 400) {
+          errorMsg = "입력하신 정보와 일치하는 계정을 찾을 수 없습니다.";
+        } else if (e.response!.statusCode == 500) {
+          errorMsg = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        } else {
+          errorMsg = e.response?.data?['message'] ?? "오류가 발생했습니다.";
+        }
+      } else {
+        errorMsg = "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
 
       CommonDialog.show(
-          context: context,
-          title: "아이디 찾기 실패",
-          content: errorMsg,
-          buttonText: "확인",
-          onPressed: () {});
+        context: context,
+        title: "인증 실패",
+        content: errorMsg,
+        buttonText: "확인",
+        onPressed: () {},
+      );
+    } catch (e) {
+      CommonDialog.show(
+        context: context,
+        title: "오류",
+        content: "오류가 발생했습니다: $e",
+        buttonText: "확인",
+        onPressed: () {},
+      );
+    } finally {
+      if (mounted && !_showPasswordReset) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-    return false;
   }
+
+  Future<void> _resetPassword() async {
+    if (!formKey.currentState!.validate()) return;
+
+    if (newPasswordController.text != confirmPasswordController.text) {
+      CommonDialog.show(
+        context: context,
+        title: "비밀번호 오류",
+        content: "비밀번호가 일치하지 않습니다.",
+        buttonText: "확인",
+        onPressed: () {},
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Firebase에 현재 로그인된 사용자가 있는지 확인
+      // 로그인되어 있지 않으면 전화번호 인증으로 다시 로그인
+      if (phoneCredential != null) {
+        await _auth.signInWithCredential(phoneCredential!);
+      } else {
+        throw Exception("인증 정보가 없습니다");
+      }
+
+      // 비밀번호 업데이트
+      final user = _auth.currentUser;
+      if (user != null) {
+        await user.updatePassword(newPasswordController.text);
+
+        if (mounted) {
+          CommonDialog.show(
+            context: context,
+            title: "비밀번호 변경 완료",
+            content: "비밀번호가 변경되었습니다. 로그인해주세요.",
+            buttonText: "확인",
+            onPressed: () {
+              Future.microtask(() {
+                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              });
+            },
+          );
+        }
+      } else {
+        throw Exception("사용자 정보를 찾을 수 없습니다");
+      }
+    } catch (e) {
+      CommonDialog.show(
+        context: context,
+        title: "오류",
+        content: "비밀번호 변경 중 오류가 발생했습니다: $e",
+        buttonText: "확인",
+        onPressed: () {},
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
 //   Future<void> checkEmailExists(String emailAddress) async {
 //     try {
 //       final list =

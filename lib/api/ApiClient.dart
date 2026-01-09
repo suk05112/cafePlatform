@@ -8,6 +8,8 @@ import 'package:cafeplatform/api/link_gifticon_response.dart';
 import 'package:cafeplatform/api/logo_presigned_url_response.dart';
 import 'package:cafeplatform/api/notice_response.dart';
 import 'package:cafeplatform/api/gifnut_image_url_response.dart';
+import 'package:cafeplatform/api/find_account_request.dart';
+import 'package:cafeplatform/api/find_account_response.dart';
 import 'package:cafeplatform/model/Inquiry.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/gifticon.dart';
@@ -171,4 +173,7 @@ abstract class ApiClient {
   Future<GifnutImageUrlResponse> getGifnutImageUrl({
     @Query('expires_in') int? expiresIn,
   });
+
+  @POST("/user/find-account")
+  Future<FindAccountResponse> findAccount(@Body() FindAccountRequest request);
 }

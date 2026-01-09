@@ -350,7 +350,7 @@ class _LoginPageState extends State<LoginPage> {
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(
-                          '이메일 찾기',
+                          '아이디 찾기',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.black87,

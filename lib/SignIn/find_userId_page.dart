@@ -5,10 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:cafeplatform/SignIn/find_password_page.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
-import 'dart:io';
+import 'package:cafeplatform/api/find_account_request.dart';
 
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
-import 'package:cafeplatform/utils/number_formatter.dart';
 import 'package:cafeplatform/widget/CommonDialog.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 
@@ -20,11 +19,12 @@ class FindUserIDPage extends StatefulWidget {
 }
 
 class _FindUserIDPageState extends State<FindUserIDPage> {
-  TextEditingController inputIDController = TextEditingController();
+  TextEditingController nameController = TextEditingController();
   TextEditingController inputPhoneNumbfController = TextEditingController();
 
-  String? phone_number;
-  late final PhoneAuthCredential phoneCredential;
+  String? verifiedPhoneNumber;
+  bool _isLoading = false;
+  PhoneAuthCredential? phoneCredential;
 
   final inputDecoration = const InputDecoration(
       border: UnderlineInputBorder(
@@ -43,128 +43,216 @@ class _FindUserIDPageState extends State<FindUserIDPage> {
         child: Scaffold(
             appBar: const CommonAppBar(title: "아이디 찾기"),
             backgroundColor: Colors.white,
-            body: Container(
-                margin: EdgeInsets.fromLTRB(27, 0, 27, 21),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Text("이름 입력"),
-                      // TextFormField(
-                      //   controller: inputIDController,
-                      //   keyboardType: TextInputType.text,
-                      //   decoration: inputDecoration.copyWith(hintText: "이름"),
-                      // ),
-                      PhoneNumberVerificationWidget(
-                          successCallback: (phoneAuthResult) {
-                        // 여기서 phoneNumber 변수에 인증된 전화번호가 들어옵니다.
-                        if (phoneAuthResult != null) {
-                          print(
-                              "전화번호 인증 성공: $phoneAuthResult.phoneNumber");
-                          setState(() {
-                            phone_number = phoneAuthResult.phoneNumber;
-                            phoneCredential = phoneAuthResult.credential;
-                          });
-                        } else {
-                          print("전화번호 인증 실패");
-                        }
-                      }),
-                      Spacer(),
-                      SizedBox(
-                        width: double.infinity, // <-- match_parent
-                        height: 50, // <-- match-parent
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: ColorAssset.mainColor,
-                            // minimumSize: const Size.fromHeight(50), // NEW
+            body: SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(27, 20, 27, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "이름",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
                           ),
-                          onPressed: () async {
-                            // showRegisteredId(OwnerFind(
-                            //     name: inputIDController.text,
-                            //     phone_number: inputPhoneNumbfController.text));
-                          },
-                          child: Text("확인"),
-                        ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: nameController,
+                            keyboardType: TextInputType.name,
+                            decoration: inputDecoration.copyWith(
+                              hintText: "이름을 입력해주세요",
+                            ),
+                            enabled: !_isLoading,
+                          ),
+                          const SizedBox(height: 30),
+                          PhoneNumberVerificationWidget(
+                            hideButton: true,
+                            skipRegistrationCheck: true,
+                            successCallback: (phoneAuthResult) {
+                              if (phoneAuthResult != null) {
+                                print(
+                                    "전화번호 인증 성공: ${phoneAuthResult.phoneNumber}");
+                                setState(() {
+                                  verifiedPhoneNumber =
+                                      phoneAuthResult.phoneNumber;
+                                  phoneCredential = phoneAuthResult.credential;
+                                  _isLoading = false;
+                                });
+                              } else {
+                                print("전화번호 인증 실패");
+                              }
+                            },
+                          ),
+                        ],
                       ),
-                      SizedBox(
-                        height: 81,
-                      ) //전화번호
-                    ]))));
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(27, 0, 27, 20),
+                    width: double.infinity,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          foregroundColor: Colors.white,
+                          backgroundColor: ColorAssset.mainColor,
+                          disabledBackgroundColor: Colors.grey[300],
+                          disabledForegroundColor: Colors.grey[600],
+                        ),
+                        onPressed: (_isLoading ||
+                                nameController.text.isEmpty ||
+                                verifiedPhoneNumber == null)
+                            ? null
+                            : () async {
+                                await _findAccountId();
+                              },
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : const Text("확인"),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )));
   }
 
   @override
   void dispose() {
-    inputIDController.dispose();
+    nameController.dispose();
     inputPhoneNumbfController.dispose();
     super.dispose();
   }
 
-  //전화번호 인증 성공 후 uid 넘겨 받고, 이름, Uid 담아서 id response 로 받기
-  showRegisteredId() async {
+  Future<void> _findAccountId() async {
+    if (nameController.text.isEmpty || verifiedPhoneNumber == null) {
+      CommonDialog.show(
+        context: context,
+        title: "입력 오류",
+        content: "이름과 전화번호 인증을 완료해주세요.",
+        buttonText: "확인",
+        onPressed: () {},
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      // var response = await Api().client.findOwnerId(ownerFind);
+      await Api().setBaseClient(Api.BASE_URL);
 
-      final exist = true;
-
-      if (exist) {
-        print("결과 값 ");
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RegisterdIDPage(
-              email: "email",
-              created_time: "created_time",
-            ),
-          ),
-        );
+      // 전화번호를 서버 형식으로 변환 (010-1234-5678 -> +821012345678)
+      final phoneDigits = verifiedPhoneNumber!.replaceAll(RegExp(r'[^\d]'), '');
+      String formattedPhone;
+      if (phoneDigits.startsWith('0')) {
+        // 010으로 시작하면 0을 제거하여 +8210... 형식으로 변환
+        formattedPhone = '+82${phoneDigits.substring(1)}';
+      } else if (phoneDigits.startsWith('82')) {
+        formattedPhone = '+$phoneDigits';
       } else {
-        CommonDialog.show(
-            context: context,
-            title: "입력된 정보가 올바르지 않습니다.",
-            content: "다시한번 확인해주세요.",
-            buttonText: "확인",
-            onPressed: () {});
-        print("msg");
+        formattedPhone = '+82$phoneDigits';
       }
-    } on DioException catch (e) {
-      String errorMsg = "";
-      if (e.response != null) {
-        // 서버에서 받은 상태 코드에 따른 처리
-        if (e.response!.statusCode == 401) {
-          // 인증 실패
-          print("인증 실패: ${e.response!.data}");
-          errorMsg = "[401]인증에 실패했습니다. 잠시 후 다시 실행해주세요.\n ${e.response!.data}";
-        } else if (e.response!.statusCode == 500) {
-          // 서버 오류
-          print("서버 오류: ${e.response!.data}");
-          errorMsg =
-              "[500]서버에 오류가 발행했습니다.잠시 후 다시 실행해주세요.\n ${e.response!.data}";
-        } else {
-          // 기타 오류
-          print("기타 오류: ${e.response!.data}");
-          errorMsg = "오류가 발생했습니다. 잠시 후 다시 실행해주세요.\n ${e.response!.data}";
+
+      final request = FindAccountRequest(
+        name: nameController.text.trim(),
+        phoneNumber: formattedPhone,
+        type: 'find_id',
+      );
+
+      final response = await Api().client.findAccount(request);
+
+      if (response.success && response.type == 'find_id') {
+        // 아이디 찾기 성공
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RegisterdIDPage(
+                email: response.email ?? '',
+                fullEmail: response.fullEmail ?? '',
+                created_time: null,
+              ),
+            ),
+          );
         }
       } else {
-        // 네트워크 연결 실패 등
-        print("네트워크 오류: ${e.message}");
-        errorMsg = "네트워크 오류가 발생했습니다. 잠시 후 다시 실행해주세요.\n ${e.message}";
+        CommonDialog.show(
+          context: context,
+          title: "아이디 찾기 실패",
+          content: response.message,
+          buttonText: "확인",
+          onPressed: () {},
+        );
+      }
+    } on DioException catch (e) {
+      String errorMsg = "오류가 발생했습니다.";
+      if (e.response != null) {
+        if (e.response!.statusCode == 404 || e.response!.statusCode == 400) {
+          errorMsg = "입력하신 정보와 일치하는 계정을 찾을 수 없습니다.";
+        } else if (e.response!.statusCode == 500) {
+          errorMsg = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        } else {
+          errorMsg = e.response?.data?['message'] ?? "오류가 발생했습니다.";
+        }
+      } else {
+        errorMsg = "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       }
 
       CommonDialog.show(
-          context: context,
-          title: "아이디 찾기 실패",
-          content: errorMsg,
-          buttonText: "확인",
-          onPressed: () {});
+        context: context,
+        title: "아이디 찾기 실패",
+        content: errorMsg,
+        buttonText: "확인",
+        onPressed: () {},
+      );
+    } catch (e) {
+      CommonDialog.show(
+        context: context,
+        title: "오류",
+        content: "알 수 없는 오류가 발생했습니다: $e",
+        buttonText: "확인",
+        onPressed: () {},
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-    print("showRegisterdId");
   }
 }
 
 class RegisterdIDPage extends StatefulWidget {
-  const RegisterdIDPage({super.key, this.email, this.created_time, this.msg});
+  const RegisterdIDPage({
+    super.key,
+    required this.email,
+    this.fullEmail,
+    this.created_time,
+    this.msg,
+  });
 
-  final String? email;
+  final String email; // 마스킹된 이메일
+  final String? fullEmail; // 전체 이메일
   final String? created_time;
   final String? msg;
 
@@ -197,18 +285,59 @@ class _RegisterdIDPageState extends State<RegisterdIDPage> {
             children: <Widget>[
               Spacer(),
               // 컬럼에 들어갈 위젯들
-              const Text("가입 하신 아이디는 아래와 같습니다."),
+              const Text(
+                "가입하신 아이디는 아래와 같습니다.",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 24),
               Container(
-                  // color: ColorAssset.greyBackground,
-                  width: double.infinity, // <-- match_parent
-
-                  margin: EdgeInsets.fromLTRB(27, 0, 27, 21),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                            "아이디 : ${widget.email} \n가입일: ${widget.created_time}"),
-                      ])),
+                        const Text(
+                          "아이디: ",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            widget.fullEmail ?? widget.email,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (widget.created_time != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        "가입일: ${widget.created_time}",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               Spacer(),
               SizedBox(
                 width: double.infinity, // <-- match_parent

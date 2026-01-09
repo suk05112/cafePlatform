@@ -56,7 +56,7 @@ class _SettingPageState extends State<SettingPage> {
                     getUserInfo(),
                     SizedBox(height: 24),
                     // 카카오 공유 테스트 버튼 (테스트용 - 주석처리로 쉽게 제거 가능)
-                    _buildKakaoShareTestButton(),
+                    // _buildKakaoShareTestButton(),
                     SizedBox(height: 16),
                     getsettingListView(),
                     SizedBox(height: 20),
@@ -76,7 +76,7 @@ class _SettingPageState extends State<SettingPage> {
       "공지사항",
       "자주묻는 질문",
       "문의하기",
-      "주문내역",
+      "결제내역",
       "약관 보기",
       // "카카오 공유 테스트",
       "라이선스",
@@ -238,7 +238,7 @@ class _SettingPageState extends State<SettingPage> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      user.email,
+                      _formatEmailToId(user.email),
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey[600],
@@ -254,6 +254,21 @@ class _SettingPageState extends State<SettingPage> {
             ]),
           ));
     }
+  }
+
+  String _formatEmailToId(String? email) {
+    if (email == null || email.isEmpty) {
+      return "id";
+    }
+    // @gifnut.com 부분 제거
+    if (email.contains("@gifnut.com")) {
+      return email.replaceAll("@gifnut.com", "");
+    }
+    // 다른 도메인이면 @ 앞부분만 반환
+    if (email.contains("@")) {
+      return email.split("@")[0];
+    }
+    return email;
   }
 
   Widget getsettingListView() {

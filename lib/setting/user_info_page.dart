@@ -24,10 +24,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
     if (phoneNumber == null || phoneNumber.isEmpty) {
       return "phone";
     }
-    
+
     // 숫자만 추출
     String digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-    
+
     // +82로 시작하면 0으로 변환
     if (phoneNumber.startsWith("+82")) {
       digitsOnly = phoneNumber.substring(3).replaceAll(RegExp(r'[^\d]'), '');
@@ -39,12 +39,12 @@ class _UserInfoPageState extends State<UserInfoPage> {
         digitsOnly = "0$digitsOnly";
       }
     }
-    
+
     // 010으로 시작하는 11자리 번호를 010-1234-1234 형식으로 변환
     if (digitsOnly.length == 11 && digitsOnly.startsWith("010")) {
       return "${digitsOnly.substring(0, 3)}-${digitsOnly.substring(3, 7)}-${digitsOnly.substring(7)}";
     }
-    
+
     // 다른 형식은 그대로 반환
     return phoneNumber;
   }
@@ -452,11 +452,18 @@ class _UserInfoPageState extends State<UserInfoPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('fcm_token');
 
-      // 모든 스택을 제거하고 TabPage(매장 리스트)로 이동
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const TabPage(initialIndex: 0)),
-        (route) => false,
-      );
+      // // 모든 스택을 제거하고 TabPage(매장 리스트)로 이동
+      // Navigator.of(context).pushAndRemoveUntil(
+      //   MaterialPageRoute(builder: (context) => const TabPage(initialIndex: 0)),
+      //   (route) => false,
+      // );
+
+      Future.microtask(() {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const TabPage(initialIndex: 0)),
+          (route) => false,
+        );
+      });
     } catch (e) {
       print('로그아웃 오류: $e');
     }
