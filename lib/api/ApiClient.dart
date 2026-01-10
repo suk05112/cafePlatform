@@ -41,17 +41,14 @@ abstract class ApiClient {
   @GET("/user/login/{email}")
   Future<LoginUserGetResponse> loginUser(
     @Path('email') String email,
+    @Query('provider') String provider,
   );
 
   @GET("/user/isRegistered")
   Future<IsRegisteredUserGetResponse> getIsRegisteredUser(
-    @Query('email') String email,
+    @Query('email') String? email,
     @Query('provider') String provider,
-  );
-
-  @GET("/user/isRegistered/{phoneNumber}")
-  Future<IsRegisteredUserGetResponse> getIsRegisteredAppleUser(
-    @Path('phoneNumber') String phoneNumber,
+    @Query('phone') String? phone,
   );
 
   @GET("/store/info/{store_Id}")
@@ -153,6 +150,11 @@ abstract class ApiClient {
     @Path('user_id') int userId,
     @Body() PushTokenUpdateRequest pushTokenUpdateRequest,
     @Header('X-FCM-Token') String? fcmToken,
+  );
+
+  @DELETE("/user/{user_id}")
+  Future<DeleteUserResponse> deleteUser(
+    @Path('user_id') int userId,
   );
 
   @GET("/business-info")

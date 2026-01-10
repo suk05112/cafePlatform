@@ -17,7 +17,14 @@ enum TermsType {
 }
 
 class TermsAgreementPage extends StatefulWidget {
-  const TermsAgreementPage({super.key});
+  const TermsAgreementPage({
+    super.key,
+    this.isSocialLogin = false,
+    this.provider,
+  });
+
+  final bool isSocialLogin;
+  final String? provider; // SNS provider 또는 "email"
 
   @override
   State<TermsAgreementPage> createState() => _TermsAgreementPageState();
@@ -68,7 +75,11 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
     if (!_canProceed) return;
     final phoneAuthResult = await Navigator.push<PhoneAuthResult?>(
       context,
-      MaterialPageRoute(builder: (_) => PhoneAuthPage()),
+      MaterialPageRoute(
+          builder: (_) => PhoneAuthPage(
+                isSocialLogin: widget.isSocialLogin,
+                provider: widget.provider,
+              )),
     );
     if (phoneAuthResult != null && mounted) {
       Navigator.pop(context, phoneAuthResult);

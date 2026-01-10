@@ -391,6 +391,9 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     if (storeProvider.mapViewStores != null &&
         storeProvider.mapViewStores!.isNotEmpty) {
       return storeProvider.mapViewStores!;
+    } else {
+      return [];
+      // return _dummyStores;
     }
     return _dummyStores;
   }

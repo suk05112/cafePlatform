@@ -26,6 +26,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:cafeplatform/utils/number_formatter.dart';
+import 'package:cafeplatform/SignIn/login_page.dart';
 
 class Payment extends StatefulWidget {
   const Payment({super.key, required this.type, required this.menu});
@@ -507,16 +508,6 @@ class _PaymentState extends State<Payment> {
           onPressed: () async {
             // 키보드 닫기
             FocusScope.of(context).unfocus();
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CompletePayment(
-                  giftType: widget.type,
-                  gifticon: Gifticon(),
-                ),
-              ),
-            );
-            return;
 
             // 약관 동의 확인
             if (_agreementWidgetControl == null ||
@@ -591,7 +582,13 @@ class _PaymentState extends State<Payment> {
             // 1단계: gifticon, order 정보 등록 (결제 전)
             final user = Provider.of<UserProvider>(context, listen: false).user;
             if (user == null) {
-              _showToast('로그인이 필요합니다.');
+              // 로그인 페이지로 이동 (로그인 후 이전 페이지로 돌아옴)
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LoginPage(returnToPrevious: true),
+                ),
+              );
               return;
             }
 

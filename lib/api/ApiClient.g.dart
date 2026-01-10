@@ -47,9 +47,12 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<LoginUserGetResponse> loginUser(String email) async {
+  Future<LoginUserGetResponse> loginUser(
+    String email,
+    String provider,
+  ) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{r'provider': provider};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _result = await _dio.fetch<Map<String, dynamic>>(
@@ -75,14 +78,17 @@ class _ApiClient implements ApiClient {
 
   @override
   Future<IsRegisteredUserGetResponse> getIsRegisteredUser(
-    String email,
+    String? email,
     String provider,
+    String? phone,
   ) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
       r'email': email,
       r'provider': provider,
+      r'phone': phone,
     };
+    queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _result = await _dio.fetch<Map<String, dynamic>>(
@@ -94,34 +100,6 @@ class _ApiClient implements ApiClient {
             .compose(
               _dio.options,
               '/user/isRegistered',
-              queryParameters: queryParameters,
-              data: _data,
-            )
-            .copyWith(
-                baseUrl: _combineBaseUrls(
-              _dio.options.baseUrl,
-              baseUrl,
-            ))));
-    final _value = IsRegisteredUserGetResponse.fromJson(_result.data!);
-    return _value;
-  }
-
-  @override
-  Future<IsRegisteredUserGetResponse> getIsRegisteredAppleUser(
-      String phoneNumber) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _result = await _dio.fetch<Map<String, dynamic>>(
-        _setStreamType<IsRegisteredUserGetResponse>(Options(
-      method: 'GET',
-      headers: _headers,
-      extra: _extra,
-    )
-            .compose(
-              _dio.options,
-              '/user/isRegistered/${phoneNumber}',
               queryParameters: queryParameters,
               data: _data,
             )
@@ -677,6 +655,33 @@ class _ApiClient implements ApiClient {
           _dio.options.baseUrl,
           baseUrl,
         ))));
+  }
+
+  @override
+  Future<DeleteUserResponse> deleteUser(int userId) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio
+        .fetch<Map<String, dynamic>>(_setStreamType<DeleteUserResponse>(Options(
+      method: 'DELETE',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/user/${userId}',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = DeleteUserResponse.fromJson(_result.data!);
+    return _value;
   }
 
   @override

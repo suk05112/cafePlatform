@@ -125,7 +125,9 @@ class _SettingPageState extends State<SettingPage> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => LoginPage()),
+            MaterialPageRoute(
+              builder: (context) => LoginPage(returnToPrevious: true),
+            ),
           );
         },
         child: Container(
@@ -264,10 +266,7 @@ class _SettingPageState extends State<SettingPage> {
     if (email.contains("@gifnut.com")) {
       return email.replaceAll("@gifnut.com", "");
     }
-    // 다른 도메인이면 @ 앞부분만 반환
-    if (email.contains("@")) {
-      return email.split("@")[0];
-    }
+
     return email;
   }
 

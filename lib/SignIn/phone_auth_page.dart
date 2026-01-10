@@ -23,15 +23,22 @@ class PhoneAuthResult {
 }
 
 class PhoneAuthPage extends StatefulWidget {
-  const PhoneAuthPage({super.key, this.isSocialLogin = false});
+  const PhoneAuthPage({
+    super.key,
+    this.isSocialLogin = false,
+    this.provider,
+  });
 
   final bool isSocialLogin;
+  final String? provider; // SNS provider 또는 "email"
 
   @override
   State<PhoneAuthPage> createState() => _PhoneAuthPageState();
 }
 
 class _PhoneAuthPageState extends State<PhoneAuthPage> {
+  bool _hasNavigated = false; // Navigator.pop 중복 호출 방지 플래그
+
   @override
   void initState() {
     super.initState();
@@ -47,14 +54,20 @@ class _PhoneAuthPageState extends State<PhoneAuthPage> {
             padding: const EdgeInsets.all(16.0),
             child: PhoneNumberVerificationWidget(
               isSocialLogin: widget.isSocialLogin,
+              provider: widget.provider,
               successCallback: (credential) {
                 print("전화번호 인증완료");
                 // 여기서 phoneNumber 변수에 인증된 전화번호가 들어옵니다.
-                if (credential != null) {
+                if (credential != null && !_hasNavigated && mounted) {
+                  _hasNavigated = true;
                   print("회원가입 전화번호 인증 성공:");
                   Navigator.pop(context, credential);
                 } else {
-                  print("전화번호 인증 실패");
+                  if (_hasNavigated) {
+                    print("이미 Navigator.pop이 호출되었습니다.");
+                  } else {
+                    print("전화번호 인증 실패 또는 위젯이 dispose되었습니다.");
+                  }
                 }
               },
             )));
@@ -68,12 +81,14 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
     this.isSocialLogin = false,
     this.hideButton = false,
     this.skipRegistrationCheck = false,
+    this.provider, // SNS 로그인일 경우 provider, 이메일 가입일 경우 "email"
   });
 
   final Function(PhoneAuthResult?) successCallback;
   final bool isSocialLogin;
   final bool hideButton;
   final bool skipRegistrationCheck; // 회원가입 여부 체크 건너뛰기 (아이디/비밀번호 찾기용)
+  final String? provider; // SNS provider 또는 "email"
 
   @override
   State<PhoneNumberVerificationWidget> createState() =>
@@ -90,6 +105,7 @@ class _PhoneNumberVerificationWidgetState
   String? name;
   final _formKey = GlobalKey<FormState>();
   StreamSubscription<User?>? _authStateSubscription;
+  bool _hasCalledSuccessCallback = false; // successCallback 중복 호출 방지 플래그
   bool _handlingAutoVerification = false; // 자동 인증 처리 중 플래그
 
   TextEditingController phoneNumberController = TextEditingController();
@@ -149,8 +165,12 @@ class _PhoneNumberVerificationWidgetState
         await Api().setBaseClient(Api.BASE_URL);
         String e164PhoneNumber = _formatToE164(phoneNumberController.text);
 
-        final isRegistered =
-            await loginService.isRegisteredUserByPhone(e164PhoneNumber);
+        // provider 정보 가져오기: SNS 로그인일 경우 widget.provider, 이메일 가입일 경우 "email"
+        final provider =
+            widget.provider ?? (widget.isSocialLogin ? "" : "email");
+
+        final isRegistered = await loginService.isRegisteredUser(null, provider,
+            phone: e164PhoneNumber);
 
         if (isRegistered) {
           // 이미 가입된 계정
@@ -178,7 +198,8 @@ class _PhoneNumberVerificationWidgetState
         });
 
         // verificationId가 있으면 credential 생성하여 successCallback 호출
-        if (_verificationId.isNotEmpty) {
+        if (_verificationId.isNotEmpty && !_hasCalledSuccessCallback) {
+          _hasCalledSuccessCallback = true;
           final credential = PhoneAuthProvider.credential(
             verificationId: _verificationId,
             smsCode: validationNumberController.text.isNotEmpty
@@ -406,10 +427,19 @@ class _PhoneNumberVerificationWidgetState
                                                           phoneNumberController
                                                               .text);
 
+                                                  // provider 정보 가져오기: SNS 로그인일 경우 widget.provider, 이메일 가입일 경우 "email"
+                                                  final provider =
+                                                      widget.provider ??
+                                                          (widget.isSocialLogin
+                                                              ? ""
+                                                              : "email");
+
                                                   final isRegistered =
                                                       await loginService
-                                                          .isRegisteredUserByPhone(
-                                                              e164PhoneNumber);
+                                                          .isRegisteredUser(
+                                                              null, provider,
+                                                              phone:
+                                                                  e164PhoneNumber);
 
                                                   if (isRegistered) {
                                                     // 이미 가입된 계정
@@ -440,7 +470,10 @@ class _PhoneNumberVerificationWidgetState
                                               }
 
                                               // 인증 성공
-                                              if (mounted) {
+                                              if (mounted &&
+                                                  !_hasCalledSuccessCallback) {
+                                                _hasCalledSuccessCallback =
+                                                    true;
                                                 setState(() {
                                                   isVerified = true;
                                                 });
@@ -461,6 +494,8 @@ class _PhoneNumberVerificationWidgetState
                                               }
                                             } on FirebaseAuthException catch (e) {
                                               // 인증 실패
+                                              print(
+                                                  "Firebase 인증 오류: ${e.code} - ${e.message}");
                                               if (mounted) {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
@@ -511,7 +546,7 @@ class _PhoneNumberVerificationWidgetState
                 height: 52,
                 child: ElevatedButton(
                   onPressed: isVerified
-                      ? () {
+                      ? () async {
                           if (_formKey.currentState?.validate() ?? false) {
                             if (widget.isSocialLogin &&
                                 (name == null || name!.isEmpty)) {
@@ -521,19 +556,24 @@ class _PhoneNumberVerificationWidgetState
                               return;
                             }
 
+                            if (!mounted) return;
+
                             PhoneAuthCredential credential =
                                 PhoneAuthProvider.credential(
                                     verificationId: _verificationId,
                                     smsCode: validationNumberController.text);
 
-                            widget.successCallback(
-                              PhoneAuthResult(
-                                credential: credential,
-                                // phoneNumber: "+821025446458",
-                                phoneNumber: phoneNumberController.text,
-                                name: name,
-                              ),
-                            );
+                            if (mounted && !_hasCalledSuccessCallback) {
+                              _hasCalledSuccessCallback = true;
+                              widget.successCallback(
+                                PhoneAuthResult(
+                                  credential: credential,
+                                  // phoneNumber: "+821025446458",
+                                  phoneNumber: phoneNumberController.text,
+                                  name: name,
+                                ),
+                              );
+                            }
                           }
                         }
                       : null,
@@ -592,8 +632,9 @@ class _PhoneNumberVerificationWidgetState
       verificationCompleted: (PhoneAuthCredential credential) async {
         // Android 자동 인증 완료 콜백
         print("verificationCompleted::전화번호 자동 인증 완료");
-        // 자동 인증이 완료된 경우 successCallback 호출
-        if (mounted) {
+        // 자동 인증이 완료된 경우 successCallback 호출 (중복 호출 방지)
+        if (mounted && !_hasCalledSuccessCallback) {
+          _hasCalledSuccessCallback = true;
           setState(() {
             isVerified = true;
           });

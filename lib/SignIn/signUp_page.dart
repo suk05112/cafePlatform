@@ -14,6 +14,11 @@ import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cafeplatform/api/user_response.dart';
+import 'package:cafeplatform/SignIn/login_page.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key, required this.phoneAuthResult});
@@ -38,7 +43,10 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => PhoneAuthPage(isSocialLogin: false),
+              builder: (context) => PhoneAuthPage(
+                isSocialLogin: false,
+                provider: "email",
+              ),
             ),
           );
         }
@@ -322,29 +330,53 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
         return;
       }
 
-      final linkResult = await fbUser.linkWithCredential(emailCredential);
+      // 이메일 credential 연결 시도 (이미 연결되어 있으면 에러 발생)
+      UserCredential? linkResult;
+      User? linkedUser;
 
-      if (linkResult.user != null) {
+      try {
+        linkResult = await fbUser.linkWithCredential(emailCredential);
+        linkedUser = linkResult.user;
+        print("이메일 credential 연결 성공");
+      } on FirebaseAuthException catch (linkError) {
+        // 이미 이메일이 링크되어 있거나 다른 오류인 경우
+        if (linkError.code == 'provider-already-linked') {
+          // 이미 이메일이 링크되어 있는 경우, 기존 사용자 사용
+          print("이미 이메일이 링크되어 있음 - 기존 계정 사용");
+          linkedUser = fbUser;
+        } else {
+          // 다른 오류인 경우 재throw
+          rethrow;
+        }
+      }
+
+      if (linkedUser != null) {
         // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
         try {
+          // 전화번호를 E.164 형식(+82)으로 변환
+          final formattedPhoneNumber = _formatToE164(phoneNumber);
+          // 이메일 뒤에 @gifnut.com 붙이기
+          final emailWithDomain = email + "@gifnut.com";
+
           final registerUser = my_app.User(
             user_id: 0, // 회원가입 시에는 0으로 설정 (서버에서 생성)
             name: name!,
-            email: email,
-            phone_number: phoneNumber,
-            uid: linkResult.user?.uid ?? fbUser.uid,
+            email: emailWithDomain,
+            phone_number: formattedPhoneNumber,
+            uid: linkedUser.uid,
             provider: "email",
           );
 
           print(
-              "회원가입할 정보 name: ${name!}, email: $email, phone_number: $phoneNumber, uid: ${linkResult.user?.uid ?? fbUser.uid}");
+              "회원가입할 정보 name: ${name!}, email: $email, phone_number: $phoneNumber, uid: ${linkedUser.uid}");
           print("registerUser.toJson(): ${registerUser.toJson()}");
           final registerResponse =
               await Api().client.registerUser(registerUser);
           print("회원가입 API 호출 후 response $registerResponse");
 
-          // 회원가입 성공 후 로그인 API 호출
-          var response = await Api().client.loginUser(email + "@gifnut.com");
+          // 회원가입 성공 후 로그인 API 호출 (이메일 로그인의 경우 provider는 "email")
+          var response =
+              await Api().client.loginUser(email + "@gifnut.com", 'email');
           print("로그인 api 호출후 response $response");
 
           final user = my_app.User(
@@ -352,19 +384,31 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             name: response.name ?? name!,
             email: response.email ?? email,
             phone_number: response.phone_number ?? phoneNumber,
-            uid: linkResult.user?.uid ?? fbUser.uid,
+            uid: linkedUser.uid,
           );
           Provider.of<UserProvider>(context, listen: false).setUser(user);
+
+          // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 회원가입은 계속 진행)
+          _registerPushToken(response.user_id ?? -1).catchError((error) {
+            print('푸시 토큰 등록 실패 (회원가입은 계속 진행): $error');
+          });
+
+          // 이메일 회원가입 성공 후 Firebase 로그아웃 (사용자가 다시 로그인하도록)
+          await FirebaseAuth.instance.signOut();
+          print('회원가입 성공 후 Firebase 로그아웃 완료');
+
           if (mounted) {
             setState(() {
               _loading = false;
             });
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const SignUpCompletePage()));
+            // 모든 스택을 제거하고 로그인 페이지로 이동
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => LoginPage()),
+              (route) => false,
+            );
           }
         } on DioException catch (e) {
+          // 서버 회원가입 실패 시 Firebase 계정은 유지 (재시도 가능)
           String errorMessage = "회원가입 중 서버 오류가 발생했습니다.";
           if (e.response != null) {
             final statusCode = e.response?.statusCode;
@@ -388,6 +432,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
                 onPressed: () {});
           }
         } catch (e) {
+          // 서버 회원가입 실패 시 Firebase 계정은 유지 (재시도 가능)
           print("회원가입 API 오류: $e");
           if (mounted) {
             setState(() {
@@ -427,6 +472,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
           break;
 
         case 'provider-already-linked':
+          // 이미 링크되어 있는 경우는 위에서 처리되므로 여기서는 일반 오류 처리
           errorMessage = "이미 가입된 계정입니다.";
           break;
 
@@ -450,7 +496,12 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
           buttonText: "확인",
           onPressed: () {});
     } catch (e) {
-      print(e);
+      print("예기치 않은 오류: $e");
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
       CommonDialog.show(
           context: context,
           title: "오류",
@@ -486,6 +537,61 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       return '0$number';
     }
     return phoneNumber;
+  }
+
+  // 전화번호를 E.164 형식(+82)으로 변환
+  String _formatToE164(String phoneNumber) {
+    String digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    if (digitsOnly.startsWith('0')) {
+      return '+82${digitsOnly.substring(1)}';
+    } else if (digitsOnly.startsWith('82')) {
+      return '+$digitsOnly';
+    } else {
+      return '+82$digitsOnly';
+    }
+  }
+
+  Future<void> _registerPushToken(int userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? fcmToken = prefs.getString('fcm_token');
+
+      // SharedPreferences에 토큰이 없으면 Firebase Messaging에서 직접 가져오기
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print('SharedPreferences에 FCM 토큰이 없어 Firebase Messaging에서 직접 가져옵니다.');
+        try {
+          fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            await prefs.setString('fcm_token', fcmToken);
+            print('FCM 토큰을 Firebase Messaging에서 가져와 저장했습니다: $fcmToken');
+          }
+        } catch (e) {
+          print('Firebase Messaging에서 토큰 가져오기 실패: $e');
+        }
+      }
+
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print('FCM 토큰을 가져올 수 없어 푸시 토큰 등록을 건너뜁니다.');
+        return;
+      }
+
+      final deviceType = Platform.isIOS ? 'ios' : 'android';
+      final allowServicePush = prefs.getBool('service_push_enabled') ?? true;
+      final allowMarketingPush =
+          prefs.getBool('marketing_push_enabled') ?? true;
+
+      final pushTokenRequest = PushTokenRequest(
+        fcmToken: fcmToken,
+        deviceType: deviceType,
+        allowServicePush: allowServicePush,
+        allowMarketingPush: allowMarketingPush,
+      );
+
+      await Api().client.registerPushToken(userId, pushTokenRequest);
+      print('푸시 토큰 등록 성공: userId=$userId');
+    } catch (e) {
+      print('푸시 토큰 등록 실패: $e');
+    }
   }
 }
 
@@ -570,15 +676,4 @@ class _IDVerificationWidgetState extends State<IDVerificationWidget> {
   Future<bool> checkEmail(String email) async {
     return Future<bool>.value(true);
   }
-
-  final inputDecoration = InputDecoration(
-    // isDense: true,
-    border: UnderlineInputBorder(
-        // borderRadius: BorderRadius.circular(8.0),
-        // borderSide: const BorderSide(
-        //   color: Colors.redAccent,
-        //   width: 2,
-        // )
-        ),
-  );
 }

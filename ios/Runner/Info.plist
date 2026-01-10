@@ -66,6 +66,35 @@
 				<string>kakao275e555cdb8196634a6aef161abe3f84://kakaolink</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kakao275e555cdb8196634a6aef161abe3f84</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kakaoc1428635d1b36023f66bba9374fda4e8</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>firebase-phone-auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app-1-99431167510-ios-03be2c89863c1dd56e6737</string>
+				<string>app-1-99431167510-ios-49d8c003e9d7f57c6e6737</string>
+				<string>com.googleusercontent.apps.99431167510-5lfovp3b3ejqddj9drt4nc9rukql3hr</string>
+				<string>com.googleusercontent.apps.99431167510-nn9vptpc86000fa30n4gadgkbk6aeoco</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>

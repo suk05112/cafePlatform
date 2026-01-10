@@ -83,10 +83,24 @@ class UserProvider with ChangeNotifier {
       _user = null;
       _isLoggedIn = false;
 
-      notifyListeners();
+      // notifyListeners를 안전하게 호출
+      // 이미 dispose된 위젯에서 호출될 수 있으므로 try-catch로 감싸기
+      try {
+        notifyListeners();
+      } catch (e) {
+        print("notifyListeners 오류 (무시 가능): $e");
+      }
       print("User data cleared from storage.");
     } catch (e) {
       print("Failed to clear user data: $e");
+      // 오류가 발생해도 상태는 업데이트
+      _user = null;
+      _isLoggedIn = false;
+      try {
+        notifyListeners();
+      } catch (notifyError) {
+        print("notifyListeners 오류 (무시 가능): $notifyError");
+      }
     }
   }
 }

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -238,9 +238,9 @@
 			buildPhases = (
 				809D4112453A17428B5976E3 /* [CP] Check Pods Manifest.lock */,
 				9740EEB61CF901F6004384FC /* Run Script */,
+				03B570092F0DAF9000976317 /* Setup Firebase Environment GoogleService-Info.plist */,
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
-				03B570092F0DAF9000976317 /* Setup Firebase Environment GoogleService-Info.plist */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
@@ -336,7 +336,7 @@
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
 				"$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
-				"$(SRCROOT)/Runner/GoogleService-Info.plist",
+				"${PROJECT_DIR}/${TARGET_NAME}/GoogleService-Info.plist",
 			);
 			outputFileListPaths = (
 			);
@@ -344,7 +344,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n\"${PODS_ROOT}/FirebaseCrashlytics/run\"\n\n";
+			shellScript = "# Firebase Crashlytics Run Script\n# Ensure GoogleService-Info.plist is available for Crashlytics\n\n# Source location (where Setup Firebase Environment script copied it to)\nGOOGLESERVICE_INFO_SOURCE=\"${PROJECT_DIR}/${TARGET_NAME}/GoogleService-Info.plist\"\n\n# Destination in app bundle (where Crashlytics expects it)\nGOOGLESERVICE_INFO_DEST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/GoogleService-Info.plist\"\n\n# Check if source file exists\nif [ ! -f \"$GOOGLESERVICE_INFO_SOURCE\" ]; then\n    echo \"❌ Error: GoogleService-Info.plist not found at $GOOGLESERVICE_INFO_SOURCE\"\n    echo \"❌ Please ensure the Setup Firebase Environment script runs before this.\"\n    exit 1\nfi\n\n# Copy GoogleService-Info.plist to app bundle if it doesn't exist there or is outdated\nif [ ! -f \"$GOOGLESERVICE_INFO_DEST\" ] || [ \"$GOOGLESERVICE_INFO_SOURCE\" -nt \"$GOOGLESERVICE_INFO_DEST\" ]; then\n    echo \"📋 Copying GoogleService-Info.plist to app bundle...\"\n    mkdir -p \"$(dirname \"$GOOGLESERVICE_INFO_DEST\")\"\n    cp \"$GOOGLESERVICE_INFO_SOURCE\" \"$GOOGLESERVICE_INFO_DEST\"\n    echo \"✅ GoogleService-Info.plist copied to app bundle\"\nfi\n\n# Verify GOOGLE_APP_ID exists in the plist\nif ! /usr/libexec/PlistBuddy -c \"Print :GOOGLE_APP_ID\" \"$GOOGLESERVICE_INFO_DEST\" > /dev/null 2>&1; then\n    echo \"❌ Error: GOOGLE_APP_ID not found in GoogleService-Info.plist at $GOOGLESERVICE_INFO_DEST\"\n    exit 1\nfi\n\necho \"✅ GoogleService-Info.plist verified (GOOGLE_APP_ID found)\"\n\n# Run Firebase Crashlytics script\n\"${PODS_ROOT}/FirebaseCrashlytics/run\"\n";
 		};
 		03B570092F0DAF9000976317 /* Setup Firebase Environment GoogleService-Info.plist */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -365,7 +365,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Name of the resource we're selectively copying\nGOOGLESERVICE_INFO_PLIST=GoogleService-Info.plist\n\n# Get references to dev and prod versions of the GoogleService-Info.plist\nGOOGLESERVICE_INFO_DEV=${PROJECT_DIR}/${TARGET_NAME}/Firebase/Debug/${GOOGLESERVICE_INFO_PLIST}\nGOOGLESERVICE_INFO_PROD=${PROJECT_DIR}/${TARGET_NAME}/Firebase/Release/${GOOGLESERVICE_INFO_PLIST}\n\n# Destination: Runner/GoogleService-Info.plist (where Firebase SDK looks for it)\nPLIST_DESTINATION=${PROJECT_DIR}/${TARGET_NAME}/${GOOGLESERVICE_INFO_PLIST}\n\n# Make sure the dev version of GoogleService-Info.plist exists\necho \"Looking for ${GOOGLESERVICE_INFO_PLIST} in ${GOOGLESERVICE_INFO_DEV}\"\nif [ ! -f \"$GOOGLESERVICE_INFO_DEV\" ]\nthen\n    echo \"No Development GoogleService-Info.plist found. Please ensure it's in the proper directory.\"\n    exit 1\nfi\n\n# Make sure the prod version of GoogleService-Info.plist exists\necho \"Looking for ${GOOGLESERVICE_INFO_PLIST} in ${GOOGLESERVICE_INFO_PROD}\"\nif [ ! -f \"$GOOGLESERVICE_INFO_PROD\" ]\nthen\n    echo \"No Production GoogleService-Info.plist found. Please ensure it's in the proper directory.\"\n    exit 1\nfi\n\n# Copy over the appropriate GoogleService-Info.plist based on build configuration\n# Firebase SDK looks for it in Runner/GoogleService-Info.plist during build time\nif [ \"${CONFIGURATION}\" == \"Release\" ]\nthen\n    echo \"Using Production GoogleService-Info.plist\"\n    cp \"${GOOGLESERVICE_INFO_PROD}\" \"${PLIST_DESTINATION}\"\nelse\n    echo \"Using Development GoogleService-Info.plist\"\n    cp \"${GOOGLESERVICE_INFO_DEV}\" \"${PLIST_DESTINATION}\"\nfi\n\necho \"✅ GoogleService-Info.plist copied to ${PLIST_DESTINATION}\"\n";
+			shellScript = "# Name of the resource we're selectively copying\nGOOGLESERVICE_INFO_PLIST=GoogleService-Info.plist\n\n# Get references to dev and prod versions of the GoogleService-Info.plist\nGOOGLESERVICE_INFO_DEV=${PROJECT_DIR}/${TARGET_NAME}/Firebase/Debug/${GOOGLESERVICE_INFO_PLIST}\nGOOGLESERVICE_INFO_PROD=${PROJECT_DIR}/${TARGET_NAME}/Firebase/Release/${GOOGLESERVICE_INFO_PLIST}\n\n# Destination: Runner/GoogleService-Info.plist (where Firebase SDK looks for it)\nPLIST_DESTINATION=${PROJECT_DIR}/${TARGET_NAME}/${GOOGLESERVICE_INFO_PLIST}\n\n# Debug the configuration being used\necho \"🔍 Build Configuration: ${CONFIGURATION}\"\necho \"🔍 Project Dir: ${PROJECT_DIR}\"\necho \"🔍 Target Name: ${TARGET_NAME}\"\n\n# Make sure the dev version of GoogleService-Info.plist exists\necho \"Looking for ${GOOGLESERVICE_INFO_PLIST} in ${GOOGLESERVICE_INFO_DEV}\"\nif [ ! -f \"$GOOGLESERVICE_INFO_DEV\" ]\nthen\n    echo \"❌ No Development GoogleService-Info.plist found. Please ensure it's in the proper directory.\"\n    exit 1\nfi\n\n# Make sure the prod version of GoogleService-Info.plist exists\necho \"Looking for ${GOOGLESERVICE_INFO_PLIST} in ${GOOGLESERVICE_INFO_PROD}\"\nif [ ! -f \"$GOOGLESERVICE_INFO_PROD\" ]\nthen\n    echo \"❌ No Production GoogleService-Info.plist found. Please ensure it's in the proper directory.\"\n    exit 1\nfi\n\n# Copy over the appropriate GoogleService-Info.plist based on build configuration\n# Check if CONFIGURATION contains \"Release\" (handles both \"Release\" and \"Release-prod\", etc.)\nif [[ \"${CONFIGURATION}\" == *\"Release\"* ]]\nthen\n    echo \"📦 Using Production GoogleService-Info.plist for ${CONFIGURATION}\"\n    cp \"${GOOGLESERVICE_INFO_PROD}\" \"${PLIST_DESTINATION}\"\nelse\n    echo \"🔧 Using Development GoogleService-Info.plist for ${CONFIGURATION}\"\n    cp \"${GOOGLESERVICE_INFO_DEV}\" \"${PLIST_DESTINATION}\"\nfi\n\n# Verify the file was copied successfully\nif [ ! -f \"$PLIST_DESTINATION\" ]\nthen\n    echo \"❌ Failed to copy GoogleService-Info.plist to ${PLIST_DESTINATION}\"\n    exit 1\nfi\n\necho \"✅ GoogleService-Info.plist successfully copied to ${PLIST_DESTINATION}\"\n";
 		};
 		3183A8FA8FDF86A4EE824216 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

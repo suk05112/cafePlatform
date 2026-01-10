@@ -9,18 +9,21 @@ part of 'user_response.dart';
 RegisterUserPostResponse _$RegisterUserPostResponseFromJson(
         Map<String, dynamic> json) =>
     RegisterUserPostResponse(
-      user_id: json['user_id'] as int,
+      userId: json['user_id'] as int,
+      message: json['message'] as String?,
     );
 
 Map<String, dynamic> _$RegisterUserPostResponseToJson(
         RegisterUserPostResponse instance) =>
     <String, dynamic>{
-      'user_id': instance.user_id,
+      'user_id': instance.userId,
+      'message': instance.message,
     };
 
 LoginUserGetResponse _$LoginUserGetResponseFromJson(
         Map<String, dynamic> json) =>
     LoginUserGetResponse(
+      isRegistered: json['isRegistered'] as int?,
       user_id: json['user_id'] as int?,
       email: json['email'] as String?,
       name: json['name'] as String?,
@@ -31,6 +34,7 @@ LoginUserGetResponse _$LoginUserGetResponseFromJson(
 Map<String, dynamic> _$LoginUserGetResponseToJson(
         LoginUserGetResponse instance) =>
     <String, dynamic>{
+      'isRegistered': instance.isRegistered,
       'user_id': instance.user_id,
       'name': instance.name,
       'email': instance.email,
@@ -46,18 +50,6 @@ IsRegisteredUserGetResponse _$IsRegisteredUserGetResponseFromJson(
 
 Map<String, dynamic> _$IsRegisteredUserGetResponseToJson(
         IsRegisteredUserGetResponse instance) =>
-    <String, dynamic>{
-      'isRegistered': instance.isRegistered,
-    };
-
-IsRegisteredAppleUserGetResponse _$IsRegisteredAppleUserGetResponseFromJson(
-        Map<String, dynamic> json) =>
-    IsRegisteredAppleUserGetResponse(
-      isRegistered: json['isRegistered'] as bool,
-    );
-
-Map<String, dynamic> _$IsRegisteredAppleUserGetResponseToJson(
-        IsRegisteredAppleUserGetResponse instance) =>
     <String, dynamic>{
       'isRegistered': instance.isRegistered,
     };
@@ -90,4 +82,16 @@ Map<String, dynamic> _$PushTokenUpdateRequestToJson(
     <String, dynamic>{
       'allow_service_push': instance.allowServicePush,
       'allow_marketing_push': instance.allowMarketingPush,
+    };
+
+DeleteUserResponse _$DeleteUserResponseFromJson(Map<String, dynamic> json) =>
+    DeleteUserResponse(
+      message: json['message'] as String,
+      userId: json['user_id'] as int,
+    );
+
+Map<String, dynamic> _$DeleteUserResponseToJson(DeleteUserResponse instance) =>
+    <String, dynamic>{
+      'message': instance.message,
+      'user_id': instance.userId,
     };

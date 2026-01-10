@@ -40,7 +40,22 @@ class LoginService {
 
       if (fbUser != null) {
         print("link시도");
-        await fbUser.linkWithCredential(snsCredential);
+        try {
+          await fbUser.linkWithCredential(snsCredential);
+          print("Credential 링크 성공");
+        } on FirebaseAuthException catch (linkError) {
+          // 이미 링크되어 있는 경우 처리
+          if (linkError.code == 'provider-already-linked') {
+            print("이미 provider가 링크되어 있음 - 기존 계정 사용");
+            // 이미 링크되어 있으면 기존 사용자를 그대로 반환
+            return phoneLogin;
+          } else {
+            // 다른 Firebase 오류인 경우
+            print(
+                "Firebase Auth 링크 에러: ${linkError.code} / ${linkError.message}");
+            rethrow;
+          }
+        }
       }
 
       return phoneLogin;
@@ -50,6 +65,8 @@ class LoginService {
     } on FirebaseAuthException catch (e) {
       print(
           "Firebase Auth 에러: ${e.code} / ${e.message} ${e.credential?.providerId}");
+      // Firebase 오류도 onError로 전달
+      onError(Future.value(AuthError.firebase));
     } catch (e) {
       print("알 수 없는 에러: $e");
       onError(AuthErrorHandler.handle(e));
@@ -236,30 +253,17 @@ class LoginService {
     return;
   }
 
-  Future<bool> isRegisteredUser(email, provider) async {
-    print("register 확인할 email $email");
-    final response = await Api().client.getIsRegisteredUser(email, provider);
-    print(" isRegisteredUser$response");
-    return response.isRegistered;
-  }
-
-  Future<bool> isRegisteredAppleUser(phoneNumber) async {
-    print("apple register 확인할 phoneNumber $phoneNumber");
+  Future<bool> isRegisteredUser(String? email, String provider,
+      {String? phone}) async {
+    print("register 확인할 email=$email, provider=$provider, phone=$phone");
     try {
-      final response = await Api().client.getIsRegisteredAppleUser(phoneNumber);
+      // email이 null이면 query parameter로 전달하지 않음 (Retrofit이 자동 처리)
+      final response = await Api().client.getIsRegisteredUser(
+            email,
+            provider,
+            phone,
+          );
       print(" isRegisteredUser$response");
-      return response.isRegistered;
-    } catch (e) {
-      print("❌ Error: $e");
-      return false;
-    }
-  }
-
-  Future<bool> isRegisteredUserByPhone(String phoneNumber) async {
-    print("register 확인할 phoneNumber $phoneNumber");
-    try {
-      final response = await Api().client.getIsRegisteredAppleUser(phoneNumber);
-      print(" isRegisteredUserByPhone $response");
       return response.isRegistered;
     } catch (e) {
       print("❌ Error: $e");

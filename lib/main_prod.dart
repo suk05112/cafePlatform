@@ -2,6 +2,7 @@ import 'package:cafeplatform/firebase_options_prod.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
 import 'config/flavors.dart';
@@ -10,6 +11,10 @@ import 'main.dart' as runner;
 
 Future<void> main() async {
   F.appFlavor = Flavor.prod;
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
