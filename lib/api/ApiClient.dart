@@ -155,6 +155,7 @@ abstract class ApiClient {
   @DELETE("/user/{user_id}")
   Future<DeleteUserResponse> deleteUser(
     @Path('user_id') int userId,
+    @Query('authorization_code') String? authorizationCode,
   );
 
   @GET("/business-info")

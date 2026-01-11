@@ -116,10 +116,13 @@ class DeleteUserResponse {
   String message;
   @JsonKey(name: 'user_id')
   int userId;
+  @JsonKey(name: 'apple_revoked')
+  bool? appleRevoked;
 
   DeleteUserResponse({
     required this.message,
     required this.userId,
+    this.appleRevoked,
   });
 
   factory DeleteUserResponse.fromJson(Map<String, dynamic> json) =>

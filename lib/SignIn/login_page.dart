@@ -707,31 +707,6 @@ class _LoginPageState extends State<LoginPage> {
             return;
           }
 
-          // 신규 유저: SNS 로그인인 경우 phone 로그인을 로그아웃하고 SNS로 재로그인
-          print("신규 유저 SNS 로그인 처리 시작");
-
-          // 현재 Firebase에 로그인된 사용자 확인
-          final currentUser = _auth.currentUser;
-          if (currentUser != null) {
-            // phone provider로 로그인되어 있는지 확인
-            final providerData = currentUser.providerData;
-            bool hasPhoneProvider =
-                providerData.any((info) => info.providerId == 'phone');
-
-            if (hasPhoneProvider) {
-              print("현재 phone provider로 로그인되어 있음. 로그아웃 후 SNS로 재로그인");
-              // phone 로그인 로그아웃
-              await _auth.signOut();
-              print("phone 로그인 로그아웃 완료");
-            }
-          }
-
-          // SNS credential로 재로그인
-          print("SNS credential로 재로그인 시도: provider=${credential.providerId}");
-          final snsUserCredential =
-              await _auth.signInWithCredential(credential);
-          print("SNS 재로그인 완료: uid=${snsUserCredential.user?.uid}");
-
           // 회원가입 후 바로 로그인 API 호출하여 사용자 정보 가져오기
           try {
             // SNS provider를 서버 형식으로 변환
@@ -742,8 +717,8 @@ class _LoginPageState extends State<LoginPage> {
             print("회원가입 후 로그인 api 호출후 response $loginResponse");
 
             if (loginResponse.user_id != null) {
-              // userCredential과 uid 확인 (SNS 재로그인 후의 credential 사용)
-              final uid = snsUserCredential.user?.uid;
+              // userCredential과 uid 확인 (phoneAuth로 이미 연결된 credential 사용)
+              final uid = userCredential.user?.uid;
 
               final user = my_app.User(
                 user_id: loginResponse.user_id ?? -1,
@@ -849,26 +824,8 @@ class _LoginPageState extends State<LoginPage> {
           return; // 에러 발생 시 함수 종료
         }
       } else {
-        // 기존 사용자: SNS 로그인인 경우 phone 로그인을 로그아웃하고 SNS로 재로그인
+        // 기존 사용자: SNS credential로 직접 로그인 (재로그인 불필요)
         print("기존 사용자 SNS 로그인 처리 시작");
-
-        // 현재 Firebase에 로그인된 사용자 확인
-        final currentUser = _auth.currentUser;
-        if (currentUser != null) {
-          // phone provider로 로그인되어 있는지 확인
-          final providerData = currentUser.providerData;
-          bool hasPhoneProvider =
-              providerData.any((info) => info.providerId == 'phone');
-
-          if (hasPhoneProvider) {
-            print("현재 phone provider로 로그인되어 있음. 로그아웃 후 SNS로 재로그인");
-            // phone 로그인 로그아웃
-            await _auth.signOut();
-            print("phone 로그인 로그아웃 완료");
-          }
-        }
-
-        // SNS credential로 로그인
         print("SNS credential로 로그인 시도: provider=${credential.providerId}");
         userCredential = await _auth.signInWithCredential(credential);
         print("SNS 로그인 완료: uid=${userCredential.user?.uid}");
@@ -1034,115 +991,454 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void appleLoginSuccess(credential, email, name) async {
+    // SNS 로그인 후 신규/기존 판단
     fb.UserCredential? userCredential;
 
-    if (email == null) {
-      userCredential = await _auth.signInWithCredential(credential);
-    } else {
-      PhoneAuthResult? phoneAuthResult = await Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => const TermsAgreementPage(
-                  isSocialLogin: true,
-                  provider: "apple.com",
-                )),
-      );
+    // 로딩 인디케이터 표시
+    setState(() {
+      _loading = true;
+    });
 
-      if (phoneAuthResult != null) {
-        // Apple 로그인인 경우 provider는 "apple.com"
-        final isRegistered = await loginService.isRegisteredUser(
-          null,
-          "apple.com",
-          phone: phoneAuthResult.phoneNumber,
+    try {
+      // Apple 로그인의 경우 provider는 "apple.com"
+      final provider = "apple.com";
+      final emailForCheck = email ?? "apple";
+
+      // 애플 로그인: email 여부로 회원가입 여부 판단 (API 호출하지 않음)
+      // email이 있으면 신규 유저 (회원가입 필요), email이 null이면 기존 유저 (로그인)
+      bool needPhoneAuth;
+      if (email != null) {
+        // email이 있으면 신규 유저로 간주 (회원가입 필요)
+        print("애플 로그인: email이 있으므로 신규 유저로 간주 (회원가입 필요)");
+        needPhoneAuth = true;
+      } else {
+        // email이 null이면 기존 유저로 간주 (로그인)
+        print("애플 로그인: email이 null이므로 기존 유저로 간주 (로그인)");
+        needPhoneAuth = false;
+      }
+
+      print("needPhoneAuth $needPhoneAuth");
+      if (needPhoneAuth) {
+        // 폰 인증 페이지로 이동 (로딩은 계속 표시)
+        // 프로그레스바는 _loading이 true일 때 자동으로 표시됨
+
+        // 약관동의 페이지 먼저 보여주기 (약관동의 후 전화번호 인증까지 처리됨)
+        PhoneAuthResult? phoneAuthResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => TermsAgreementPage(
+                    isSocialLogin: true,
+                    provider: provider,
+                  )),
         );
 
-        if (isRegistered == false) {
-          userCredential = await loginService.phoneAuth(
-              phoneCredential: phoneAuthResult.credential,
-              snsCredential: credential,
-              onError: loginFail);
-          if (userCredential != null) {
-            print("apple updateDisplayName");
-            // 이름은 TermsAgreementPage에서 입력받은 이름을 사용
-            final userName = phoneAuthResult.name ?? name ?? "사용자";
-            userCredential.user?.updateDisplayName(userName);
+        if (phoneAuthResult == null) {
+          // 약관동의를 취소한 경우
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+          }
+          return;
+        }
 
-            // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
-            try {
-              await Api().setBaseClient(Api.BASE_URL);
-              // 전화번호를 E.164 형식(+82)으로 변환
-              final formattedPhoneNumber =
-                  _formatToE164(phoneAuthResult.phoneNumber);
+        // 약관동의와 전화번호 인증이 완료됨
+        final finalPhoneAuthResult = phoneAuthResult;
 
-              final registerUser = my_app.User(
-                user_id: 0, // 회원가입 시에는 0으로 설정 (서버에서 생성)
-                name: userName,
-                email: email ?? "apple",
-                phone_number: formattedPhoneNumber,
-                uid: userCredential.user?.uid ?? "",
-                provider: "apple.com",
+        userCredential = await loginService.phoneAuth(
+            phoneCredential: finalPhoneAuthResult.credential,
+            snsCredential: credential,
+            onError: (error) async {
+              final authError = await error;
+              if (mounted) {
+                setState(() {
+                  _loading = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(authError.message),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+              loginFail(authError);
+            });
+
+        if (userCredential == null) {
+          // phoneAuth 실패 시 로딩 해제하고 종료
+          print("❌ phoneAuth가 null을 반환했습니다.");
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+          }
+          return;
+        }
+
+        if (userCredential.user == null) {
+          print("❌ userCredential.user가 null입니다.");
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        print("✅ phoneAuth 성공 - userCredential: ${userCredential.user?.uid}");
+        print("updateDisplayName");
+        // 이름은 TermsAgreementPage 또는 PhoneAuthPage에서 입력받은 이름을 사용
+        final userName = finalPhoneAuthResult.name ?? name ?? "사용자";
+        await userCredential.user?.updateDisplayName(userName);
+
+        // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
+        await Api().setBaseClient(Api.BASE_URL);
+        // 전화번호를 E.164 형식(+82)으로 변환
+        final formattedPhoneNumber =
+            _formatToE164(finalPhoneAuthResult.phoneNumber);
+
+        final registerUser = my_app.User(
+          user_id: 0, // 회원가입 시에는 0으로 설정 (서버에서 생성)
+          name: userName,
+          email: emailForCheck,
+          phone_number: formattedPhoneNumber,
+          uid: userCredential.user?.uid ?? "",
+          provider: provider,
+        );
+
+        print("애플 간편로그인 registerUser.toJson(): ${registerUser.toJson()}");
+
+        // 회원가입 API 호출만 try-catch로 감싸기
+        try {
+          final registerResponse =
+              await Api().client.registerUser(registerUser);
+          print("애플 간편로그인 회원가입 API 호출 후 response $registerResponse");
+        } on DioException catch (e) {
+          String errorMessage = '회원가입 중 오류가 발생했습니다.';
+          if (e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.sendTimeout) {
+            errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+          } else if (e.type == DioExceptionType.connectionError) {
+            errorMessage = '인터넷 연결을 확인해주세요.';
+          } else if (e.response != null) {
+            errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
+          }
+
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: Colors.white,
+                  title: Text('오류'),
+                  content: Text(errorMessage),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text('확인'),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+          return; // 회원가입 실패 시 함수 종료
+        } catch (e) {
+          String errorMessage = '회원가입 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: Colors.white,
+                  title: Text('오류'),
+                  content: Text(errorMessage),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text('확인'),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+          return; // 회원가입 실패 시 함수 종료
+        }
+
+        // 회원가입 성공 후 위젯이 여전히 mounted인지 확인
+        if (!mounted) {
+          print("⚠️ Warning: 회원가입 후 위젯이 dispose되었습니다.");
+          return;
+        }
+
+        // 회원가입 후 바로 로그인 API 호출하여 사용자 정보 가져오기
+        try {
+          var loginResponse =
+              await Api().client.loginUser(emailForCheck, provider);
+          print("회원가입 후 로그인 api 호출후 response $loginResponse");
+
+          if (loginResponse.user_id != null) {
+            // userCredential과 uid 확인 (phoneAuth로 이미 연결된 credential 사용)
+            final uid = userCredential.user?.uid;
+
+            final user = my_app.User(
+              user_id: loginResponse.user_id ?? -1,
+              name: loginResponse.name ?? "name",
+              email: loginResponse.email ?? "email",
+              phone_number: loginResponse.phone_number ?? "",
+              uid: uid ?? "",
+            );
+
+            print(
+                "회원가입 후 로그인 성공 - 사용자 정보: user_id=${user.user_id}, name=${user.name}, email=${user.email}, uid=${user.uid}");
+
+            // 위젯이 여전히 mounted인지 다시 확인
+            if (!mounted) {
+              print("⚠️ Warning: 로그인 후 위젯이 dispose되었습니다.");
+              return;
+            }
+
+            Provider.of<UserProvider>(context, listen: false).setUser(user);
+
+            // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
+            _registerPushToken(loginResponse.user_id ?? -1).catchError((error) {
+              print('푸시 토큰 등록 실패 (로그인은 계속 진행): $error');
+            });
+
+            // 로그인 성공 시 처리
+            if (mounted) {
+              setState(() {
+                _loading = false;
+              });
+
+              // 딥링크로 들어온 기프티콘 등록이 있는지 확인
+              final prefs = await SharedPreferences.getInstance();
+              final pendingGifticonId = prefs.getInt('pending_gifticon_id');
+
+              if (pendingGifticonId != null) {
+                // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
+                await prefs.remove('pending_gifticon_id');
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        RegisterGifticonPage(gifticon_id: pendingGifticonId),
+                  ),
+                );
+              } else {
+                // returnToPrevious가 true면 이전 페이지로 돌아가기, false면 TabPage로 이동
+                if (widget.returnToPrevious && Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const TabPage(initialIndex: 0)),
+                  );
+                }
+              }
+            }
+            return; // 회원가입 및 로그인 완료, 함수 종료
+          }
+        } catch (loginError) {
+          print("회원가입 후 로그인 API 호출 실패: $loginError");
+          // 로그인 실패해도 계속 진행 (서버에서 회원가입은 완료되었으므로)
+          // 오류 다이얼로그를 표시하지 않고 계속 진행
+        }
+      } else {
+        // 기존 사용자: SNS credential로 직접 로그인 (재로그인 불필요)
+        print("기존 사용자 SNS 로그인 처리 시작");
+        print("SNS credential로 로그인 시도: provider=${credential.providerId}");
+        userCredential = await _auth.signInWithCredential(credential);
+        print("SNS 로그인 완료: uid=${userCredential.user?.uid}");
+      }
+
+      if (userCredential.user == null) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      print("displayname: ${userCredential.user?.displayName ?? "none"}");
+      await Api().setBaseClient(Api.BASE_URL);
+
+      try {
+        var response = await Api().client.loginUser(emailForCheck, provider);
+        print("로그인 api 호출후 response $response");
+
+        if (response.user_id == null) {
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // 비동기 작업 후 위젯이 dispose되었는지 확인
+        if (!mounted) {
+          print("⚠️ Warning: Widget이 dispose되었습니다. 로그인 처리 중단.");
+          return;
+        }
+
+        // userCredential과 uid 확인
+        final uid = userCredential.user?.uid;
+        if (uid == null || uid.isEmpty) {
+          print("⚠️ Warning: userCredential.user?.uid is null or empty");
+          print("userCredential: $userCredential");
+          print("userCredential.user: ${userCredential.user}");
+        }
+
+        final user = my_app.User(
+          user_id: response.user_id ?? -1,
+          name: response.name ?? "name",
+          email: response.email ?? "email",
+          phone_number: response.phone_number ?? "",
+          uid: uid ?? "",
+        );
+
+        print(
+            "로그인 성공 - 사용자 정보: user_id=${user.user_id}, name=${user.name}, email=${user.email}, uid=${user.uid}");
+
+        // context가 유효한지 확인 후 UserProvider 업데이트
+        if (!mounted) {
+          print("⚠️ Warning: Widget이 dispose되었습니다. UserProvider 업데이트를 건너뜁니다.");
+          return;
+        }
+
+        Provider.of<UserProvider>(context, listen: false).setUser(user);
+
+        // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
+        _registerPushToken(response.user_id ?? -1).catchError((error) {
+          print('푸시 토큰 등록 실패 (로그인은 계속 진행): $error');
+        });
+
+        // 로그인 성공 시 처리
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+
+          // 딥링크로 들어온 기프티콘 등록이 있는지 확인
+          final prefs = await SharedPreferences.getInstance();
+          final pendingGifticonId = prefs.getInt('pending_gifticon_id');
+
+          if (pendingGifticonId != null) {
+            // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
+            await prefs.remove('pending_gifticon_id');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    RegisterGifticonPage(gifticon_id: pendingGifticonId),
+              ),
+            );
+          } else {
+            // returnToPrevious가 true면 이전 페이지로 돌아가기, false면 TabPage로 이동
+            if (widget.returnToPrevious && Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const TabPage(initialIndex: 0)),
               );
-
-              print("애플 간편로그인 registerUser.toJson(): ${registerUser.toJson()}");
-              final registerResponse =
-                  await Api().client.registerUser(registerUser);
-              print("애플 간편로그인 회원가입 API 호출 후 response $registerResponse");
-            } catch (e) {
-              print("회원가입 API 오류 (이미 가입된 사용자일 수 있음): $e");
             }
           }
         }
-      }
-    }
+      } on DioException catch (e) {
+        String errorMessage = '서버 오류가 발생했습니다.';
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.sendTimeout) {
+          errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+        } else if (e.type == DioExceptionType.connectionError) {
+          errorMessage = '인터넷 연결을 확인해주세요.';
+        } else if (e.response != null) {
+          final statusCode = e.response?.statusCode;
+          if (statusCode == 500) {
+            errorMessage = '서버 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
+          } else if (statusCode == 404) {
+            errorMessage = '사용자를 찾을 수 없습니다.';
+          } else {
+            errorMessage = '서버 오류가 발생했습니다.\n($statusCode)';
+          }
+        }
 
-    await Api().setBaseClient(Api.BASE_URL);
-    // 애플 로그인의 경우 provider는 "apple.com"
-    var response = await Api().client.loginUser(email ?? "apple", 'apple.com');
-    print("apple 로그인 api 호출후 response $response");
-
-    final user = my_app.User(
-      user_id: response.user_id ?? -1,
-      name: response.name ?? "name",
-      email: response.email ?? "email",
-      phone_number: response.phone_number ?? "",
-      uid: userCredential?.user?.uid ?? "",
-    );
-    Provider.of<UserProvider>(context, listen: false).setUser(user);
-
-    // 푸시 토큰 등록
-    _registerPushToken(response.user_id ?? -1);
-
-    // 딥링크로 들어온 기프티콘 등록이 있는지 확인
-    final prefs = await SharedPreferences.getInstance();
-    final pendingGifticonId = prefs.getInt('pending_gifticon_id');
-
-    // 로그인 성공 시 TabPage로 이동 (매장보기 탭 선택)
-    if (mounted) {
-      if (pendingGifticonId != null) {
-        // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
-        await prefs.remove('pending_gifticon_id');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                RegisterGifticonPage(gifticon_id: pendingGifticonId),
-          ),
-        );
-      } else {
-        // returnToPrevious가 true면 이전 페이지로 돌아가기, false면 TabPage로 이동
-        if (widget.returnToPrevious && Navigator.canPop(context)) {
-          Navigator.pop(context);
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const TabPage(initialIndex: 0)),
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                title: const Text('오류'),
+                content: Text(errorMessage),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('확인'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      } catch (e, stackTrace) {
+        print("로그인 처리 중 오류: $e");
+        print("스택 트레이스: $stackTrace");
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('로그인 처리 중 오류가 발생했습니다: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
           );
         }
       }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
-
-    setState(() => _loading = false);
   }
 
   Future<void> _registerPushToken(int userId) async {

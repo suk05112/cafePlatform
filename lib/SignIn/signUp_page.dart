@@ -4,14 +4,11 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
-import 'package:cafeplatform/SignIn/singUp_completed_page.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/widget/CommonDialog.dart';
 import 'package:cafeplatform/model/user.dart' as my_app;
 import 'package:cafeplatform/widget/input_info_widget.dart';
-import 'package:provider/provider.dart';
-import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'dart:io';
@@ -374,22 +371,9 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
               await Api().client.registerUser(registerUser);
           print("회원가입 API 호출 후 response $registerResponse");
 
-          // 회원가입 성공 후 로그인 API 호출 (이메일 로그인의 경우 provider는 "email")
-          var response =
-              await Api().client.loginUser(email + "@gifnut.com", 'email');
-          print("로그인 api 호출후 response $response");
-
-          final user = my_app.User(
-            user_id: response.user_id ?? -1,
-            name: response.name ?? name!,
-            email: response.email ?? email,
-            phone_number: response.phone_number ?? phoneNumber,
-            uid: linkedUser.uid,
-          );
-          Provider.of<UserProvider>(context, listen: false).setUser(user);
-
           // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 회원가입은 계속 진행)
-          _registerPushToken(response.user_id ?? -1).catchError((error) {
+          // 회원가입 API 호출 후 바로 등록 (로그아웃 전)
+          _registerPushToken(registerResponse.userId).catchError((error) {
             print('푸시 토큰 등록 실패 (회원가입은 계속 진행): $error');
           });
 
@@ -401,10 +385,54 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             setState(() {
               _loading = false;
             });
-            // 모든 스택을 제거하고 로그인 페이지로 이동
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => LoginPage()),
-              (route) => false,
+
+            // 가입 완료 메시지 표시
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext dialogContext) {
+                return AlertDialog(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  title: const Text(
+                    '가입 완료',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: const Text(
+                    '가입이 완료되었습니다.\n다시 로그인해주세요.',
+                    style: TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        // 다이얼로그 닫은 후 로그인 페이지로 이동
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (context) => LoginPage()),
+                            (route) => false,
+                          );
+                        }
+                      },
+                      child: const Text(
+                        '확인',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           }
         } on DioException catch (e) {

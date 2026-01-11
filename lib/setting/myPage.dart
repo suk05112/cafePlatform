@@ -77,7 +77,7 @@ class _MyPageState extends State<MyPage> {
   }
 
   Widget getListView() {
-    var selectedPageName = ['주문내역', '고객센터'];
+    var selectedPageName = ['결제내역', '고객센터'];
 
     var selectedPage = [OrderListPage(), const NoticePage()];
     // var listView = ListView.separated(

@@ -135,9 +135,9 @@ void handleDeepLink(Uri uri) async {
     return;
   }
 
-  // 카카오 링크 처리 (kakaoc...://kakaolink?gifticon_id=...)
+  // 카카오 링크 처리 (kakaoc...://kakaolink 또는 kakao...://kakaolink?gifticon_id=...)
   // Flutter 앱이 완전히 초기화될 때까지 대기 (최대 3초)
-  bool isKakaoLink = uri.scheme.startsWith('kakaoc') && uri.host == 'kakaolink';
+  bool isKakaoLink = (uri.scheme.startsWith('kakaoc') || uri.scheme.startsWith('kakao')) && uri.host == 'kakaolink';
 
   if (isKakaoLink) {
     int retryCount = 0;

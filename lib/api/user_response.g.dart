@@ -88,10 +88,12 @@ DeleteUserResponse _$DeleteUserResponseFromJson(Map<String, dynamic> json) =>
     DeleteUserResponse(
       message: json['message'] as String,
       userId: json['user_id'] as int,
+      appleRevoked: json['apple_revoked'] as bool?,
     );
 
 Map<String, dynamic> _$DeleteUserResponseToJson(DeleteUserResponse instance) =>
     <String, dynamic>{
       'message': instance.message,
       'user_id': instance.userId,
+      'apple_revoked': instance.appleRevoked,
     };
