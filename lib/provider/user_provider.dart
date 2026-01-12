@@ -37,8 +37,10 @@ class UserProvider with ChangeNotifier {
         'name': user.name,
         'email': user.email,
         'phone': user.phone_number,
+        'uid': user.uid,
       });
       await _storage.write(key: "user", value: userJson);
+      _isLoggedIn = true;
       print("User saved to secure storage.");
     } catch (e) {
       print("Failed to save user to storage: $e");
@@ -56,6 +58,7 @@ class UserProvider with ChangeNotifier {
           name: userMap['name'],
           email: userMap['email'],
           phone_number: userMap['phone'],
+          uid: userMap['uid'] ?? '',
         );
         notifyListeners();
         print("User loaded from secure storage.");
@@ -80,10 +83,24 @@ class UserProvider with ChangeNotifier {
       _user = null;
       _isLoggedIn = false;
 
-      notifyListeners();
+      // notifyListeners를 안전하게 호출
+      // 이미 dispose된 위젯에서 호출될 수 있으므로 try-catch로 감싸기
+      try {
+        notifyListeners();
+      } catch (e) {
+        print("notifyListeners 오류 (무시 가능): $e");
+      }
       print("User data cleared from storage.");
     } catch (e) {
       print("Failed to clear user data: $e");
+      // 오류가 발생해도 상태는 업데이트
+      _user = null;
+      _isLoggedIn = false;
+      try {
+        notifyListeners();
+      } catch (notifyError) {
+        print("notifyListeners 오류 (무시 가능): $notifyError");
+      }
     }
   }
 }

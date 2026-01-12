@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:cafeplatform/firebase_options_dev.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
 import 'config/flavors.dart';
 
@@ -16,17 +15,46 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  await FirebaseAppCheck.instance.activate(
-    androidProvider: AndroidProvider.debug,
-    appleProvider: AppleProvider.debug, // iOS도 dev면 debug
-    webProvider:
-        ReCaptchaV3Provider("6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
+  var kakaoNative = 'c1428635d1b36023f66bba9374fda4e8';
+  var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';
+
+  KakaoSdk.init(
+    nativeAppKey: kakaoNative,
+    javaScriptAppKey: javaScriptAppKey,
   );
 
-  sleep(Duration(seconds: 10));
+  // 개발 모드에서 App Check 설정 (선택적)
+  try {
+    // Debug 모드에서는 App Check를 선택적으로 활성화
+    // Firebase Console에서 Debug 토큰이 등록되지 않은 경우 실패할 수 있음
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: AndroidProvider.debug,
+      appleProvider: AppleProvider.debug,
+      webProvider:
+          ReCaptchaV3Provider("6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
+    );
+    print('✅ Firebase App Check 활성화 완료');
 
-  // 🔥 여기서 처음 실행 시 Debug Token 로그가 찍혀야 정상
-  final token = await FirebaseAppCheck.instance.getToken();
-  print('🔥 Firebase App Check Token: $token');
+    // 토큰 가져오기는 백그라운드에서 시도 (실패해도 계속 진행)
+    // 실제로 토큰이 필요할 때만 가져오도록 API 호출 시점에 처리
+    Future.delayed(Duration(seconds: 3), () async {
+      try {
+        final token = await FirebaseAppCheck.instance.getToken();
+        if (token != null) {
+          print('🔥 Firebase App Check Token 획득 성공');
+        }
+      } catch (e) {
+        // 개발 모드에서는 토큰 획득 실패를 무시
+        // Firebase Console에 Debug 토큰이 등록되어 있지 않으면 실패할 수 있음
+        print('⚠️ Firebase App Check Token 획득 실패 (무시 가능): $e');
+      }
+    });
+  } catch (e) {
+    // App Check 활성화 실패 시에도 앱은 계속 실행
+    // 개발 모드에서는 이 에러를 무시해도 됩니다
+    print('⚠️ Firebase App Check 활성화 실패 (무시 가능): $e');
+    print('💡 개발 모드에서는 App Check 없이도 정상 동작합니다.');
+  }
+
   await runner.main();
 }

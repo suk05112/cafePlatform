@@ -31,6 +31,8 @@ class Gifticon {
   double store_lat;
   double store_lng;
   String store_name;
+  @JsonKey(name: 'store_address')
+  String? store_address;
 
   // Gifticon({this.order_id = 0,});
   Gifticon(
@@ -56,7 +58,8 @@ class Gifticon {
       this.created_time,
       this.store_lat = 0.0,
       this.store_lng = 0.0,
-      this.store_name = ""});
+      this.store_name = "",
+      this.store_address});
 
   factory Gifticon.fromJson(Map<String, dynamic> json) =>
       _$GifticonFromJson(json);

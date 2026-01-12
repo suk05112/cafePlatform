@@ -4,9 +4,14 @@ part 'user_response.g.dart';
 
 @JsonSerializable()
 class RegisterUserPostResponse {
-  int user_id;
+  @JsonKey(name: 'user_id')
+  int userId;
+  String? message;
 
-  RegisterUserPostResponse({required this.user_id});
+  RegisterUserPostResponse({
+    required this.userId,
+    this.message,
+  });
 
   factory RegisterUserPostResponse.fromJson(Map<String, dynamic> json) =>
       _$RegisterUserPostResponseFromJson(json);
@@ -15,13 +20,17 @@ class RegisterUserPostResponse {
 
 @JsonSerializable()
 class LoginUserGetResponse {
+  @JsonKey(name: 'isRegistered')
+  int? isRegistered;
   int? user_id;
   String? name;
   String? email;
+  @JsonKey(name: 'phone_number')
   String? phone_number;
   String? msg;
 
   LoginUserGetResponse({
+    this.isRegistered,
     this.user_id,
     this.email,
     this.name,
@@ -59,29 +68,16 @@ class IsRegisteredUserGetResponse {
 }
 
 @JsonSerializable()
-class IsRegisteredAppleUserGetResponse {
-  bool isRegistered;
-
-  IsRegisteredAppleUserGetResponse({required this.isRegistered});
-
-  factory IsRegisteredAppleUserGetResponse.fromJson(
-          Map<String, dynamic> json) =>
-      _$IsRegisteredAppleUserGetResponseFromJson(json);
-  Map<String, dynamic> toJson() =>
-      _$IsRegisteredAppleUserGetResponseToJson(this);
-}
-
-@JsonSerializable()
 class PushTokenRequest {
   @JsonKey(name: 'fcm_token')
   String fcmToken;
-  
+
   @JsonKey(name: 'device_type')
   String deviceType;
-  
+
   @JsonKey(name: 'allow_service_push')
   bool allowServicePush;
-  
+
   @JsonKey(name: 'allow_marketing_push')
   bool allowMarketingPush;
 
@@ -101,7 +97,7 @@ class PushTokenRequest {
 class PushTokenUpdateRequest {
   @JsonKey(name: 'allow_service_push')
   bool? allowServicePush;
-  
+
   @JsonKey(name: 'allow_marketing_push')
   bool? allowMarketingPush;
 
@@ -113,4 +109,23 @@ class PushTokenUpdateRequest {
   factory PushTokenUpdateRequest.fromJson(Map<String, dynamic> json) =>
       _$PushTokenUpdateRequestFromJson(json);
   Map<String, dynamic> toJson() => _$PushTokenUpdateRequestToJson(this);
+}
+
+@JsonSerializable()
+class DeleteUserResponse {
+  String message;
+  @JsonKey(name: 'user_id')
+  int userId;
+  @JsonKey(name: 'apple_revoked')
+  bool? appleRevoked;
+
+  DeleteUserResponse({
+    required this.message,
+    required this.userId,
+    this.appleRevoked,
+  });
+
+  factory DeleteUserResponse.fromJson(Map<String, dynamic> json) =>
+      _$DeleteUserResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$DeleteUserResponseToJson(this);
 }

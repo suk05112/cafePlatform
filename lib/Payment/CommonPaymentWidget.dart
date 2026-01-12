@@ -37,13 +37,30 @@ class CommonPaymentWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: AspectRatio(
                       aspectRatio: 1, // 정방형
-                      child: Image.network(
-                        menu.menu_image_url!.trim(),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const SizedBox.shrink();
-                        },
-                      ),
+                      child: (menu.menu_image_url != null &&
+                              menu.menu_image_url!.trim().isNotEmpty)
+                          ? Image.network(
+                              menu.menu_image_url!.trim(),
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const SizedBox.shrink();
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                print('메뉴 이미지 로드 오류: $error');
+                                return const SizedBox.shrink();
+                              },
+                              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                                if (wasSynchronouslyLoaded) return child;
+                                return AnimatedOpacity(
+                                  opacity: frame == null ? 0.0 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
+                                  child: child,
+                                );
+                              },
+                            )
+                          : const SizedBox.shrink(),
                     ),
                   ),
                 ),

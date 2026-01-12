@@ -10,8 +10,8 @@ LinkGifticonResponse _$LinkGifticonResponseFromJson(
         Map<String, dynamic> json) =>
     LinkGifticonResponse(
       message: json['message'] as String,
-      gifticon_id: (json['gifticon_id'] as num).toInt(),
-      user_id: (json['user_id'] as num).toInt(),
+      gifticon_id: json['gifticon_id'] as int,
+      user_id: json['user_id'] as int,
     );
 
 Map<String, dynamic> _$LinkGifticonResponseToJson(

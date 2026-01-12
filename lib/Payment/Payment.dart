@@ -3,11 +3,9 @@
 // import 'package:bootpay/model/user.dart' as bt;
 // import 'package:bootpay/model/extra.dart' as bt_ex;
 // import 'package:bootpay/model/item.dart';
-import 'package:flutter/foundation.dart';
-
 import 'package:flutter/material.dart';
-import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:cafeplatform/Payment/CompletePayment.dart';
+import 'package:cafeplatform/utils/kakao_share_helper.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/gifticon_response.dart';
@@ -28,6 +26,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:cafeplatform/utils/number_formatter.dart';
+import 'package:cafeplatform/SignIn/login_page.dart';
 
 class Payment extends StatefulWidget {
   const Payment({super.key, required this.type, required this.menu});
@@ -48,12 +47,51 @@ class _PaymentState extends State<Payment> {
   PaymentMethodWidgetControl? _paymentMethodWidgetControl;
   AgreementWidgetControl? _agreementWidgetControl;
 
+  /// 한국 전화번호를 국제 형식으로 변환 (01012345678 -> +821012345678)
+  String _convertToInternationalFormat(String phoneNumber) {
+    // 하이픈, 공백 등 모든 비숫자 제거
+    final digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+
+    String internationalFormat;
+
+    // 첫 번째 0을 제거하고 82를 앞에 추가
+    if (digitsOnly.startsWith('0')) {
+      internationalFormat = '82${digitsOnly.substring(1)}';
+    }
+    // 이미 82로 시작하는 경우 그대로 사용
+    else if (digitsOnly.startsWith('82')) {
+      internationalFormat = digitsOnly;
+    }
+    // 그 외의 경우 82를 앞에 추가
+    else {
+      internationalFormat = '82$digitsOnly';
+    }
+
+    // + 기호 추가
+    return '+$internationalFormat';
+  }
+
   // 주문 정보 저장
   int? _orderId;
+
+  // 결제 위젯 로딩 상태
+  bool _isLoadingWidgets = true;
+
+  void _checkWidgetsReady() {
+    if (_paymentMethodWidgetControl != null &&
+        _agreementWidgetControl != null) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWidgets = false;
+        });
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    print("Payment initState ${widget.menu.name} ${widget.menu.store_id}");
 
     // PaymentWidget 초기화
     // TODO: 실제 clientKey와 customerKey로 교체 필요
@@ -62,39 +100,97 @@ class _PaymentState extends State<Payment> {
       customerKey: "zG5XLcHhA7c3tuJsV_H3j", // 테스트 키
     );
 
-    // 결제수단 위젯 렌더링
-    _paymentWidget
-        .renderPaymentMethods(
-      selector: 'payment-methods',
-      amount: Amount(
-        value: widget.menu.price,
-        currency: Currency.KRW,
-        country: "KR",
-      ),
-      options: RenderPaymentMethodsOptions(variantKey: "DEFAULT"),
-    )
-        .then((control) {
-      if (mounted) {
-        setState(() {
-          _paymentMethodWidgetControl = control;
-        });
-      }
-    }).catchError((error) {
-      print("결제수단 위젯 렌더링 오류: $error");
+    // 위젯이 빌드된 후에 렌더링 호출 (약간의 지연을 두어 웹뷰 위젯이 완전히 초기화될 때까지 대기)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          try {
+            _renderPaymentWidgets();
+          } catch (e) {
+            print("PaymentWidget 초기화 오류: $e");
+            if (mounted) {
+              setState(() {
+                _isLoadingWidgets = false;
+              });
+            }
+          }
+        }
+      });
     });
+  }
 
-    // 약관 위젯 렌더링
-    _paymentWidget
-        .renderAgreement(selector: 'payment-agreement')
-        .then((control) {
+  void _renderPaymentWidgets() {
+    if (!mounted) return;
+
+    try {
+      // 결제수단 위젯 렌더링
+      _paymentWidget
+          .renderPaymentMethods(
+        selector: 'payment-methods',
+        amount: Amount(
+          value: widget.menu.price,
+          currency: Currency.KRW,
+          country: "KR",
+        ),
+        options: RenderPaymentMethodsOptions(variantKey: "DEFAULT"),
+      )
+          .then((control) {
+        if (mounted) {
+          setState(() {
+            _paymentMethodWidgetControl = control;
+          });
+          _checkWidgetsReady();
+        }
+      }).catchError((error, stackTrace) {
+        print("결제수단 위젯 렌더링 오류: $error");
+        print("스택 트레이스: $stackTrace");
+        if (mounted) {
+          setState(() {
+            _isLoadingWidgets = false;
+          });
+        }
+      });
+
+      // 약관 위젯 렌더링
+      _paymentWidget
+          .renderAgreement(selector: 'payment-agreement')
+          .then((control) {
+        if (mounted) {
+          setState(() {
+            _agreementWidgetControl = control;
+          });
+          _checkWidgetsReady();
+        }
+      }).catchError((error, stackTrace) {
+        print("약관 위젯 렌더링 오류: $error");
+        print("스택 트레이스: $stackTrace");
+        if (mounted) {
+          setState(() {
+            _isLoadingWidgets = false;
+          });
+        }
+      });
+    } catch (e, stackTrace) {
+      print("_renderPaymentWidgets 오류: $e");
+      print("스택 트레이스: $stackTrace");
       if (mounted) {
         setState(() {
-          _agreementWidgetControl = control;
+          _isLoadingWidgets = false;
         });
       }
-    }).catchError((error) {
-      print("약관 위젯 렌더링 오류: $error");
-    });
+    }
+  }
+
+  @override
+  void dispose() {
+    // PaymentWidget 리소스 정리
+    try {
+      _paymentMethodWidgetControl = null;
+      _agreementWidgetControl = null;
+    } catch (e) {
+      print("PaymentWidget 정리 중 오류: $e");
+    }
+    super.dispose();
   }
 
   @override
@@ -167,14 +263,34 @@ class _PaymentState extends State<Payment> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 12),
-                            PaymentMethodWidget(
-                              paymentWidget: _paymentWidget,
-                              selector: 'payment-methods',
-                            ),
-                            const SizedBox(height: 12),
-                            AgreementWidget(
-                              paymentWidget: _paymentWidget,
-                              selector: 'payment-agreement',
+                            Stack(
+                              children: [
+                                // 위젯은 항상 렌더링 (DOM에 존재해야 함)
+                                Opacity(
+                                  opacity: _isLoadingWidgets ? 0.0 : 1.0,
+                                  child: Column(
+                                    children: [
+                                      PaymentMethodWidget(
+                                        paymentWidget: _paymentWidget,
+                                        selector: 'payment-methods',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      AgreementWidget(
+                                        paymentWidget: _paymentWidget,
+                                        selector: 'payment-agreement',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // 로딩 중일 때 프로그레스바 표시
+                                if (_isLoadingWidgets)
+                                  const SizedBox(
+                                    height: 200,
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
@@ -259,24 +375,42 @@ class _PaymentState extends State<Payment> {
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: Image.network(
-                menu.menu_image_url ?? "",
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/coffee.jpeg',
-                    fit: BoxFit.cover,
-                  );
-                },
+          // 메뉴 이미지가 있을 때만 표시
+          if (menu.menu_image_url != null &&
+              menu.menu_image_url!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: Image.network(
+                  menu.menu_image_url!,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const SizedBox.shrink();
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    // 이미지 로드 실패 시에도 표시하지 않음
+                    print('메뉴 이미지 로드 오류: $error');
+                    return const SizedBox.shrink();
+                  },
+                  // 이미지 프레임이 없거나 유효하지 않을 때 처리
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded) return child;
+                    return AnimatedOpacity(
+                      opacity: frame == null ? 0.0 : 1.0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      child: child,
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,18 +582,38 @@ class _PaymentState extends State<Payment> {
             // 1단계: gifticon, order 정보 등록 (결제 전)
             final user = Provider.of<UserProvider>(context, listen: false).user;
             if (user == null) {
-              _showToast('로그인이 필요합니다.');
+              // 로그인 페이지로 이동 (로그인 후 이전 페이지로 돌아옴)
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LoginPage(returnToPrevious: true),
+                ),
+              );
+              return;
+            }
+
+            // store_id 유효성 검증
+            final storeId = widget.menu.store_id;
+            if (storeId <= 0) {
+              _showToast('유효하지 않은 메뉴 정보입니다. 다시 선택해주세요.');
+              print(
+                  'ERROR: Invalid store_id: $storeId (menu_id: ${widget.menu.menu_id})');
               return;
             }
 
             Gifticon gifticon = Gifticon();
-            print('gifticon: $gifticon');
-            gifticon.store_id = widget.menu.store_id;
+            print(
+                'gifticon 생성 - store_id: $storeId, menu_id: ${widget.menu.menu_id}, menu_name: ${widget.menu.name}');
+            gifticon.store_id = storeId;
             gifticon.type = widget.type;
             gifticon.name = widget.menu.name ?? "";
             gifticon.sender = user.name;
             gifticon.receiver = receiver;
-            gifticon.receiver_phone_number = receiverPhoneNumber;
+            // 전화번호를 국제 형식으로 변환 (01012345678 -> 821012345678)
+            final internationalPhone =
+                _convertToInternationalFormat(receiverPhoneNumber);
+            print('전화번호 변환: $receiverPhoneNumber -> $internationalPhone');
+            gifticon.receiver_phone_number = internationalPhone;
             gifticon.payment = paymentValue;
             gifticon.menu_id = widget.menu.menu_id;
             gifticon.total_price = widget.menu.price;
@@ -516,6 +670,20 @@ class _PaymentState extends State<Payment> {
               }
             } on DioException catch (e) {
               print("정보 등록 실패: $e");
+
+              // 외래키 제약 오류 감지
+              if (e.response?.statusCode == 500) {
+                final errorMessage = e.response?.data?.toString() ?? '';
+                if (errorMessage.contains('foreign key constraint') ||
+                    errorMessage.contains('store_id') ||
+                    errorMessage.contains('Cannot add or update a child row')) {
+                  _showToast('유효하지 않은 가게 정보입니다. 메뉴를 다시 선택해주세요.');
+                  print(
+                      'ERROR: Foreign key constraint failed for store_id: $storeId');
+                  return;
+                }
+              }
+
               _showToast('주문 정보 등록에 실패했습니다. 다시 시도해주세요.');
             } catch (e) {
               print("결제 오류: $e");
@@ -879,68 +1047,15 @@ class _PaymentState extends State<Payment> {
   }
 
   Future<void> shareKaKaotalk(Gifticon gifticon) async {
-    final FeedTemplate defaultFeed = FeedTemplate(
-      content: Content(
-        title: '${gifticon.sender}님으로부터 선물이 도착했어요!',
-        description: '${gifticon.sender}님이 선물을 보냈어요. 앱에서 바로 확인해보세요!',
-        // imageUrl: Uri.parse(gifticon.),
-        link: Link(
-            webUrl: Uri.parse('https://developers.kakao.com'),
-            mobileWebUrl: Uri.parse('https://developers.kakao.com')),
-      ),
-      itemContent: ItemContent(
-        profileText: 'Gifnut',
-        profileImageUrl: Uri.parse(
-            'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-        titleImageUrl: Uri.parse(
-            'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-        titleImageText: gifticon.name,
-        titleImageCategory: gifticon.store_name,
-      ),
-      buttons: [
-        Button(
-          title: '사용방법',
-          link: Link(
-            webUrl: Uri.parse(
-                'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-            mobileWebUrl: Uri.parse(
-                'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-          ),
-        ),
-        Button(
-          title: '선물받기',
-          link: Link(
-            // webUrl: Uri.parse('https: //developers.kakao.com'),
-            // mobileWebUrl: Uri.parse('https: //developers.kakao.com'),
-            androidExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
-            iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
-          ),
-        ),
-      ],
-    );
-
-    // 카카오톡 실행 가능 여부 확인
-    bool isKakaoTalkSharingAvailable =
-        await ShareClient.instance.isKakaoTalkSharingAvailable();
-
-    if (isKakaoTalkSharingAvailable) {
-      try {
-        Uri uri =
-            await ShareClient.instance.shareDefault(template: defaultFeed);
-        await ShareClient.instance.launchKakaoTalk(uri);
+    await KakaoShareHelper.shareGifticon(
+      gifticon,
+      onSuccess: () {
         print('카카오톡 공유 완료');
-      } catch (error) {
-        print('카카오톡 공유 실패 $error');
-      }
-    } else {
-      try {
-        Uri shareUrl = await WebSharerClient.instance
-            .makeDefaultUrl(template: defaultFeed);
-        await launchBrowserTab(shareUrl, popupOpen: true);
-      } catch (error) {
-        print('카카오톡 공유 실패 $error');
-      }
-    }
+      },
+      onError: (error) {
+        print('카카오톡 공유 실패: $error');
+      },
+    );
   }
 }
 

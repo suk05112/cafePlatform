@@ -6,22 +6,266 @@ import 'package:cafeplatform/model/region.dart';
 
 class StoreProvider extends ChangeNotifier {
   Store? _store;
-  late List<Store>? storeCards = [];
+  late List<Store>? storeCards = []; // 하위 호환성을 위한 기존 필드
   List<Region> _availableRegions = [];
   String? _selectedRegionCode;
+
+  // 리스트 뷰용 상태
+  List<Store>? _listViewStores = [];
+  String? _listViewNextCursor;
+  bool _listViewHasMore = false;
+  bool _listViewIsLoadingMore = false;
+  String? _listViewCurrentDistrictCode;
+
+  // 지도 뷰용 상태
+  List<Store>? _mapViewStores = [];
+  String? _mapViewNextCursor;
+  bool _mapViewHasMore = false;
+  bool _mapViewIsLoadingMore = false;
+  String? _mapViewCurrentDistrictCode;
 
   Store? get store => _store;
   List<Region> get availableRegions => _availableRegions;
   String? get selectedRegionCode => _selectedRegionCode;
 
+  // 리스트 뷰 getters
+  List<Store>? get listViewStores => _listViewStores;
+  String? get listViewNextCursor => _listViewNextCursor;
+  bool get listViewHasMore => _listViewHasMore;
+  bool get listViewIsLoadingMore => _listViewIsLoadingMore;
+
+  // 지도 뷰 getters
+  List<Store>? get mapViewStores => _mapViewStores;
+  String? get mapViewNextCursor => _mapViewNextCursor;
+  bool get mapViewHasMore => _mapViewHasMore;
+  bool get mapViewIsLoadingMore => _mapViewIsLoadingMore;
+
+  // 하위 호환성을 위한 getters (리스트 뷰용)
+  String? get nextCursor => _listViewNextCursor;
+  bool get hasMore => _listViewHasMore;
+  bool get isLoadingMore => _listViewIsLoadingMore;
+
   void setStoreCard(List<Store>? storeCards) {
+    // 하위 호환성을 위해 기존 필드도 업데이트 (리스트 뷰용)
     this.storeCards = storeCards ?? [];
+    _listViewStores = storeCards ?? [];
+    _listViewNextCursor = null;
+    _listViewHasMore = false;
+    notifyListeners();
+  }
+
+  void appendStoreCard(
+      List<Store> newStores, String? nextCursor, bool? hasMore) {
+    // 하위 호환성을 위해 기존 필드도 업데이트 (리스트 뷰용)
+    this.storeCards = [...(this.storeCards ?? []), ...newStores];
+    _listViewStores = [...(_listViewStores ?? []), ...newStores];
+    _listViewNextCursor = nextCursor;
+    _listViewHasMore = hasMore ?? false;
+    _listViewIsLoadingMore = false;
+    notifyListeners();
+  }
+
+  // 리스트 뷰용 메서드
+  void setListViewStores(List<Store>? stores) {
+    _listViewStores = stores ?? [];
+    _listViewNextCursor = null;
+    _listViewHasMore = false;
+    // 하위 호환성을 위해 기존 필드도 업데이트
+    this.storeCards = stores ?? [];
+    notifyListeners();
+  }
+
+  void appendListViewStores(
+      List<Store> newStores, String? nextCursor, bool? hasMore) {
+    _listViewStores = [...(_listViewStores ?? []), ...newStores];
+    _listViewNextCursor = nextCursor;
+    _listViewHasMore = hasMore ?? false;
+    _listViewIsLoadingMore = false;
+    // 하위 호환성을 위해 기존 필드도 업데이트
+    this.storeCards = [...(this.storeCards ?? []), ...newStores];
+    notifyListeners();
+  }
+
+  // 지도 뷰용 메서드
+  void setMapViewStores(List<Store>? stores) {
+    _mapViewStores = stores ?? [];
+    _mapViewNextCursor = null;
+    _mapViewHasMore = false;
+    notifyListeners();
+  }
+
+  void appendMapViewStores(
+      List<Store> newStores, String? nextCursor, bool? hasMore) {
+    _mapViewStores = [...(_mapViewStores ?? []), ...newStores];
+    _mapViewNextCursor = nextCursor;
+    _mapViewHasMore = hasMore ?? false;
+    _mapViewIsLoadingMore = false;
     notifyListeners();
   }
 
   void setSelectedRegionCode(String? regionCode) {
     _selectedRegionCode = regionCode;
     notifyListeners();
+  }
+
+  void resetPagination() {
+    // 리스트 뷰만 리셋 (지도 뷰는 유지)
+    _listViewNextCursor = null;
+    _listViewHasMore = false;
+    _listViewIsLoadingMore = false;
+    _listViewStores = [];
+    storeCards = [];
+    notifyListeners();
+  }
+
+  void resetMapViewPagination() {
+    // 지도 뷰만 리셋
+    _mapViewNextCursor = null;
+    _mapViewHasMore = false;
+    _mapViewIsLoadingMore = false;
+    _mapViewStores = [];
+    notifyListeners();
+  }
+
+  Future<void> fetchStoreListByDistrict(String districtCode,
+      {String? cursor, int limit = 20, bool append = false}) async {
+    // 리스트 뷰용으로 기본 동작 유지
+    await fetchListViewStoresByDistrict(districtCode,
+        cursor: cursor, limit: limit, append: append);
+  }
+
+  // 리스트 뷰용 메서드
+  Future<void> fetchListViewStoresByDistrict(String districtCode,
+      {String? cursor, int limit = 20, bool append = false}) async {
+    if (_listViewIsLoadingMore) return;
+
+    try {
+      _listViewCurrentDistrictCode = districtCode;
+      if (!append) {
+        _listViewIsLoadingMore = false;
+      } else {
+        _listViewIsLoadingMore = true;
+        notifyListeners();
+      }
+
+      print(
+          "store_provider::fetchListViewStoresByDistrict:: fetch 호출 - districtCode: $districtCode, cursor: $cursor, limit: $limit");
+      var response = await Api()
+          .client
+          .getStoreListByDistrict(districtCode, cursor, limit);
+      var storeList = response.store;
+
+      final nextCursor = response.pagination?.next_cursor;
+      final hasNext = response.pagination?.has_next ?? false;
+      print(
+          "store_provider::fetchListViewStoresByDistrict:: 응답 받음 - store 개수: ${storeList.length}, next_cursor: $nextCursor, has_next: $hasNext");
+
+      if (append) {
+        appendListViewStores(storeList, nextCursor, hasNext);
+      } else {
+        // 새 검색 시에는 setListViewStores를 사용하되, 페이지네이션 정보는 별도로 설정
+        _listViewStores = storeList;
+        _listViewNextCursor = nextCursor;
+        _listViewHasMore = hasNext;
+        _listViewIsLoadingMore = false;
+        // 하위 호환성을 위해 기존 필드도 업데이트
+        this.storeCards = storeList;
+        notifyListeners();
+      }
+    } catch (error) {
+      print("store_provider::fetchListViewStoresByDistrict:: fetch 오류: $error");
+      _listViewIsLoadingMore = false;
+      notifyListeners();
+      if (!append) {
+        setListViewStores(StoreDummyRepository.stores);
+      }
+    }
+  }
+
+  // 지도 뷰용 메서드
+  Future<void> fetchMapViewStoresByDistrict(String districtCode,
+      {String? cursor, int limit = 20, bool append = false}) async {
+    if (_mapViewIsLoadingMore) return;
+
+    try {
+      _mapViewCurrentDistrictCode = districtCode;
+      if (!append) {
+        _mapViewIsLoadingMore = false;
+      } else {
+        _mapViewIsLoadingMore = true;
+        notifyListeners();
+      }
+
+      print(
+          "store_provider::fetchMapViewStoresByDistrict:: fetch 호출 - districtCode: $districtCode, cursor: $cursor, limit: $limit");
+      var response = await Api()
+          .client
+          .getStoreListByDistrict(districtCode, cursor, limit);
+      var storeList = response.store;
+
+      final nextCursor = response.pagination?.next_cursor;
+      final hasNext = response.pagination?.has_next ?? false;
+      print(
+          "store_provider::fetchMapViewStoresByDistrict:: 응답 받음 - store 개수: ${storeList.length}, next_cursor: $nextCursor, has_next: $hasNext");
+
+      if (append) {
+        appendMapViewStores(storeList, nextCursor, hasNext);
+      } else {
+        setMapViewStores(storeList);
+        _mapViewNextCursor = nextCursor;
+        _mapViewHasMore = hasNext;
+      }
+    } catch (error) {
+      print("store_provider::fetchMapViewStoresByDistrict:: fetch 오류: $error");
+      _mapViewIsLoadingMore = false;
+      notifyListeners();
+      if (!append) {
+        setMapViewStores(StoreDummyRepository.stores);
+      }
+    }
+  }
+
+  // 지도 뷰용 현위치 검색
+  Future<void> fetchMapViewStoresByLocation(double lat, double lng) async {
+    try {
+      print(
+          "store_provider::fetchMapViewStoresByLocation:: fetch 호출 - lat: $lat, lng: $lng");
+      var response = await Api().client.getStoreListByLocation(lat, lng);
+      var storeList = response.store;
+
+      print(
+          "store_provider::fetchMapViewStoresByLocation:: 응답 받음 - store 개수: ${storeList.length}");
+      setMapViewStores(storeList);
+    } catch (error) {
+      print("store_provider::fetchMapViewStoresByLocation:: fetch 오류: $error");
+      setMapViewStores([]);
+    }
+  }
+
+  Future<void> loadMoreStores() async {
+    // 리스트 뷰용
+    if (_listViewIsLoadingMore ||
+        !_listViewHasMore ||
+        _listViewNextCursor == null ||
+        _listViewCurrentDistrictCode == null) {
+      return;
+    }
+
+    await fetchListViewStoresByDistrict(_listViewCurrentDistrictCode!,
+        cursor: _listViewNextCursor!, append: true);
+  }
+
+  Future<void> loadMoreMapViewStores() async {
+    // 지도 뷰용
+    if (_mapViewIsLoadingMore ||
+        !_mapViewHasMore ||
+        _mapViewNextCursor == null ||
+        _mapViewCurrentDistrictCode == null) {
+      return;
+    }
+
+    await fetchMapViewStoresByDistrict(_mapViewCurrentDistrictCode!,
+        cursor: _mapViewNextCursor!, append: true);
   }
 
   Future<void> fetchStoreList() async {
@@ -82,37 +326,5 @@ class StoreProvider extends ChangeNotifier {
     notifyListeners();
 
     return response.store;
-  }
-
-  List<Store> _offlineFallbackStores() {
-    return [
-      Store(
-        store_id: 101,
-        store_name: "광화문 로스터리",
-        store_address: "서울특별시 종로구 세종대로 175",
-        store_lat: 37.5720,
-        store_lng: 126.9769,
-        store_description: "시청 뷰를 즐길 수 있는 핸드드립 전문 카페",
-        store_logo: "",
-      ),
-      Store(
-        store_id: 102,
-        store_name: "홍대 브루잉랩",
-        store_address: "서울특별시 마포구 와우산로 45",
-        store_lat: 37.5525,
-        store_lng: 126.9238,
-        store_description: "싱글 오리진 콜드브루와 디저트가 인기인 공간",
-        store_logo: "",
-      ),
-      Store(
-        store_id: 103,
-        store_name: "성수 리버뷰 카페",
-        store_address: "서울특별시 성동구 뚝섬로 377",
-        store_lat: 37.5447,
-        store_lng: 127.0563,
-        store_description: "한강을 내려다보는 루프탑 테라스 카페",
-        store_logo: "",
-      ),
-    ];
   }
 }

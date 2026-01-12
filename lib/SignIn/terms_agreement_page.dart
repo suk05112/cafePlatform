@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 enum TermsType {
-  service('https://www.naver.com'),
-  privacy('https://www.naver.com'),
-  marketing('https://www.naver.com');
+  service('https://www.502company.com/term/user/service/'),
+  privacy('https://www.502company.com/term/user/privacy-consent/'),
+  marketing('https://www.502company.com/term/user/marketing/');
   // service('https://www.502company.com/terms/service'),
   // privacy('https://www.502company.com/terms/privacy'),
   // marketing('https://www.502company.com/terms/marketing');
@@ -16,7 +17,14 @@ enum TermsType {
 }
 
 class TermsAgreementPage extends StatefulWidget {
-  const TermsAgreementPage({super.key});
+  const TermsAgreementPage({
+    super.key,
+    this.isSocialLogin = false,
+    this.provider,
+  });
+
+  final bool isSocialLogin;
+  final String? provider; // SNS provider 또는 "email"
 
   @override
   State<TermsAgreementPage> createState() => _TermsAgreementPageState();
@@ -67,7 +75,11 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
     if (!_canProceed) return;
     final phoneAuthResult = await Navigator.push<PhoneAuthResult?>(
       context,
-      MaterialPageRoute(builder: (_) => PhoneAuthPage()),
+      MaterialPageRoute(
+          builder: (_) => PhoneAuthPage(
+                isSocialLogin: widget.isSocialLogin,
+                provider: widget.provider,
+              )),
     );
     if (phoneAuthResult != null && mounted) {
       Navigator.pop(context, phoneAuthResult);
@@ -79,6 +91,7 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
+        appBar: const CommonAppBar(title: "약관동의"),
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Padding(
@@ -86,18 +99,10 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
-                Center(
-                  child: const Text(
-                    '고객님 환영합니다!',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 40),
+                // const SizedBox(height: 200),
+                // Expanded(
+                //   child: Container(), // 빈 공간
+                // ),
                 _AgreementTile(
                   label: '약관 전체동의',
                   requiredLabel: '',
@@ -160,16 +165,18 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                Spacer(),
+
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
                     onPressed: _canProceed ? _handleNext : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: ColorAssset.mainColor,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.grey[300],
-                      disabledForegroundColor: Colors.white,
+                      disabledForegroundColor: Colors.grey[600],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -296,18 +303,31 @@ class _TermsWebViewPageState extends State<TermsWebViewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const CommonAppBar(title: '약관 상세'),
-      body: Stack(
-        children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-            onLoadStart: (controller, url) => setState(() => _isLoading = true),
-            onLoadStop: (controller, url) => setState(() => _isLoading = false),
-          ),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            SizedBox.expand(
+              child: InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+                initialSettings: InAppWebViewSettings(
+                  javaScriptEnabled: true,
+                  domStorageEnabled: true,
+                  useHybridComposition: true,
+                  transparentBackground: false,
+                  enableViewportScale: true,
+                ),
+                onLoadStart: (controller, url) =>
+                    setState(() => _isLoading = true),
+                onLoadStop: (controller, url) =>
+                    setState(() => _isLoading = false),
+              ),
             ),
-        ],
+            if (_isLoading)
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
+          ],
+        ),
       ),
     );
   }

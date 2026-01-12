@@ -28,7 +28,7 @@ class LoginService {
   Future<UserCredential?> phoneAuth(
       {required AuthCredential phoneCredential,
       required AuthCredential snsCredential,
-      required Function(AuthError error) onError}) async {
+      required Function(Future<AuthError> error) onError}) async {
     try {
       final phoneLogin = await _auth.signInWithCredential(phoneCredential);
 
@@ -40,7 +40,22 @@ class LoginService {
 
       if (fbUser != null) {
         print("link시도");
-        await fbUser.linkWithCredential(snsCredential);
+        try {
+          await fbUser.linkWithCredential(snsCredential);
+          print("Credential 링크 성공");
+        } on FirebaseAuthException catch (linkError) {
+          // 이미 링크되어 있는 경우 처리
+          if (linkError.code == 'provider-already-linked') {
+            print("이미 provider가 링크되어 있음 - 기존 계정 사용");
+            // 이미 링크되어 있으면 기존 사용자를 그대로 반환
+            return phoneLogin;
+          } else {
+            // 다른 Firebase 오류인 경우
+            print(
+                "Firebase Auth 링크 에러: ${linkError.code} / ${linkError.message}");
+            rethrow;
+          }
+        }
       }
 
       return phoneLogin;
@@ -50,6 +65,8 @@ class LoginService {
     } on FirebaseAuthException catch (e) {
       print(
           "Firebase Auth 에러: ${e.code} / ${e.message} ${e.credential?.providerId}");
+      // Firebase 오류도 onError로 전달
+      onError(Future.value(AuthError.firebase));
     } catch (e) {
       print("알 수 없는 에러: $e");
       onError(AuthErrorHandler.handle(e));
@@ -111,7 +128,7 @@ class LoginService {
       // return true;
     } catch (error) {
       print("google error catch $error");
-      onError(AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(e));
     }
   }
 
@@ -140,7 +157,7 @@ class LoginService {
       }
     } catch (error) {
       print("google error catch $error");
-      onError(AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(e));
     }
   }
 
@@ -166,7 +183,7 @@ class LoginService {
           print('카카오계정으로 로그인 성공');
         } catch (error) {
           print('카카오계정으로 로그인 실패 $error');
-          onError(AuthErrorHandler.handle(e));
+          onError(await AuthErrorHandler.handle(e));
         }
       }
     } else {
@@ -175,7 +192,7 @@ class LoginService {
         print('카카오계정으로 로그인 성공');
       } catch (error) {
         print('카카오계정으로 로그인 실패 $error');
-        onError(AuthErrorHandler.handle(e));
+        onError(await AuthErrorHandler.handle(e));
       }
     }
 // 계정 가리기 -> 삭제 -> 계정보이고 로그인 : 새로운 유저 -> 전화번호 인증 -> 재검사
@@ -197,7 +214,7 @@ class LoginService {
           credential.providerId);
     } catch (error) {
       print('카카오계정으로 로그인 실패 $error');
-      onError(AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(e));
     }
     return;
   }
@@ -205,7 +222,7 @@ class LoginService {
   Future<void> signInApple({
     required Function(AuthCredential credential, String? email, String? name)
         onSuccess,
-    required Function(AuthError error) onError,
+    required Function(Future<AuthError> error) onError,
   }) async {
     try {
       final credential = await SignInWithApple.getAppleIDCredential(
@@ -230,28 +247,22 @@ class LoginService {
       onSuccess(oauthCredential, credential.email, name);
     } catch (error) {
       print('애플계정으로 로그인 실패 $error');
-      onError(AuthErrorHandler.handle(e));
+      onError(AuthErrorHandler.handle(error));
       return;
     }
     return;
   }
 
-  Future<bool> isRegisteredUser(email, provider) async {
-    print("register 확인할 email $email");
+  Future<bool> isRegisteredUser(String? email, String provider,
+      {String? phone}) async {
+    print("register 확인할 email=$email, provider=$provider, phone=$phone");
     try {
-      final response = await Api().client.getIsRegisteredUser(email, provider);
-      print(" isRegisteredUser$response");
-      return response.isRegistered;
-    } catch (e) {
-      print("❌ Error: $e");
-      return false;
-    }
-  }
-
-  Future<bool> isRegisteredAppleUser(phoneNumber) async {
-    print("apple register 확인할 phoneNumber $phoneNumber");
-    try {
-      final response = await Api().client.getIsRegisteredAppleUser(phoneNumber);
+      // email이 null이면 query parameter로 전달하지 않음 (Retrofit이 자동 처리)
+      final response = await Api().client.getIsRegisteredUser(
+            email,
+            provider,
+            phone,
+          );
       print(" isRegisteredUser$response");
       return response.isRegistered;
     } catch (e) {
@@ -290,7 +301,7 @@ extension AuthErrorMessage on AuthError {
 }
 
 class AuthErrorHandler {
-  static AuthError handle(Object e) {
+  static Future<AuthError> handle(Object e) async {
     if (e is FirebaseAuthException) {
       if (e.code == "network-request-failed") return AuthError.network;
       if (e.code == "user-not-found") return AuthError.accountNotFound;
@@ -298,7 +309,12 @@ class AuthErrorHandler {
     }
 
     if (e.toString().contains("CANCELED")) return AuthError.cancelled;
-
+    FirebaseAuth auth = FirebaseAuth.instance;
+    User? currentUser = auth.currentUser;
+    if (currentUser != null) {
+      await currentUser.delete();
+      auth.signOut();
+    }
     return AuthError.unknown;
   }
 }

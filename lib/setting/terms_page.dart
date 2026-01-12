@@ -18,14 +18,14 @@ class TermsPage extends StatelessWidget {
             _buildTermsItem(
               context,
               title: '서비스 이용약관',
-              url: 'https://www.naver.com',
+              url: 'https://www.502company.com/term/user/service/',
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => TermsWebViewPage(
                       title: '서비스 이용약관',
-                      url: 'https://www.naver.com',
+                      url: 'https://www.502company.com/term/user/service/',
                     ),
                   ),
                 );
@@ -35,14 +35,31 @@ class TermsPage extends StatelessWidget {
             _buildTermsItem(
               context,
               title: '개인정보 처리방침',
-              url: 'https://www.502company.com/terms/privacy',
+              url: 'https://www.502company.com/term/user/privacy/',
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => TermsWebViewPage(
                       title: '개인정보 처리방침',
-                      url: 'https://www.502company.com/terms/privacy',
+                      url: 'https://www.502company.com/term/user/privacy/',
+                    ),
+                  ),
+                );
+              },
+            ),
+            Divider(height: 1, color: Colors.grey[200]),
+            _buildTermsItem(
+              context,
+              title: '마케팅 이용약관',
+              url: 'https://www.502company.com/term/user/marketing/',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TermsWebViewPage(
+                      title: '마케팅 이용약관',
+                      url: 'https://www.502company.com/term/user/marketing/',
                     ),
                   ),
                 );
@@ -52,14 +69,14 @@ class TermsPage extends StatelessWidget {
             _buildTermsItem(
               context,
               title: '위치서비스 이용약관',
-              url: 'https://www.502company.com/terms/location',
+              url: 'https://www.502company.com/term/user/location-term',
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => TermsWebViewPage(
                       title: '위치서비스 이용약관',
-                      url: 'https://www.502company.com/terms/location',
+                      url: 'https://www.502company.com/term/user/location-term',
                     ),
                   ),
                 );
@@ -136,7 +153,7 @@ class _TermsWebViewPageState extends State<TermsWebViewPage> {
 
     controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
+      ..setBackgroundColor(Colors.white)
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -187,13 +204,29 @@ class _TermsWebViewPageState extends State<TermsWebViewPage> {
             return NavigationDecision.navigate;
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
 
+    // WebView 캐시 삭제 및 설정
     if (controller.platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(true);
-      (controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
+      final androidController = controller.platform as AndroidWebViewController;
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+      // Android WebView 캐시 삭제 후 페이지 로드
+      androidController.clearCache().then((_) {
+        debugPrint('Android WebView 캐시 삭제 완료');
+        // 캐시 삭제 후 페이지 로드
+        controller.loadRequest(Uri.parse(widget.url));
+      }).catchError((error) {
+        debugPrint('캐시 삭제 오류: $error');
+        // 오류 발생 시에도 페이지 로드
+        controller.loadRequest(Uri.parse(widget.url));
+      });
+    } else {
+      // iOS의 경우 캐시를 우회하기 위해 URL에 타임스탬프 추가
+      final urlWithTimestamp = widget.url.contains('?')
+          ? '${widget.url}&_t=${DateTime.now().millisecondsSinceEpoch}'
+          : '${widget.url}?_t=${DateTime.now().millisecondsSinceEpoch}';
+      controller.loadRequest(Uri.parse(urlWithTimestamp));
     }
 
     _controller = controller;
@@ -217,9 +250,11 @@ class _TermsWebViewPageState extends State<TermsWebViewPage> {
         child: Stack(
           children: [
             if (!_hasError)
-              WebViewWidget(
-                controller: _controller,
-                key: ValueKey('terms_webview_$_viewId'),
+              SizedBox.expand(
+                child: WebViewWidget(
+                  controller: _controller,
+                  key: ValueKey('terms_webview_$_viewId'),
+                ),
               ),
             if (_hasError)
               Center(

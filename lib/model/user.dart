@@ -20,12 +20,16 @@ class User {
   String name;
   String email;
   String phone_number;
+  String uid;
+  String? provider;
 
   User({
     required this.user_id,
     required this.name,
     required this.email,
     required this.phone_number,
+    required this.uid,
+    this.provider,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

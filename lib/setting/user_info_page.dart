@@ -6,6 +6,9 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cafeplatform/api/API.dart';
+import 'package:dio/dio.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class UserInfoPage extends StatefulWidget {
   const UserInfoPage({super.key});
@@ -15,31 +18,63 @@ class UserInfoPage extends StatefulWidget {
 }
 
 class _UserInfoPageState extends State<UserInfoPage> {
+  late final UserProvider userProvider;
+
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    userProvider = context.read<UserProvider>();
   }
 
   String _formatPhoneNumber(String? phoneNumber) {
     if (phoneNumber == null || phoneNumber.isEmpty) {
       return "phone";
     }
-    // +82를 0101로 변환
+
+    // 숫자만 추출
+    String digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+
+    // +82로 시작하면 0으로 변환
     if (phoneNumber.startsWith("+82")) {
-      String number = phoneNumber.substring(3);
-      if (number.startsWith("10")) {
-        return "010${number.substring(2)}";
-      } else if (number.startsWith("1")) {
-        return "010${number.substring(1)}";
+      digitsOnly = phoneNumber.substring(3).replaceAll(RegExp(r'[^\d]'), '');
+      if (digitsOnly.startsWith("10")) {
+        digitsOnly = "0${digitsOnly}";
+      } else if (digitsOnly.startsWith("1")) {
+        digitsOnly = "0${digitsOnly}";
+      } else {
+        digitsOnly = "0$digitsOnly";
       }
-      return "010$number";
     }
+
+    // 010으로 시작하는 11자리 번호를 010-1234-1234 형식으로 변환
+    if (digitsOnly.length == 11 && digitsOnly.startsWith("010")) {
+      return "${digitsOnly.substring(0, 3)}-${digitsOnly.substring(3, 7)}-${digitsOnly.substring(7)}";
+    }
+
+    // 다른 형식은 그대로 반환
     return phoneNumber;
+  }
+
+  String _formatEmailToId(String? email) {
+    if (email == null || email.isEmpty) {
+      return "id";
+    }
+    // @gifnut.com 부분 제거
+    if (email.contains("@gifnut.com")) {
+      return email.replaceAll("@gifnut.com", "");
+    }
+
+    return email;
   }
 
   @override
   Widget build(BuildContext context) {
-    User? user = Provider.of<UserProvider>(context).user;
+    User? user = userProvider.user;
 
     return Scaffold(
       appBar: const CommonAppBar(title: "내정보"),
@@ -90,7 +125,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
                       SizedBox(height: 16),
                       Divider(height: 1, color: Colors.grey[200]),
                       SizedBox(height: 16),
-                      _buildInfoRow("이메일", user?.email ?? "email"),
+                      _buildInfoRow("아이디", _formatEmailToId(user?.email)),
                       SizedBox(height: 16),
                       Divider(height: 1, color: Colors.grey[200]),
                       SizedBox(height: 16),
@@ -419,49 +454,383 @@ class _UserInfoPageState extends State<UserInfoPage> {
       await firebase_auth.FirebaseAuth.instance.signOut();
 
       // UserProvider에서 사용자 정보 삭제
-      await Provider.of<UserProvider>(context, listen: false).clearUser();
+      await userProvider.clearUser();
 
       // SharedPreferences에서 FCM 토큰 삭제 (선택사항)
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('fcm_token');
 
-      // 모든 스택을 제거하고 TabPage(매장 리스트)로 이동
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const TabPage(initialIndex: 0)),
-        (route) => false,
-      );
+      // // 모든 스택을 제거하고 TabPage(매장 리스트)로 이동
+      // Navigator.of(context).pushAndRemoveUntil(
+      //   MaterialPageRoute(builder: (context) => const TabPage(initialIndex: 0)),
+      //   (route) => false,
+      // );
+
+      Future.microtask(() {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const TabPage(initialIndex: 0)),
+          (route) => false,
+        );
+      });
     } catch (e) {
       print('로그아웃 오류: $e');
     }
   }
 
   Future<void> _handleWithdrawal(BuildContext context) async {
+    // 로딩 다이얼로그 표시
+    if (!mounted) return;
+
+    BuildContext? dialogContext;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogBuilderContext) {
+        dialogContext = dialogBuilderContext;
+        return Container(
+          color: Colors.black.withOpacity(0.3),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    '회원 탈퇴 처리 중...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
     try {
+      // UserProvider에서 사용자 정보 가져오기 (캐싱된 userProvider 사용)
+      final appUser = userProvider.user;
+      final userId = appUser?.user_id;
+
+      // Firebase 사용자 확인 (애플 계정 확인 및 authorizationCode 가져오기)
       firebase_auth.User? user =
           firebase_auth.FirebaseAuth.instance.currentUser;
+      String? appleAuthorizationCode;
+      bool hasAppleProvider = false;
+
+      if (user != null) {
+        final providerData = user.providerData;
+        hasAppleProvider =
+            providerData.any((info) => info.providerId == 'apple.com');
+
+        if (hasAppleProvider) {
+          print('애플 계정으로 가입된 사용자 확인됨');
+          // 회원 탈퇴를 위해 Apple 로그인을 다시 요청하여 authorizationCode 받기 및 Firebase 재인증
+          try {
+            print('애플 로그인 재요청 (authorizationCode 획득 및 재인증용)');
+            final appleCredential = await SignInWithApple.getAppleIDCredential(
+              scopes: [
+                AppleIDAuthorizationScopes.email,
+                AppleIDAuthorizationScopes.fullName,
+              ],
+            );
+            appleAuthorizationCode = appleCredential.authorizationCode;
+            print('애플 authorizationCode 획득 성공');
+
+            // Firebase 재인증 (requires-recent-login 오류 방지)
+            try {
+              final oauthCredential =
+                  firebase_auth.OAuthProvider('apple.com').credential(
+                idToken: appleCredential.identityToken,
+                accessToken: appleCredential.authorizationCode,
+              );
+              await user.reauthenticateWithCredential(oauthCredential);
+              print('Firebase 재인증 완료');
+            } catch (reAuthError) {
+              print('Firebase 재인증 실패: $reAuthError');
+              // 재인증 실패해도 authorizationCode는 전달 가능 (서버에서 처리)
+            }
+          } catch (e) {
+            print('애플 로그인 재요청 실패 (authorizationCode 획득 실패): $e');
+            // 애플 로그인 실패 시 null로 전달 (서버에서 처리 불가)
+            appleAuthorizationCode = null;
+            // 사용자에게 오류 메시지 표시
+            if (mounted &&
+                dialogContext != null &&
+                Navigator.canPop(dialogContext!)) {
+              Navigator.of(dialogContext!).pop();
+            }
+            if (mounted) {
+              await showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext errorContext) {
+                  return AlertDialog(
+                    backgroundColor: Colors.white,
+                    title: const Text('애플 로그인 필요'),
+                    content: const Text(
+                      '회원 탈퇴를 위해 애플 로그인이 필요합니다.\n'
+                      '다시 시도해주세요.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(errorContext).pop();
+                        },
+                        child: const Text('확인'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
+            // 애플 로그인 실패 시 탈퇴 프로세스 중단 (로딩은 이미 닫았으므로 setState 불필요)
+            return;
+          }
+        }
+      }
+
+      // 서버에서 사용자 삭제 API 호출
+      if (userId != null) {
+        try {
+          final deleteResponse =
+              await Api().client.deleteUser(userId, appleAuthorizationCode);
+          print(
+              '서버 사용자 삭제 완료: ${deleteResponse.message}, user_id: ${deleteResponse.userId}, apple_revoked: ${deleteResponse.appleRevoked}');
+        } on DioException catch (e) {
+          print('서버 사용자 삭제 오류: ${e.response?.statusCode} - ${e.message}');
+          // 서버 삭제 실패해도 Firebase 삭제는 시도
+        } catch (e) {
+          print('서버 사용자 삭제 오류: $e');
+          // 서버 삭제 실패해도 Firebase 삭제는 시도
+        }
+      } else {
+        print('user_id가 없어 서버 삭제를 건너뜁니다.');
+      }
+
+      // Firebase 사용자 삭제
       if (user != null) {
         try {
           await user.delete();
+          if (hasAppleProvider) {
+            print('Firebase 사용자 삭제 완료 (애플 계정과의 연결도 끊어짐)');
+          } else {
+            print('Firebase 사용자 삭제 완료');
+          }
+        } on firebase_auth.FirebaseAuthException catch (e) {
+          print('파베 회원 탈퇴 처리 오류: ${e.code} - ${e.message}');
+
+          // requires-recent-login 오류인 경우 특별 처리
+          if (e.code == 'requires-recent-login') {
+            // 로딩 다이얼로그 닫기
+            if (mounted &&
+                dialogContext != null &&
+                Navigator.canPop(dialogContext!)) {
+              Navigator.of(dialogContext!).pop();
+            }
+
+            // 사용자에게 재인증이 필요하다는 메시지 표시
+            if (mounted) {
+              await showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext alertContext) {
+                  return AlertDialog(
+                    backgroundColor: Colors.white,
+                    title: const Text('재인증 필요'),
+                    content: const Text(
+                      '회원 탈퇴를 위해 다시 로그인해주세요.\n'
+                      '보안상 최근 인증이 필요합니다.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(alertContext).pop();
+                        },
+                        child: const Text('확인'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
+            return; // 재인증이 필요한 경우 탈퇴 프로세스 중단
+          }
+
+          // 다른 Firebase 오류인 경우에도 계속 진행 (서버 데이터는 이미 삭제됨)
+          print('Firebase 계정 삭제 실패했으나 서버 데이터는 삭제되었습니다.');
         } catch (e) {
           print('파베 회원 탈퇴 처리 오류: $e');
+          // 기타 오류인 경우에도 계속 진행
         }
       }
-      // Firebase Auth 로그아웃
-      await firebase_auth.FirebaseAuth.instance.signOut();
-      // UserProvider에서 사용자 정보 삭제
-      await Provider.of<UserProvider>(context, listen: false).clearUser();
+
+      // Firebase Auth 로그아웃 (Firebase 계정이 삭제되지 않았어도 로그아웃)
+      try {
+        await firebase_auth.FirebaseAuth.instance.signOut();
+      } catch (e) {
+        print('Firebase 로그아웃 오류: $e');
+        // 로그아웃 실패해도 계속 진행
+      }
 
       // SharedPreferences에서 FCM 토큰 삭제
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('fcm_token');
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('fcm_token');
+      } catch (e) {
+        print('SharedPreferences 토큰 삭제 오류: $e');
+        // 오류가 발생해도 계속 진행
+      }
 
-      // 모든 스택을 제거하고 TabPage(매장 리스트)로 이동
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const TabPage(initialIndex: 0)),
-        (route) => false,
-      );
-    } catch (e) {
+      // 로딩 다이얼로그 닫기 (clearUser 호출 전에 닫기)
+      if (mounted &&
+          dialogContext != null &&
+          Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!).pop();
+        dialogContext = null;
+      }
+
+      // UserProvider에서 사용자 정보 삭제 (캐싱된 userProvider 사용)
+      try {
+        await userProvider.clearUser();
+        print('UserProvider clearUser 완료');
+      } catch (e, stackTrace) {
+        print('UserProvider clearUser 오류: $e');
+        print('스택 트레이스: $stackTrace');
+        // 오류가 발생해도 계속 진행
+      }
+
+      // 탈퇴 완료 메시지 표시
+      // mounted와 context.mounted를 모두 체크
+      if (mounted && context.mounted) {
+        try {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext successContext) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: const Text(
+                  '탈퇴 완료',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: const Text(
+                  '회원 탈퇴가 완료되었습니다.\n이용해주셔서 감사합니다.',
+                  style: TextStyle(
+                    fontSize: 16,
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(successContext).pop();
+                      // 다이얼로그 닫은 후 TabPage로 이동
+                      if (mounted && context.mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const TabPage(initialIndex: 0)),
+                          (route) => false,
+                        );
+                      }
+                    },
+                    child: const Text(
+                      '확인',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        } catch (dialogError) {
+          print('탈퇴 완료 다이얼로그 표시 오류: $dialogError');
+          // 다이얼로그 표시 실패 시에도 TabPage로 이동
+          if (mounted && context.mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (context) => const TabPage(initialIndex: 0)),
+              (route) => false,
+            );
+          }
+        }
+      } else {
+        // mounted가 false인 경우 직접 이동
+        Future.microtask(() {
+          if (mounted && context.mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (context) => const TabPage(initialIndex: 0)),
+              (route) => false,
+            );
+          }
+        });
+      }
+    } catch (e, stackTrace) {
       print('회원 탈퇴 처리 오류: $e');
+      print('스택 트레이스: $stackTrace');
+
+      // 로딩 다이얼로그 닫기
+      if (mounted &&
+          dialogContext != null &&
+          Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!).pop();
+      }
+
+      // 오류 메시지 표시
+      if (mounted) {
+        String errorMessage = '회원 탈퇴 중 오류가 발생했습니다.';
+        if (e is firebase_auth.FirebaseAuthException) {
+          if (e.code == 'requires-recent-login') {
+            errorMessage = '보안상 재인증이 필요합니다.\n다시 로그인 후 탈퇴를 시도해주세요.';
+          } else {
+            errorMessage = 'Firebase 오류: ${e.message ?? e.code}';
+          }
+        } else if (e.toString().contains('Null check operator')) {
+          errorMessage = '시스템 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
+        } else if (e is DioException) {
+          errorMessage = '서버 오류가 발생했습니다.\n네트워크 연결을 확인해주세요.';
+        }
+
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext alertContext) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: const Text('오류'),
+              content: Text(errorMessage),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(alertContext).pop();
+                  },
+                  child: const Text('확인'),
+                ),
+              ],
+            );
+          },
+        );
+      }
     }
   }
 }

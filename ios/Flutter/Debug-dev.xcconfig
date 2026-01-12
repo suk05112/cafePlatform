@@ -1,0 +1,5 @@
+#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug-dev.xcconfig"
+#include "Generated.xcconfig"
+#include "Debug.xcconfig"
+FLUTTER_BUILD_MODE=debug
+FLUTTER_TARGET=lib/main_dev.dart

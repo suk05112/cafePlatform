@@ -30,15 +30,15 @@ class MenuProvider extends ChangeNotifier {
       // || this.menuCards!.isEmpty) {
       print("여기 탐");
       this.menuCards = [
-        Menu(
-          menu_id: -1,
-          store_id: -1,
-          name: 'test Menu',
-          price: 100,
-          menu_image_url: '',
-          description: 'test desc',
-          status: "ACTIVE",
-        )
+        // Menu(
+        //   menu_id: -1,
+        //   store_id: -1,
+        //   name: 'test Menu',
+        //   price: 100,
+        //   menu_image_url: '',
+        //   description: 'test desc',
+        //   status: "ACTIVE",
+        // )
       ];
     } else {
       print("여기 안탐");

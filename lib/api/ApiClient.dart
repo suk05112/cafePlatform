@@ -5,6 +5,11 @@ import 'package:cafeplatform/api/business_info_response.dart';
 import 'package:cafeplatform/api/order_detail_response.dart';
 import 'package:cafeplatform/api/link_gifticon_request.dart';
 import 'package:cafeplatform/api/link_gifticon_response.dart';
+import 'package:cafeplatform/api/logo_presigned_url_response.dart';
+import 'package:cafeplatform/api/notice_response.dart';
+import 'package:cafeplatform/api/gifnut_image_url_response.dart';
+import 'package:cafeplatform/api/find_account_request.dart';
+import 'package:cafeplatform/api/find_account_response.dart';
 import 'package:cafeplatform/model/Inquiry.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/gifticon.dart';
@@ -36,17 +41,14 @@ abstract class ApiClient {
   @GET("/user/login/{email}")
   Future<LoginUserGetResponse> loginUser(
     @Path('email') String email,
+    @Query('provider') String provider,
   );
 
   @GET("/user/isRegistered")
   Future<IsRegisteredUserGetResponse> getIsRegisteredUser(
-    @Query('email') String email,
+    @Query('email') String? email,
     @Query('provider') String provider,
-  );
-
-  @GET("/user/isRegistered/{phoneNumber}")
-  Future<IsRegisteredUserGetResponse> getIsRegisteredAppleUser(
-    @Path('phoneNumber') String phoneNumber,
+    @Query('phone') String? phone,
   );
 
   @GET("/store/info/{store_Id}")
@@ -61,6 +63,8 @@ abstract class ApiClient {
   @GET("/store/list/by-district/{district_code}")
   Future<StoreListResponse> getStoreListByDistrict(
     @Path('district_code') String districtCode,
+    @Query('cursor') String? cursor,
+    @Query('limit') int? limit,
   );
 
   @GET("/store/list/by-location")
@@ -69,11 +73,11 @@ abstract class ApiClient {
     @Query('lng') double lng,
   );
 
-  @GET("/store/search/{item}/{lat}/{lng}")
-  Future<SearchStoreGetResponse> searchStore(
-    @Path('item') String item,
-    @Path('lat') double lat,
-    @Path('lng') double lng,
+  @GET("/store/search")
+  Future<SearchStoreGetResponse> searchStoreByQuery(
+    @Query('query') String query,
+    @Query('cursor') int? cursor,
+    @Query('limit') int? limit,
   );
   @GET("/menu/list/{store_id}")
   Future<MenuGetResponse> getMenuList(
@@ -148,6 +152,12 @@ abstract class ApiClient {
     @Header('X-FCM-Token') String? fcmToken,
   );
 
+  @DELETE("/user/{user_id}")
+  Future<DeleteUserResponse> deleteUser(
+    @Path('user_id') int userId,
+    @Query('authorization_code') String? authorizationCode,
+  );
+
   @GET("/business-info")
   Future<BusinessInfoResponse> getBusinessInfo();
 
@@ -155,4 +165,18 @@ abstract class ApiClient {
   Future<LinkGifticonResponse> linkGifticonToUser(
     @Body() LinkGifticonRequest request,
   );
+
+  @GET("/common-resources/logo/presigned-url")
+  Future<LogoPresignedUrlResponse> getLogoPresignedUrl();
+
+  @GET("/user/notice")
+  Future<UserNoticeListResponse> getUserNotice();
+
+  @GET("/gifnut-image")
+  Future<GifnutImageUrlResponse> getGifnutImageUrl({
+    @Query('expires_in') int? expiresIn,
+  });
+
+  @POST("/user/find-account")
+  Future<FindAccountResponse> findAccount(@Body() FindAccountRequest request);
 }

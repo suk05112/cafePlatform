@@ -6,6 +6,7 @@ import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
 import 'package:provider/provider.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class InquiryPage extends StatefulWidget {
   const InquiryPage({super.key});
@@ -22,14 +23,30 @@ class _InquiryPageState extends State<InquiryPage>
   TextEditingController titleController = TextEditingController();
   TextEditingController contentController = TextEditingController();
 
-  late Future<InquiryListResponse?> futureInquiryList;
+  Future<InquiryListResponse?>? futureInquiryList;
   Set<int> expandedItems = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    fetchInquiry();
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    if (!_tabController.indexIsChanging && _tabController.index == 1) {
+      // "나의 문의내역" 탭(index 1)으로 변경되었을 때 API 호출
+      fetchInquiry();
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabChange);
+    _tabController.dispose();
+    titleController.dispose();
+    contentController.dispose();
+    super.dispose();
   }
 
   void fetchInquiry() {
@@ -143,6 +160,9 @@ class _InquiryPageState extends State<InquiryPage>
                 SizedBox(height: 8),
                 TextFormField(
                   controller: titleController,
+                  onChanged: (value) {
+                    setState(() {});
+                  },
                   decoration: InputDecoration(
                     hintText: '제목을 입력해주세요',
                     filled: true,
@@ -157,7 +177,7 @@ class _InquiryPageState extends State<InquiryPage>
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.black87, width: 2),
+                      borderSide: BorderSide(color: ColorAssset.mainColor, width: 2),
                     ),
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 16,
@@ -183,6 +203,9 @@ class _InquiryPageState extends State<InquiryPage>
                   height: 300,
                   child: TextFormField(
                     controller: contentController,
+                    onChanged: (value) {
+                      setState(() {});
+                    },
                     textAlignVertical: TextAlignVertical.top,
                     maxLines: null,
                     expands: true,
@@ -200,7 +223,7 @@ class _InquiryPageState extends State<InquiryPage>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.black87, width: 2),
+                        borderSide: BorderSide(color: ColorAssset.mainColor, width: 2),
                       ),
                       contentPadding: EdgeInsets.all(16),
                     ),
@@ -223,17 +246,24 @@ class _InquiryPageState extends State<InquiryPage>
                 borderRadius: BorderRadius.circular(12),
               ),
               foregroundColor: Colors.white,
-              backgroundColor: Colors.black,
+              backgroundColor: (titleController.text.trim().isNotEmpty &&
+                      contentController.text.trim().isNotEmpty)
+                  ? ColorAssset.mainColor
+                  : Colors.grey[300]!,
               elevation: 0,
             ),
-            onPressed: () {
-              var inquiry = Inquiry(
-                  title: titleController.text, content: contentController.text);
-              Api().client.subjectInquiry(user?.user_id ?? 0, inquiry);
-              _showInquirySuccessDialog();
+            onPressed: (titleController.text.trim().isNotEmpty &&
+                    contentController.text.trim().isNotEmpty)
+                ? () {
+                    var inquiry = Inquiry(
+                        title: titleController.text,
+                        content: contentController.text);
+                    Api().client.subjectInquiry(user?.user_id ?? 0, inquiry);
+                    _showInquirySuccessDialog();
 
-              fetchInquiry();
-            },
+                    fetchInquiry();
+                  }
+                : null,
             child: Text(
               '문의하기 제출',
               style: TextStyle(
@@ -248,6 +278,30 @@ class _InquiryPageState extends State<InquiryPage>
   }
 
   Widget InquiryList() {
+    if (futureInquiryList == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            SizedBox(height: 16),
+            Text(
+              "문의 내역을 불러오려면 탭을 클릭해주세요",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
     return FutureBuilder<InquiryListResponse?>(
         future: futureInquiryList,
         builder: (context, snapshot) {
@@ -610,7 +664,7 @@ class _InquiryPageState extends State<InquiryPage>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       foregroundColor: Colors.white,
-                      backgroundColor: Colors.black,
+                      backgroundColor: ColorAssset.mainColor,
                       padding: EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
                     ),

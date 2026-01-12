@@ -9,8 +9,8 @@ import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
-import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
+import 'package:cafeplatform/utils/kakao_share_helper.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class OrderDetailPage extends StatefulWidget {
   final int orderId;
@@ -51,9 +51,9 @@ class _OrderDetailPageState extends State<OrderDetailPage>
       case 'PENDING':
         return '대기중';
       case 'COMPLETED':
-        return '완료';
+        return '결제 완료';
       case 'REFUNDED':
-        return '환불됨';
+        return '환불 완료';
       case 'UNKNOWN':
       case 'UNKONWN': // 오타 대응
         return '알 수 없음';
@@ -121,7 +121,11 @@ class _OrderDetailPageState extends State<OrderDetailPage>
                     SizedBox(height: 16),
                     orderInfo(orderDetail),
                     SizedBox(height: 16),
-                    cancellationDetails(orderDetail),
+                    // status가 "REFUNDED"일 경우에만 취소/환불 정보 표시
+                    if (orderDetail.status?.toUpperCase() == 'REFUNDED')
+                      cancellationDetails(orderDetail),
+                    if (orderDetail.status?.toUpperCase() == 'REFUNDED')
+                      SizedBox(height: 16),
                     SizedBox(height: 24),
                     // 기프티콘 중 하나라도 is_receiver_linked가 false이면 선물 다시 전달하기 버튼 표시
                     if (orderDetail.gifticons
@@ -186,11 +190,16 @@ class _OrderDetailPageState extends State<OrderDetailPage>
             ),
           ),
           SizedBox(height: 16),
-          ...orderDetail.gifticons.map((gifticon) => Padding(
-                padding: EdgeInsets.only(bottom: 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          ...orderDetail.gifticons.map((gifticon) {
+            final hasImage =
+                gifticon.menu_url != null && gifticon.menu_url!.isNotEmpty;
+            return Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 메뉴 이미지가 있을 경우에만 표시
+                  if (hasImage)
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
@@ -198,69 +207,58 @@ class _OrderDetailPageState extends State<OrderDetailPage>
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: gifticon.menu_url != null &&
-                                gifticon.menu_url!.isNotEmpty
-                            ? Image.network(
-                                gifticon.menu_url!,
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'assets/coffee.png',
-                                    width: 100,
-                                    height: 100,
-                                    fit: BoxFit.cover,
-                                  );
-                                },
-                              )
-                            : Image.asset(
-                                'assets/coffee.png',
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                              ),
+                        child: Image.network(
+                          gifticon.menu_url!,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return SizedBox.shrink();
+                          },
+                        ),
                       ),
                     ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
+                  // 이미지가 있을 때와 없을 때 텍스트 정렬을 맞추기 위해 간격 추가
+                  SizedBox(width: hasImage ? 16 : 0),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          gifticon.menu_name ?? '메뉴명 없음',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          "${gifticon.menu_price ?? 0}원",
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (gifticon.type == 2) ...[
+                          SizedBox(height: 4),
                           Text(
-                            gifticon.menu_name ?? '메뉴명 없음',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
+                            '선물: ${gifticon.receiver ?? ""}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            "${gifticon.menu_price ?? 0}원",
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (gifticon.type == 2) ...[
-                            SizedBox(height: 4),
-                            Text(
-                              '선물: ${gifticon.receiver ?? ""}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
                         ],
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -339,7 +337,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
           SizedBox(height: 12),
           _buildInfoRow("결제방식", orderDetail.payment ?? "정보 없음"),
           SizedBox(height: 12),
-          _buildInfoRow("주문상태", _getOrderStatusText(orderDetail.status)),
+          _buildInfoRow("결제상태", _getOrderStatusText(orderDetail.status)),
           Divider(
             thickness: 1,
             height: 24,
@@ -403,7 +401,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
             borderRadius: BorderRadius.circular(12.0),
           ),
           foregroundColor: Colors.white,
-          backgroundColor: Colors.blue,
+          backgroundColor: ColorAssset.mainColor,
           elevation: 0,
         ),
         onPressed: () {
@@ -457,71 +455,17 @@ class _OrderDetailPageState extends State<OrderDetailPage>
     );
 
     try {
-      final FeedTemplate defaultFeed = FeedTemplate(
-        content: Content(
-          title: '${gifticon.sender}님으로부터 선물이 도착했어요!',
-          description: '${gifticon.sender}님이 선물을 보냈어요. 앱에서 바로 확인해보세요!',
-          link: Link(
-            webUrl: Uri.parse('https://developers.kakao.com'),
-            mobileWebUrl: Uri.parse('https://developers.kakao.com'),
-          ),
-        ),
-        itemContent: ItemContent(
-          profileText: 'Gifnut',
-          profileImageUrl: Uri.parse(
-              'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-          titleImageUrl: Uri.parse(
-              'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-          titleImageText: gifticon.name,
-          titleImageCategory: gifticon.store_name,
-        ),
-        buttons: [
-          Button(
-            title: '사용방법',
-            link: Link(
-              webUrl: Uri.parse(
-                  'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-              mobileWebUrl: Uri.parse(
-                  'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-            ),
-          ),
-          Button(
-            title: '선물받기',
-            link: Link(
-              androidExecutionParams: {
-                'gifticon_id': '${gifticon.gifticon_id}'
-              },
-              iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
-            ),
-          ),
-        ],
-      );
-
-      // 카카오톡 실행 가능 여부 확인
-      bool isKakaoTalkSharingAvailable =
-          await ShareClient.instance.isKakaoTalkSharingAvailable();
-
-      if (isKakaoTalkSharingAvailable) {
-        try {
-          Uri uri =
-              await ShareClient.instance.shareDefault(template: defaultFeed);
-          await ShareClient.instance.launchKakaoTalk(uri);
+      await KakaoShareHelper.shareGifticon(
+        gifticon,
+        onSuccess: () {
           print('카카오톡 공유 완료');
           _showToast('카카오톡으로 선물을 전달했습니다.');
-        } catch (error) {
-          print('카카오톡 공유 실패 $error');
+        },
+        onError: (error) {
+          print('카카오톡 공유 실패: $error');
           _showToast('카카오톡 공유에 실패했습니다.');
-        }
-      } else {
-        try {
-          Uri shareUrl = await WebSharerClient.instance
-              .makeDefaultUrl(template: defaultFeed);
-          await launchBrowserTab(shareUrl, popupOpen: true);
-        } catch (error) {
-          print('카카오톡 공유 실패 $error');
-          _showToast('카카오톡 공유에 실패했습니다.');
-        }
-      }
+        },
+      );
     } catch (error) {
       print('카카오톡 공유 오류: $error');
       _showToast('카카오톡 공유 중 오류가 발생했습니다.');

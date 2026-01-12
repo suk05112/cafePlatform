@@ -69,6 +69,11 @@ class _MenuPageState extends State<MenuPage>
   Widget _buildMenuCard(Menu menu) {
     return GestureDetector(
       onTap: () {
+        // store_id가 0이거나 유효하지 않은 경우 widget.storeId로 설정
+        if (menu.store_id <= 0 && widget.storeId > 0) {
+          menu.store_id = widget.storeId;
+          print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
+        }
         Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
         Navigator.push(
           context,
@@ -95,14 +100,76 @@ class _MenuPageState extends State<MenuPage>
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                menu.menu_image_url ?? "",
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Image.asset('assets/menu.png',
-                    width: 80, height: 80, fit: BoxFit.cover),
-              ),
+              child: (menu.menu_image_url != null &&
+                      menu.menu_image_url!.isNotEmpty)
+                  ? Image.network(
+                      menu.menu_image_url!,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        print('메뉴 이미지 로드 오류: $error');
+                        try {
+                          return Image.asset(
+                            'assets/menu.png',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 80,
+                                height: 80,
+                                color: Colors.grey[200],
+                              );
+                            },
+                          );
+                        } catch (e) {
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey[200],
+                          );
+                        }
+                      },
+                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded) return child;
+                        return AnimatedOpacity(
+                          opacity: frame == null ? 0.0 : 1.0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                          child: child,
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      'assets/menu.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[200],
+                        );
+                      },
+                    ),
             ),
             const SizedBox(width: 18),
             // 오른쪽 텍스트 영역 (세로정렬)

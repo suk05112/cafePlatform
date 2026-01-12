@@ -4,7 +4,7 @@ import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
+import 'package:cafeplatform/utils/kakao_share_helper.dart';
 
 class CompletePayment extends StatefulWidget {
   final int? giftType; // 0: 나에게 선물하기, 1: 선물하기
@@ -20,6 +20,7 @@ class _CompletePaymentState extends State<CompletePayment>
     with WidgetsBindingObserver {
   bool _isSharing = false;
   bool _hasShownUnsentGiftDialog = false;
+  bool _showGiftCompleteScreen = false;
 
   @override
   void initState() {
@@ -35,33 +36,78 @@ class _CompletePaymentState extends State<CompletePayment>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
+    print(
+        'didChangeAppLifecycleState: $state, showGiftCompleteScreen: $_showGiftCompleteScreen');
     if (state == AppLifecycleState.resumed) {
       // 앱이 포그라운드로 돌아왔을 때
-      _checkUnsentGift();
+      await _checkSharingComplete();
+      // 공유가 완료되지 않은 경우에만 안보낸 선물 체크
+      if (!_showGiftCompleteScreen) {
+        _checkUnsentGift();
+      }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       // 앱이 백그라운드로 갔을 때
-      if (_isSharing) {
-        _saveUnsentGift();
+      // 공유가 진행 중이고 아직 완료 화면이 표시되지 않은 경우에만 저장
+      // 하지만 sharing_in_progress가 false면 이미 완료된 것이므로 저장하지 않음
+      if (_isSharing && !_showGiftCompleteScreen) {
+        final prefs = await SharedPreferences.getInstance();
+        final sharingInProgress = prefs.getBool('sharing_in_progress') ?? false;
+        if (sharingInProgress) {
+          _saveUnsentGift();
+        }
+      }
+    }
+  }
+
+  Future<void> _checkSharingComplete() async {
+    if (widget.giftType != 1 || widget.gifticon == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final sharingInProgress = prefs.getBool('sharing_in_progress') ?? false;
+
+    print('_checkSharingComplete');
+    print('sharingInProgress: $sharingInProgress isSharing: $_isSharing');
+    // 공유 중이었다가 앱으로 돌아온 경우 완료 화면 표시
+    if (sharingInProgress && _isSharing) {
+      await prefs.remove('sharing_in_progress');
+      // 공유 완료 시 안보낸 선물 정보도 제거
+      await _clearUnsentGift();
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+          _showGiftCompleteScreen = true;
+        });
       }
     }
   }
 
   Future<void> _checkUnsentGift() async {
+    print('_checkUnsentGift');
     if (_hasShownUnsentGiftDialog) return;
 
     final prefs = await SharedPreferences.getInstance();
     final unsentGifticonId = prefs.getString('unsent_gifticon_id');
+    final sharingInProgress = prefs.getBool('sharing_in_progress') ?? false;
+
+    // 공유가 진행 중이면 안보낸 선물로 처리하지 않음
+    if (sharingInProgress) {
+      print('_checkUnsentGift: 공유 진행 중이므로 무시');
+      return;
+    }
 
     if (unsentGifticonId != null && unsentGifticonId.isNotEmpty) {
+      print('_checkUnsentGift 다이얼로그 보여주기');
+
       _hasShownUnsentGiftDialog = true;
       _showUnsentGiftDialog();
     }
   }
 
   Future<void> _saveUnsentGift() async {
+    print('_saveUnsentGift');
     if (widget.gifticon == null) return;
 
     final prefs = await SharedPreferences.getInstance();
@@ -71,6 +117,7 @@ class _CompletePaymentState extends State<CompletePayment>
   }
 
   Future<void> _clearUnsentGift() async {
+    print('_clearUnsentGift');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('unsent_gifticon_id');
     await prefs.remove('unsent_gifticon_name');
@@ -81,23 +128,7 @@ class _CompletePaymentState extends State<CompletePayment>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.card_giftcard, color: ColorAssset.mainColor),
-            SizedBox(width: 8),
-            Text(
-              '안보낸 선물이 있어요',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
+        backgroundColor: Colors.white,
         content: Text(
           '카카오톡 선물 보내기를 완료하지 못했습니다.\n다시 보내시겠어요?',
           style: TextStyle(
@@ -143,200 +174,94 @@ class _CompletePaymentState extends State<CompletePayment>
       _isSharing = true;
     });
 
+    // 공유 시작 플래그 저장
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('sharing_in_progress', true);
+
     try {
-      final gifticon = widget.gifticon!;
-      final FeedTemplate defaultFeed = FeedTemplate(
-        content: Content(
-          title: '${gifticon.sender}님으로부터 선물이 도착했어요!',
-          description: '${gifticon.sender}님이 선물을 보냈어요. 앱에서 바로 확인해보세요!',
-          link: Link(
-            webUrl: Uri.parse('https://developers.kakao.com'),
-            mobileWebUrl: Uri.parse('https://developers.kakao.com'),
-          ),
-        ),
-        itemContent: ItemContent(
-          profileText: 'Gifnut',
-          profileImageUrl: Uri.parse(
-              'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-          titleImageUrl: Uri.parse(
-              'https://mud-kage.kakao.com/dn/Q2iNx/btqgeRgV54P/VLdBs9cvyn8BJXB3o7N8UK/kakaolink40_original.png'),
-          titleImageText: gifticon.name,
-          titleImageCategory: gifticon.store_name,
-        ),
-        buttons: [
-          Button(
-            title: '사용방법',
-            link: Link(
-              webUrl: Uri.parse(
-                  'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-              mobileWebUrl: Uri.parse(
-                  'https://imminent-carob-33e.notion.site/198b720032c3807ca732fbd4445cc614'),
-            ),
-          ),
-          Button(
-            title: '선물받기',
-            link: Link(
-              androidExecutionParams: {
-                'gifticon_id': '${gifticon.gifticon_id}'
-              },
-              iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
-            ),
-          ),
-        ],
+      await KakaoShareHelper.shareGifticon(
+        widget.gifticon!,
+        onSuccess: () async {
+          print('_shareToKakaoTalk: 카카오톡 공유 완료');
+          // 공유 성공 시 저장된 정보 모두 제거
+          await _clearUnsentGift();
+          // sharing_in_progress는 유지하여 앱 복귀 시 완료 화면 표시
+          // _checkSharingComplete에서 제거함
+          // _isSharing은 앱 복귀 시 _checkSharingComplete에서 false로 설정됨
+        },
+        onError: (error) async {
+          print('카카오톡 공유 실패: $error');
+          // 공유 실패 시 플래그 제거
+          await prefs.remove('sharing_in_progress');
+          if (mounted) {
+            setState(() {
+              _isSharing = false;
+            });
+          }
+        },
       );
-
-      bool isKakaoTalkSharingAvailable =
-          await ShareClient.instance.isKakaoTalkSharingAvailable();
-
-      if (isKakaoTalkSharingAvailable) {
-        Uri uri =
-            await ShareClient.instance.shareDefault(template: defaultFeed);
-        await ShareClient.instance.launchKakaoTalk(uri);
-        print('카카오톡 공유 완료');
-        // 공유 성공 시 저장된 정보 제거
-        await _clearUnsentGift();
-      } else {
-        Uri shareUrl = await WebSharerClient.instance
-            .makeDefaultUrl(template: defaultFeed);
-        // 웹 공유는 카카오톡 앱이 없을 때만 사용
-        print('카카오톡 미설치 - 웹 공유 URL: $shareUrl');
-      }
     } catch (error) {
-      print('카카오톡 공유 실패 $error');
-    } finally {
-      setState(() {
-        _isSharing = false;
-      });
+      print('카카오톡 공유 오류: $error');
+      prefs.remove('sharing_in_progress');
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+        });
+      }
     }
+    // onSuccess나 onError에서 처리하지 않고 앱 복귀 시 처리
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Spacer(),
-              // 성공 아이콘
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: ColorAssset.mainColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Image.asset(
-                    'assets/icon.png',
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      // 이미지가 없으면 기본 아이콘 표시
-                      return Icon(
-                        Icons.check_circle,
+    // 선물하기 완료 화면 표시
+    if (_showGiftCompleteScreen) {
+      return WillPopScope(
+        onWillPop: () async => false, // 뒤로가기 버튼 비활성화
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Spacer(),
+                  // 성공 아이콘
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: ColorAssset.mainColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Icon(
+                        Icons.card_giftcard,
                         size: 80,
                         color: ColorAssset.mainColor,
-                      );
-                    },
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              // 제목
-              const Text(
-                "결제가 완료되었어요!",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              // 부제목
-              Text(
-                widget.giftType == 0
-                    ? "선물함에서 확인하실 수 있어요"
-                    : "주문 내역에서 확인하실 수 있어요",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-              // 버튼들
-              if (widget.giftType == 0) ...[
-                // 나에게 선물하기인 경우: 선물함으로 이동
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      foregroundColor: Colors.white,
-                      backgroundColor: ColorAssset.mainColor,
-                      elevation: 0,
+                  const SizedBox(height: 32),
+                  // 제목
+                  const Text(
+                    "선물이 전달되었어요!",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                    child: const Text(
-                      '선물함으로 이동',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                            builder: (context) => TabPage(initialIndex: 1)),
-                        (route) => false,
-                      );
-                    },
                   ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    child: const Text(
-                      '홈으로 돌아가기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => TabPage()),
-                        (route) => false,
-                      );
-                    },
-                  ),
-                ),
-              ] else ...[
-                // 선물하기인 경우: 카카오톡 공유 버튼과 홈으로 이동 버튼
-                if (widget.gifticon != null) ...[
+
+                  const SizedBox(height: 48),
+                  // 홈으로 돌아가기 버튼
                   SizedBox(
                     width: double.infinity,
                     height: 56,
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.0),
@@ -345,48 +270,209 @@ class _CompletePaymentState extends State<CompletePayment>
                         backgroundColor: ColorAssset.mainColor,
                         elevation: 0,
                       ),
-                      icon: Icon(Icons.share),
-                      label: Text(
-                        '카카오톡으로 선물 보내기',
+                      child: const Text(
+                        '홈으로 돌아가기',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      onPressed: _isSharing ? null : _shareToKakaoTalk,
+                      onPressed: () {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => TabPage()),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 기존 결제 완료 화면
+    return WillPopScope(
+      onWillPop: () async => false, // 뒤로가기 버튼 비활성화
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Spacer(),
+                // 성공 아이콘
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: ColorAssset.mainColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Image.asset(
+                      'assets/icon.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // 이미지가 없으면 기본 아이콘 표시
+                        return Icon(
+                          Icons.check_circle,
+                          size: 80,
+                          color: ColorAssset.mainColor,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // 제목
+                const Text(
+                  "결제가 완료되었어요!",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 부제목
+                Text(
+                  widget.giftType == 0
+                      ? "선물함에서 확인하실 수 있어요"
+                      : "주문 내역에서 확인하실 수 있어요",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 48),
+                // 버튼들
+                if (widget.giftType == 0) ...[
+                  // 나에게 선물하기인 경우: 선물함으로 이동
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        foregroundColor: Colors.white,
+                        backgroundColor: ColorAssset.mainColor,
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        '선물함으로 이동',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                              builder: (context) => TabPage(initialIndex: 1)),
+                          (route) => false,
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 12),
-                ],
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        foregroundColor: Colors.black87,
+                        side: BorderSide(color: Colors.grey[300]!),
                       ),
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    child: const Text(
-                      '홈으로 돌아가기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                      child: const Text(
+                        '홈으로 돌아가기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
+                      onPressed: () {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => TabPage()),
+                          (route) => false,
+                        );
+                      },
                     ),
-                    onPressed: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => TabPage()),
-                        (route) => false,
-                      );
-                    },
                   ),
-                ),
+                ] else ...[
+                  // 선물하기인 경우: 카카오톡 공유 버튼과 홈으로 이동 버튼
+                  if (widget.gifticon != null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          foregroundColor: Colors.white,
+                          backgroundColor: ColorAssset.mainColor,
+                          elevation: 0,
+                        ),
+                        icon: Icon(Icons.share),
+                        label: Text(
+                          '카카오톡으로 선물 보내기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: _isSharing ? null : _shareToKakaoTalk,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        foregroundColor: Colors.black87,
+                        side: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      child: const Text(
+                        '홈으로 돌아가기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => TabPage()),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const Spacer(),
               ],
-              const Spacer(),
-            ],
+            ),
           ),
         ),
       ),

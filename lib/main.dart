@@ -61,7 +61,14 @@ FutureOr<void> main() async {
   // 백그라운드 메시지 핸들러 등록 (Firebase 초기화 전에 등록해야 함)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  await Firebase.initializeApp();
+  // Firebase가 이미 초기화되지 않은 경우에만 초기화
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    // 이미 초기화된 경우 무시
+    print("Firebase 이미 초기화됨 또는 초기화 오류: $e");
+  }
+
   await _initialize();
 
   runApp(MyApp());
@@ -70,7 +77,7 @@ FutureOr<void> main() async {
 
 Future<void> _initialize() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  Firebase.initializeApp();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown, // 필요 없으면 제거
@@ -80,33 +87,30 @@ Future<void> _initialize() async {
       clientId: 'ofzfofvuev',
       onAuthFailed: (ex) => log("********* 네이버맵 인증오류 : $ex *********"));
 
-  var native = '275e555cdb8196634a6aef161abe3f84';
-  var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';
-
-  KakaoSdk.init(
-    nativeAppKey: native,
-    javaScriptAppKey: javaScriptAppKey,
-  );
-
-  // Firebase Crashlytics 에러 핸들러 설정 (안전하게)
+  // Firebase Crashlytics 초기화 및 에러 핸들러 설정
   try {
+    // Crashlytics 수집 활성화/비활성화 설정
+    // Debug 모드에서도 테스트를 위해 활성화 (필요시 false로 변경)
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+
+    // Flutter 에러 핸들러 설정
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-      FlutterError.presentError(errorDetails);
+      // 디버그 모드에서는 원래 에러도 표시
+      if (kDebugMode) {
+        FlutterError.presentError(errorDetails);
+      }
     };
 
+    // 플랫폼 레벨 에러 핸들러 설정
     PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
-  } catch (e) {
-    print("Firebase Crashlytics 에러 핸들러 설정 오류: $e");
-  }
 
-  if (kDebugMode) {
-    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
-  } else {
-    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+    print("✅ Firebase Crashlytics 초기화 완료");
+  } catch (e) {
+    print("❌ Firebase Crashlytics 에러 핸들러 설정 오류: $e");
   }
 
   // FCM 토큰 초기화 및 저장
@@ -114,74 +118,146 @@ Future<void> _initialize() async {
 
   getPermission();
   await Api().setBaseClient(Api.BASE_URL);
-
-  // Crashlytics 초기화를 기다린 후 테스트 실행
-  await Future.delayed(const Duration(milliseconds: 500));
 }
 
 void handleDeepLink(Uri uri) async {
-  final gifticonId = uri.queryParameters['gifticon_id'];
-  print('uri: $uri');
-  print('Deep link received with gifticon_id: $gifticonId');
+  print('Deep link received: $uri');
+  print('  - scheme: ${uri.scheme}');
+  print('  - host: ${uri.host}');
+  print('  - path: ${uri.path}');
+  print('  - queryParameters: ${uri.queryParameters}');
 
-  // gifticon_id가 있는 경우
-  if (gifticonId != null && gifticonId.isNotEmpty) {
-    final gifticonIdInt = int.tryParse(gifticonId);
-    if (gifticonIdInt != null) {
-      // Get.context를 통해 Provider에 접근
-      final context = Get.context;
-      if (context != null) {
-        try {
-          final userProvider =
-              Provider.of<UserProvider>(context, listen: false);
+  // 카카오 OAuth 콜백 URL은 무시 (카카오 SDK가 자체적으로 처리)
+  // kakaoc...://oauth 또는 kakao...://oauth 형식의 URL은 카카오 로그인 OAuth 콜백
+  if (uri.host == 'oauth' &&
+      (uri.scheme.startsWith('kakaoc') || uri.scheme.startsWith('kakao'))) {
+    print('카카오 OAuth 콜백 URL - 무시 (카카오 SDK가 처리): $uri');
+    return;
+  }
 
-          if (userProvider.isLoggedIn) {
-            // 로그인 되어있으면 기프티콘 등록 페이지로 이동
-            print("로그인 상태: 기프티콘 등록 페이지로 이동");
-            // 현재 화면을 모두 제거하고 새로운 페이지로 이동 (앱이 실행 중일 때)
-            Get.offAll(() => RegisterGifticonPage(gifticon_id: gifticonIdInt));
-          } else {
-            // 로그인 안되어있으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-            print("비로그인 상태: 딥링크 정보 저장 후 로그인 페이지로 이동");
+  // 카카오 링크 처리 (kakaoc...://kakaolink 또는 kakao...://kakaolink?gifticon_id=...)
+  // Flutter 앱이 완전히 초기화될 때까지 대기 (최대 3초)
+  bool isKakaoLink = (uri.scheme.startsWith('kakaoc') || uri.scheme.startsWith('kakao')) && uri.host == 'kakaolink';
+
+  if (isKakaoLink) {
+    int retryCount = 0;
+    const maxRetries = 30;
+    while (Get.context == null && retryCount < maxRetries) {
+      print("Waiting for Flutter context... (${retryCount + 1}/$maxRetries)");
+      await Future.delayed(const Duration(milliseconds: 100));
+      retryCount++;
+    }
+  }
+
+  // gifnut:// 스킴 또는 https://www.502company.com/gift 경로 처리
+  bool isGifnutLink = uri.scheme == 'gifnut' ||
+      (uri.scheme == 'https' &&
+          uri.host == 'www.502company.com' &&
+          uri.path == '/gift');
+
+  if (isKakaoLink || isGifnutLink) {
+    // 기프티콘 선물받기 처리
+    final gifticonId = uri.queryParameters['gifticon_id'];
+    print('기프티콘 선물받기 - gifticon_id: $gifticonId (카카오 링크: $isKakaoLink)');
+
+    if (gifticonId != null && gifticonId.isNotEmpty) {
+      final gifticonIdInt = int.tryParse(gifticonId);
+      if (gifticonIdInt != null) {
+        // context가 준비될 때까지 추가 대기 (필요시)
+        var context = Get.context;
+        if (context == null) {
+          print("Context가 여전히 없음: 추가 대기 중...");
+          await Future.delayed(const Duration(milliseconds: 500));
+          context = Get.context;
+        }
+
+        if (context != null) {
+          try {
+            final userProvider =
+                Provider.of<UserProvider>(context, listen: false);
+
+            // UserProvider에서 로그인 상태를 다시 확인 (비동기 로드 완료 대기)
+            await userProvider.fetchUser();
+
+            // 로그인 상태 확인 (재확인)
+            if (userProvider.isLoggedIn && userProvider.user != null) {
+              // 로그인 되어있으면 기프티콘 등록 페이지로 이동
+              print("로그인 상태 확인됨: 기프티콘 등록 페이지로 이동");
+              // 약간의 지연을 추가하여 Flutter가 완전히 준비되도록 함
+              await Future.delayed(const Duration(milliseconds: 300));
+              Get.offAll(
+                  () => RegisterGifticonPage(gifticon_id: gifticonIdInt));
+            } else {
+              // 로그인 안되어있으면 딥링크 정보를 저장하고 로그인 페이지로 이동
+              print("비로그인 상태: 딥링크 정보 저장 후 로그인 페이지로 이동");
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt('pending_gifticon_id', gifticonIdInt);
+              await Future.delayed(const Duration(milliseconds: 300));
+              Get.offAll(() => LoginPage());
+            }
+          } catch (e) {
+            print("Provider 접근 오류: $e");
+            // 오류 발생 시 딥링크 정보 저장 후 로그인 페이지로 이동
             final prefs = await SharedPreferences.getInstance();
             await prefs.setInt('pending_gifticon_id', gifticonIdInt);
+            await Future.delayed(const Duration(milliseconds: 300));
             Get.offAll(() => LoginPage());
           }
-        } catch (e) {
-          print("Provider 접근 오류: $e");
-          // 오류 발생 시 딥링크 정보 저장 후 로그인 페이지로 이동
+        } else {
+          // context가 여전히 없으면 딥링크 정보를 저장하고 로그인 페이지로 이동
+          print("Context를 가져올 수 없음: 딥링크 정보 저장 후 로그인 페이지로 이동");
           final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('pending_gifticon_id', gifticonIdInt);
+          await Future.delayed(const Duration(milliseconds: 300));
           Get.offAll(() => LoginPage());
         }
-      } else {
-        // context가 없으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-        print("Context가 없음: 딥링크 정보 저장 후 로그인 페이지로 이동");
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('pending_gifticon_id', gifticonIdInt);
-        // context가 없으면 잠시 대기 후 다시 시도
-        await Future.delayed(const Duration(milliseconds: 500));
-        final retryContext = Get.context;
-        if (retryContext != null) {
-          Get.offAll(() => LoginPage());
-        }
+        return;
       }
+    } else {
+      // gifticon_id가 없으면 매장 리스트 페이지로 이동
+      print("gifticon_id가 없음: 매장 리스트 페이지로 이동");
+      await Future.delayed(const Duration(milliseconds: 300));
+      Get.offAll(() => TabPage(initialIndex: 0));
       return;
     }
   }
 
+  // gifnut://share?type=store&id=... 형식 처리
+  if (uri.scheme == 'gifnut' && uri.host == 'share') {
+    final type = uri.queryParameters['type'];
+    final id = uri.queryParameters['id'];
+    print('공유 링크 - type: $type, id: $id');
+
+    if (type == 'store' && id != null) {
+      final storeId = int.tryParse(id);
+      if (storeId != null) {
+        // 매장 상세 페이지로 이동
+        print("매장 상세 페이지로 이동: store_id=$storeId");
+        // TODO: StorePage로 이동하는 로직 추가 필요
+        // Get.offAll(() => StorePage(storeId: storeId, storeName: ''));
+        return;
+      }
+    }
+  }
+
   // 기존 로직 (gifticon_id가 없는 경우)
+  // 카카오 OAuth 콜백 등은 이미 위에서 처리했으므로 여기서는 추가 처리 불필요
   final query = uri.queryParameters['query'];
   if (query != null && query == 'one') {
-    print("1 걸림");
+    print("기존 로직: query=one");
     Get.offAll(() => CafeList());
-    Get.toNamed('/friends'); // 친구 목록 페이지로 이동
+    // TODO: '/friends' 라우트가 등록되어 있지 않으므로 주석 처리
+    // Get.toNamed('/friends'); // 친구 목록 페이지로 이동
   } else if (query != null && query == 'two') {
-    print("2 걸림");
-    Get.offAllNamed('/main'); // 메인 페이지로 이동
+    print("기존 로직: query=two");
+    // TODO: '/main' 라우트가 등록되어 있지 않으므로 주석 처리
+    // Get.offAllNamed('/main'); // 메인 페이지로 이동
+    Get.offAll(() => SplashScreen()); // SplashScreen으로 이동
   } else {
-    Get.offAllNamed('/signin'); // 기본 페이지로 이동
-    print("3 걸림");
+    // 알 수 없는 딥링크인 경우만 처리 (카카오 OAuth는 이미 필터링됨)
+    // 현재 로그인 중인 경우에는 네비게이션하지 않음
+    print("알 수 없는 딥링크 형식 - 무시: $uri");
+    // Get.offAll(() => LoginPage()); // 주석 처리 - 로그인 플로우 방해 방지
   }
 }
 
@@ -335,7 +411,10 @@ class _MyAppState extends State<MyApp> {
       // ✅ 앱 완전 종료 상태에서 실행된 딥링크
       final Uri? initialUri = await _appLinks.getInitialLink();
       if (initialUri != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Flutter가 완전히 초기화될 때까지 대기
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          // 첫 프레임이 렌더링된 후 약간의 지연을 추가
+          await Future.delayed(const Duration(milliseconds: 500));
           handleDeepLink(initialUri);
         });
       }
@@ -343,7 +422,10 @@ class _MyAppState extends State<MyApp> {
       // ✅ 앱 실행 중 / 백그라운드 복귀
       _linkSubscription = _appLinks.uriLinkStream.listen(
         (Uri uri) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Flutter가 준비될 때까지 대기
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            // 첫 프레임이 렌더링된 후 약간의 지연을 추가
+            await Future.delayed(const Duration(milliseconds: 300));
             handleDeepLink(uri);
           });
         },

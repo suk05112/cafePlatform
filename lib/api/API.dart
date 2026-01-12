@@ -16,6 +16,13 @@ class Api {
   late final Dio dio;
   late var client;
 
+  // App Check Token 캐싱 (중복 요청 방지)
+  static String? _cachedAppCheckToken;
+  static DateTime? _cachedTokenTime;
+  static const Duration _tokenCacheDuration =
+      Duration(minutes: 5); // 토큰 캐시 유지 시간
+  static bool _isGettingToken = false; // 토큰 가져오기 중 플래그
+
   Api._internal() {
     _initializeClients();
   }
@@ -25,8 +32,8 @@ class Api {
     final options = BaseOptions(
       baseUrl: AppConfig.baseUrl,
       headers: headers,
-      connectTimeout: Duration(seconds: 5),
-      receiveTimeout: Duration(seconds: 5),
+      connectTimeout: Duration(seconds: 15),
+      receiveTimeout: Duration(seconds: 15),
     );
     dio = Dio(options)..interceptors.add(CustomLogInterceptor());
     client = ApiClient(Dio(options)..interceptors.add(CustomLogInterceptor()));
@@ -34,7 +41,9 @@ class Api {
 
   static const String STAGING_URL = "https://www.502company.com/dev";
   static const String STAGING_URL_V2 = "http://18.221.2.135";
-  static const String BASE_URL = "https://www.502company.com/dev";
+
+  // Flavor에 따른 BASE_URL 반환 (dev: /dev, prod: /prod)
+  static String get BASE_URL => AppConfig.baseUrl;
 
   /// User-Agent를 생성하는 함수
   static Future<String> _getUserAgent() async {
@@ -83,15 +92,115 @@ class Api {
     };
   }
 
+  /// App Check Token을 가져오는 공통 함수 (재시도 및 캐싱 포함)
+  static Future<String?> _getAppCheckToken({bool forceRefresh = false}) async {
+    // 캐시된 토큰이 있고 아직 유효하면 반환
+    if (!forceRefresh &&
+        _cachedAppCheckToken != null &&
+        _cachedTokenTime != null &&
+        DateTime.now().difference(_cachedTokenTime!) < _tokenCacheDuration) {
+      return _cachedAppCheckToken;
+    }
+
+    // 이미 토큰을 가져오는 중이면 대기
+    if (_isGettingToken) {
+      // 최대 3초 대기
+      for (int i = 0; i < 30; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (!_isGettingToken) {
+          return _cachedAppCheckToken;
+        }
+      }
+      return _cachedAppCheckToken; // 타임아웃 시 캐시된 토큰 반환
+    }
+
+    _isGettingToken = true;
+    try {
+      // 첫 번째 시도
+      try {
+        final tokenResult = await FirebaseAppCheck.instance.getToken();
+        if (tokenResult != null) {
+          // getToken() 반환값 처리 (String 또는 AppCheckToken 객체)
+          String? tokenString;
+          try {
+            // AppCheckToken 객체인 경우 token 프로퍼티 접근 시도
+            tokenString = (tokenResult as dynamic).token as String?;
+          } catch (_) {
+            // String이거나 다른 타입인 경우
+            tokenString = tokenResult.toString();
+          }
+
+          if (tokenString != null && tokenString.isNotEmpty) {
+            _cachedAppCheckToken = tokenString;
+            _cachedTokenTime = DateTime.now();
+            return _cachedAppCheckToken;
+          }
+        }
+      } catch (e) {
+        final errorMessage = e.toString().toLowerCase();
+
+        // "Too many attempts" 에러인 경우 일정 시간 대기 후 재시도
+        if (errorMessage.contains('too many attempts') ||
+            errorMessage.contains('too_many_attempts')) {
+          print('⚠️ App Check Token: Too many attempts, 5초 대기 후 재시도...');
+          await Future.delayed(const Duration(seconds: 5));
+
+          // 두 번째 시도
+          try {
+            final tokenResult = await FirebaseAppCheck.instance.getToken();
+            if (tokenResult != null) {
+              // getToken() 반환값 처리 (String 또는 AppCheckToken 객체)
+              String? tokenString;
+              try {
+                // AppCheckToken 객체인 경우 token 프로퍼티 접근 시도
+                tokenString = (tokenResult as dynamic).token as String?;
+              } catch (_) {
+                // String이거나 다른 타입인 경우
+                tokenString = tokenResult.toString();
+              }
+
+              if (tokenString != null && tokenString.isNotEmpty) {
+                _cachedAppCheckToken = tokenString;
+                _cachedTokenTime = DateTime.now();
+                return _cachedAppCheckToken;
+              }
+            }
+          } catch (e2) {
+            print('⚠️ Firebase App Check Token 가져오기 실패 (재시도 후): $e2');
+            // 재시도 후에도 실패하면 캐시된 토큰이 있으면 사용
+            if (_cachedAppCheckToken != null) {
+              print('⚠️ 캐시된 App Check Token 사용');
+              return _cachedAppCheckToken;
+            }
+            return null;
+          }
+        } else {
+          // 다른 에러인 경우
+          print('⚠️ Firebase App Check Token 가져오기 실패: $e');
+          // 캐시된 토큰이 있으면 사용
+          if (_cachedAppCheckToken != null) {
+            print('⚠️ 캐시된 App Check Token 사용');
+            return _cachedAppCheckToken;
+          }
+          return null;
+        }
+      }
+    } finally {
+      _isGettingToken = false;
+    }
+
+    return _cachedAppCheckToken;
+  }
+
   /// V2, 이외의 baseURL 이 필요할때 사용한다.
   Future<ApiClient> setTempClient(String baseUrl) async {
     final headers = await _getHeaders();
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       headers: headers,
-      connectTimeout: Duration(seconds: 5),
-      receiveTimeout: Duration(seconds: 5),
-      sendTimeout: Duration(seconds: 5),
+      connectTimeout: Duration(seconds: 15),
+      receiveTimeout: Duration(seconds: 15),
+      sendTimeout: Duration(seconds: 15),
     ))
       ..interceptors.add(CustomLogInterceptor());
 
@@ -104,19 +213,25 @@ class Api {
   Future<ApiClient> setBaseClient(String baseUrl) async {
     final user = FirebaseAuth.instance.currentUser;
     final idToken = await user?.getIdToken(); // Firebase ID Token
-    final appCheck = await FirebaseAppCheck.instance.getToken();
+
+    // App Check 토큰 가져오기 (공통 함수 사용)
+    final appCheckToken = await _getAppCheckToken();
+
     final baseHeaders = await _getHeaders();
+
+    final headers = <String, dynamic>{
+      ...baseHeaders,
+      if (idToken != null) 'Authorization': 'Bearer $idToken',
+      if (appCheckToken != null && appCheckToken.isNotEmpty)
+        "X-Firebase-AppCheck": appCheckToken,
+    };
 
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      headers: {
-        ...baseHeaders,
-        'Authorization': 'Bearer $idToken',
-        "X-Firebase-AppCheck": appCheck,
-      },
-      connectTimeout: Duration(seconds: 5),
-      receiveTimeout: Duration(seconds: 5),
-      sendTimeout: Duration(seconds: 5),
+      headers: headers,
+      connectTimeout: Duration(seconds: 15),
+      receiveTimeout: Duration(seconds: 15),
+      sendTimeout: Duration(seconds: 15),
     ))
       ..interceptors.add(CustomLogInterceptor())
       ..interceptors.add(AuthInterceptor());
@@ -192,6 +307,8 @@ class AuthInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     print(['dio error interceptor']);
+    print('❌ Error: ${err.type} [${err.type}]: ${err.message}');
+
     if (err.response?.statusCode == 401) {
       print('[401 interceptor] at ${err.requestOptions.path}');
 
@@ -221,19 +338,25 @@ class AuthInterceptor extends Interceptor {
         // request 재요청
         final user = FirebaseAuth.instance.currentUser;
         final idToken = await user?.getIdToken(); // Firebase ID Token
-        final appCheck = await FirebaseAppCheck.instance.getToken();
 
-        // print("app check token ${appCheck}");
+        // App Check 토큰 가져오기 (공통 함수 사용, 401 에러 시에는 캐시 무시)
+        // 캐시 무시를 위해 forceRefresh를 true로 설정하되, 실제로는 캐시를 사용하지 않도록
+        final appCheckToken = await Api._getAppCheckToken(forceRefresh: true);
 
         RequestOptions requestOptions = err.requestOptions;
         final baseHeaders = await Api._getHeaders();
+        final headers = <String, dynamic>{
+          ...baseHeaders,
+          if (idToken != null) 'Authorization': 'Bearer $idToken',
+          if (appCheckToken != null && appCheckToken.isNotEmpty)
+            "X-Firebase-AppCheck": appCheckToken,
+        };
         Dio dio = Dio(BaseOptions(
-          baseUrl: Api.STAGING_URL_V2,
-          headers: {
-            ...baseHeaders,
-            'Authorization': 'Bearer $idToken',
-            "X-Firebase-AppCheck": appCheck,
-          },
+          baseUrl: requestOptions.baseUrl, // 원래 baseUrl 사용
+          headers: headers,
+          connectTimeout: Duration(seconds: 15),
+          receiveTimeout: Duration(seconds: 15),
+          sendTimeout: Duration(seconds: 15),
         ));
 
         print('[401 interceptor] 재요청');

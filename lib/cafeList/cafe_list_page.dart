@@ -7,7 +7,6 @@ import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/region.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:cafeplatform/store_page.dart';
-import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
 import 'package:provider/provider.dart';
 
@@ -22,17 +21,23 @@ class _CafeListState extends State<CafeList>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   String? _selectedRegionCode;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // 스크롤 리스너 추가
+    _scrollController.addListener(_onScroll);
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      storeProvider.resetPagination();
       // 처음에는 "01"로 호출
       try {
-        final response = await Api().client.getStoreListByDistrict("01");
-        storeProvider.setStoreCard(response.store);
+        await storeProvider.fetchListViewStoresByDistrict("01",
+            cursor: null, limit: 10);
       } catch (error) {
         print("초기 매장 로드 오류: $error");
         await storeProvider.fetchStoreList();
@@ -41,12 +46,46 @@ class _CafeListState extends State<CafeList>
     });
   }
 
+  void _onScroll() {
+    // 스크롤 위치 확인
+    final position = _scrollController.position;
+    if (!position.hasContentDimensions) return;
+
+    // 하단 200px 전에 도달하면 다음 페이지 로드
+    final threshold = position.maxScrollExtent - 200;
+    if (position.pixels >= threshold && position.pixels > 0) {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+
+      print(
+          '스크롤 감지: pixels=${position.pixels}, maxScrollExtent=${position.maxScrollExtent}, threshold=$threshold');
+      print(
+          '페이지네이션 상태: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}, nextCursor=${storeProvider.nextCursor}');
+
+      if (storeProvider.hasMore && !storeProvider.isLoadingMore) {
+        print('다음 페이지 로드 시작');
+        storeProvider.loadMoreStores();
+      } else {
+        print(
+            '다음 페이지 로드 스킵: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
+
   void _refreshData() {
     final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    storeProvider.resetPagination();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        final response = await Api().client.getStoreListByDistrict("01");
-        storeProvider.setStoreCard(response.store);
+        await storeProvider.fetchListViewStoresByDistrict("01",
+            cursor: null, limit: 10);
       } catch (error) {
         print("매장 로드 오류: $error");
         await storeProvider.fetchStoreList();
@@ -58,11 +97,13 @@ class _CafeListState extends State<CafeList>
   @override
   Widget build(BuildContext context) {
     final storeProvider = context.watch<StoreProvider>();
-    final stores = List<Store>.from(storeProvider.storeCards ?? []);
+    // 리스트 뷰는 독립적인 데이터 사용
+    final listViewStores = List<Store>.from(storeProvider.listViewStores ?? []);
     final selectedRegionCode =
         storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
-    final filteredStores = _filterStores(stores, selectedRegionCode);
+    final filteredListViewStores =
+        _filterStores(listViewStores, selectedRegionCode);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -82,20 +123,20 @@ class _CafeListState extends State<CafeList>
                       children: [
                         Expanded(child: _buildRegionAndSearchRow()),
                         const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: crashtest,
-                          icon: const Icon(Icons.bug_report, size: 20),
-                          tooltip: '크래시 테스트',
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.red.withOpacity(0.1),
-                            padding: const EdgeInsets.all(8),
-                          ),
-                        ),
+                        // IconButton(
+                        //   onPressed: crashtest,
+                        //   icon: const Icon(Icons.bug_report, size: 20),
+                        //   tooltip: '크래시 테스트',
+                        //   style: IconButton.styleFrom(
+                        //     backgroundColor: Colors.red.withOpacity(0.1),
+                        //     padding: const EdgeInsets.all(8),
+                        //   ),
+                        // ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '카페 ${filteredStores.length}개',
+                      '카페 ${filteredListViewStores.length}개',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                   ],
@@ -118,11 +159,9 @@ class _CafeListState extends State<CafeList>
                   controller: _tabController,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
-                    _buildStoreList(filteredStores),
+                    _buildStoreList(filteredListViewStores),
                     CafeListMapView(
-                      key: ValueKey(
-                          filteredStores.map((e) => e.store_id).join()),
-                      storeList: filteredStores,
+                      key: const ValueKey('map_view'),
                     ),
                   ],
                 ),
@@ -135,19 +174,39 @@ class _CafeListState extends State<CafeList>
   }
 
   Future<void> crashtest() async {
-    await Future.delayed(const Duration(milliseconds: 1000));
+    try {
+      // Crashlytics 사용자 정보 및 커스텀 키 설정
+      await FirebaseCrashlytics.instance.setCustomKey("test_key", "test_value");
+      await FirebaseCrashlytics.instance
+          .setCustomKey("test_time", DateTime.now().toString());
+      await FirebaseCrashlytics.instance.setUserIdentifier("test_user");
 
-    // Crashlytics 사용자 정보 및 커스텀 키 설정
-    await FirebaseCrashlytics.instance.setCustomKey("test_key", "test_value");
-    await FirebaseCrashlytics.instance.setUserIdentifier("test_user");
+      // 테스트용 로그 기록
+      await FirebaseCrashlytics.instance.log("크래시 로깅 테스트 시작");
+      print("✅ Crashlytics 테스트 설정 완료");
 
-    // 테스트용 로그 기록
-    await FirebaseCrashlytics.instance.log("크래시 로깅 테스트 시작");
-    print("crashtest 호출");
-    // String? testString = null;
-    // print(testString!);
+      // 테스트 에러 기록 (크래시 없이)
+      await FirebaseCrashlytics.instance.recordError(
+        Exception("테스트 에러 - 크래시 없음"),
+        StackTrace.current,
+        reason: "Crashlytics 테스트",
+        fatal: false,
+      );
 
-    FirebaseCrashlytics.instance.crash();
+      print("✅ 테스트 에러가 Crashlytics에 기록되었습니다. Firebase 콘솔에서 확인하세요.");
+
+      // 실제 크래시를 발생시키려면 아래 주석 해제 (앱이 종료됩니다)
+      // await Future.delayed(const Duration(seconds: 2));
+      // FirebaseCrashlytics.instance.crash();
+    } catch (error, stackTrace) {
+      print("❌ Crashlytics 테스트 오류: $error");
+      await FirebaseCrashlytics.instance.recordError(
+        error,
+        stackTrace,
+        reason: "Crashlytics 테스트 중 오류",
+        fatal: false,
+      );
+    }
 
     try {
       // Crashlytics가 준비될 때까지 잠시 대기
@@ -191,45 +250,83 @@ class _CafeListState extends State<CafeList>
     final availableRegions = storeProvider.availableRegions;
     final selectedRegionCode =
         storeProvider.selectedRegionCode ?? _selectedRegionCode;
+
+    // 지역이 하나만 있으면 자동으로 선택
+    if (availableRegions.length == 1 && selectedRegionCode == null) {
+      final singleRegionCode = availableRegions.first.region_code;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedRegionCode = singleRegionCode;
+          });
+          storeProvider.setSelectedRegionCode(singleRegionCode);
+          // 해당 지역으로 매장 목록 로드
+          final districtCode =
+              availableRegions.first.districts?.isNotEmpty == true
+                  ? availableRegions.first.districts!.first.district_code
+                  : singleRegionCode;
+          storeProvider.resetPagination();
+          storeProvider.fetchListViewStoresByDistrict(districtCode,
+              cursor: null, limit: 10);
+        }
+      });
+    }
+    // 기본 선택 지역이 없으면 첫 번째 지역을 기본으로 설정
+    else if (selectedRegionCode == null && availableRegions.isNotEmpty) {
+      final firstRegionCode = availableRegions.first.region_code;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedRegionCode = firstRegionCode;
+          });
+          storeProvider.setSelectedRegionCode(firstRegionCode);
+          // 첫 번째 지역으로 매장 목록 로드
+          final firstDistrictCode =
+              availableRegions.first.districts?.isNotEmpty == true
+                  ? availableRegions.first.districts!.first.district_code
+                  : firstRegionCode;
+          storeProvider.resetPagination();
+          storeProvider.fetchListViewStoresByDistrict(firstDistrictCode,
+              cursor: null, limit: 10);
+        }
+      });
+    }
+
     final selectedRegion = availableRegions.firstWhere(
-      (r) => r.region_code == selectedRegionCode,
-      orElse: () => Region(region_name: '전체 지역', region_code: ''),
+      (r) =>
+          r.region_code ==
+          (selectedRegionCode ??
+              (availableRegions.isNotEmpty
+                  ? availableRegions.first.region_code
+                  : '')),
+      orElse: () => availableRegions.isNotEmpty
+          ? availableRegions.first
+          : Region(region_name: '지역 선택', region_code: ''),
     );
 
     return Row(
       children: [
         PopupMenuButton<String>(
           onSelected: (regionCode) async {
-            if (regionCode.isEmpty) {
-              // 전체 지역 선택
-              setState(() {
-                _selectedRegionCode = null;
-              });
-              storeProvider.setSelectedRegionCode(null);
-              // 전체 매장 다시 로드
-              await storeProvider.fetchStoreList();
-            } else {
-              // 특정 지역 선택 - district_code로 API 호출
-              setState(() {
-                _selectedRegionCode = regionCode;
-              });
-              storeProvider.setSelectedRegionCode(regionCode);
-              try {
-                final selectedRegion = availableRegions.firstWhere(
-                  (r) => r.region_code == regionCode,
-                );
-                // region의 첫 번째 district_code 사용
-                final districtCode =
-                    selectedRegion.districts?.isNotEmpty == true
-                        ? selectedRegion.districts!.first.district_code
-                        : regionCode; // district가 없으면 region_code 사용
+            // 특정 지역 선택 - district_code로 API 호출
+            setState(() {
+              _selectedRegionCode = regionCode;
+            });
+            storeProvider.setSelectedRegionCode(regionCode);
+            try {
+              final selectedRegion = availableRegions.firstWhere(
+                (r) => r.region_code == regionCode,
+              );
+              // region의 첫 번째 district_code 사용
+              final districtCode = selectedRegion.districts?.isNotEmpty == true
+                  ? selectedRegion.districts!.first.district_code
+                  : regionCode; // district가 없으면 region_code 사용
 
-                final response =
-                    await Api().client.getStoreListByDistrict(districtCode);
-                storeProvider.setStoreCard(response.store);
-              } catch (error) {
-                print("지역별 매장 로드 오류: $error");
-              }
+              storeProvider.resetPagination();
+              await storeProvider.fetchListViewStoresByDistrict(districtCode,
+                  cursor: null, limit: 10);
+            } catch (error) {
+              print("지역별 매장 로드 오류: $error");
             }
           },
           shape: RoundedRectangleBorder(
@@ -237,65 +334,27 @@ class _CafeListState extends State<CafeList>
           ),
           color: Colors.white,
           elevation: 8,
-          child: OutlinedButton.icon(
-            onPressed: null,
-            icon: const Icon(Icons.place_outlined, size: 18),
-            label: Text(
-              selectedRegionCode == null || selectedRegionCode.isEmpty
-                  ? '전체 지역'
-                  : selectedRegion.region_name,
-              overflow: TextOverflow.ellipsis,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(12),
             ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.place_outlined, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  selectedRegion.region_name,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down, size: 18),
+              ],
             ),
           ),
           itemBuilder: (BuildContext context) => [
-            PopupMenuItem<String>(
-              value: '',
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 18,
-                      color: selectedRegionCode == null ||
-                              selectedRegionCode.isEmpty
-                          ? Colors.black87
-                          : Colors.grey[400],
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '전체 지역',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: selectedRegionCode == null ||
-                                selectedRegionCode.isEmpty
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: selectedRegionCode == null ||
-                                selectedRegionCode.isEmpty
-                            ? Colors.black87
-                            : Colors.black87,
-                      ),
-                    ),
-                    if (selectedRegionCode == null ||
-                        selectedRegionCode.isEmpty) ...[
-                      const Spacer(),
-                      Icon(
-                        Icons.check,
-                        size: 18,
-                        color: Colors.black87,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
             ...availableRegions.map((region) => PopupMenuItem<String>(
                   value: region.region_code,
                   child: Container(
@@ -359,9 +418,9 @@ class _CafeListState extends State<CafeList>
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '매장명, 동네 이름으로 검색하기',
+                      '매장명으로 검색',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
                         color: ColorAssset.grey5,
                       ),
@@ -378,11 +437,31 @@ class _CafeListState extends State<CafeList>
   }
 
   Widget _buildStoreList(List<Store> stores) {
-    if (stores.isEmpty) {
-      return const Center(
-        child: Text(
-          '선택한 지역에 매장이 없습니다.',
-          style: TextStyle(color: Colors.grey),
+    final storeProvider = context.watch<StoreProvider>();
+
+    if (stores.isEmpty && !storeProvider.isLoadingMore) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.store_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '등록된 매장이 없습니다.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -390,6 +469,7 @@ class _CafeListState extends State<CafeList>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       child: GridView.builder(
+        controller: _scrollController,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           // 세로 공간을 조금 더 넉넉하게 주어 카드 내용이 넘치지 않도록 조정
@@ -397,8 +477,19 @@ class _CafeListState extends State<CafeList>
           mainAxisSpacing: 18,
           crossAxisSpacing: 12,
         ),
-        itemCount: stores.length,
-        itemBuilder: (_, index) => _StoreCard(store: stores[index]),
+        itemCount: stores.length + (storeProvider.isLoadingMore ? 1 : 0),
+        itemBuilder: (_, index) {
+          if (index >= stores.length) {
+            // 로딩 인디케이터
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          return _StoreCard(store: stores[index]);
+        },
       ),
     );
   }
@@ -418,6 +509,27 @@ class _StoreCard extends StatelessWidget {
 
   final Store store;
 
+  String _getStoreImageUrl() {
+    // 로고 URL이 있으면 로고 사용
+    String? logoUrl = store.store_logo.trim();
+    if (logoUrl.isNotEmpty &&
+        (logoUrl.startsWith('http://') || logoUrl.startsWith('https://'))) {
+      return logoUrl;
+    }
+
+    // 로고가 없으면 매장 사진의 첫 번째 이미지 사용
+    if (store.store_photo_urls.isNotEmpty) {
+      String? photoUrl = store.store_photo_urls[0].trim();
+      if (photoUrl.isNotEmpty &&
+          (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+        return photoUrl;
+      }
+    }
+
+    // 둘 다 없으면 빈 문자열 반환 (기본 이미지 사용)
+    return '';
+  }
+
   Widget _buildStoreImage(String imageUrl) {
     // URL 검증 및 정리
     final cleanedUrl = imageUrl.trim();
@@ -426,9 +538,13 @@ class _StoreCard extends StatelessWidget {
     if (cleanedUrl.isEmpty ||
         (!cleanedUrl.startsWith('http://') &&
             !cleanedUrl.startsWith('https://'))) {
-      return Image.asset(
-        'assets/coffee.jpeg',
-        fit: BoxFit.cover,
+      return Container(
+        color: Colors.grey[100],
+        child: Icon(
+          Icons.storefront,
+          size: 60,
+          color: Colors.grey[400],
+        ),
       );
     }
 
@@ -458,19 +574,24 @@ class _StoreCard extends StatelessWidget {
         if (frame != null) return child;
         // 프레임이 null이면 로딩 중이거나 에러
         return Container(
-          color: Colors.grey[200],
-          child: Image.asset(
-            'assets/coffee.jpeg',
-            fit: BoxFit.cover,
+          color: Colors.grey[100],
+          child: Icon(
+            Icons.storefront,
+            size: 60,
+            color: Colors.grey[400],
           ),
         );
       },
       errorBuilder: (context, error, stackTrace) {
         print('이미지 로드 오류: $error, URL: $cleanedUrl');
         print('스택 트레이스: $stackTrace');
-        return Image.asset(
-          'assets/coffee.jpeg',
-          fit: BoxFit.cover,
+        return Container(
+          color: Colors.grey[100],
+          child: Icon(
+            Icons.storefront,
+            size: 60,
+            color: Colors.grey[400],
+          ),
         );
       },
       // 캐시 최적화
@@ -516,7 +637,7 @@ class _StoreCard extends StatelessWidget {
                   const BorderRadius.vertical(top: Radius.circular(16)),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: _buildStoreImage(store.store_logo),
+                child: _buildStoreImage(_getStoreImageUrl()),
               ),
             ),
             Padding(

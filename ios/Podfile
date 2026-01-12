@@ -1,8 +1,24 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '12.0'
+platform :ios, '14.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+# --- Guard: Xcode 16.x sets objectVersion=70 which older xcodeproj/CocoaPods can't parse.
+# This makes `pod install` self-healing even if Xcode rewrites the project file.
+def ensure_compatible_xcodeproj_object_version!
+  pbxproj_path = File.expand_path(File.join(__dir__, 'Runner.xcodeproj', 'project.pbxproj'))
+  return unless File.exist?(pbxproj_path)
+
+  contents = File.read(pbxproj_path)
+  if contents.include?('objectVersion = 70;')
+    puts('[Podfile] Detected objectVersion=70 in Runner.xcodeproj; patching to 54 for CocoaPods compatibility...')
+    contents = contents.gsub('objectVersion = 70;', 'objectVersion = 54;')
+    File.write(pbxproj_path, contents)
+  end
+end
+
+ensure_compatible_xcodeproj_object_version!
 
 project 'Runner', {
   'Debug' => :debug,

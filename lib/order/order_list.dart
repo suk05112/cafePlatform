@@ -42,7 +42,7 @@ class _OrderListPageState extends State<OrderListPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: const CommonAppBar(title: '주문내역'),
+      appBar: const CommonAppBar(title: '결제내역'),
       body: SafeArea(
         child: NetworkAwareWidget(
           onRetry: _loadOrderList,
@@ -55,7 +55,23 @@ class _OrderListPageState extends State<OrderListPage>
   Widget orderList() {
     return Consumer<OrderProvider>(
       builder: (context, orderProvider, child) {
-        List<Order> orderList = orderProvider.orderCards ?? [];
+        // 로딩 중일 때 프로그레스바 표시
+        if (orderProvider.isLoading &&
+            (orderProvider.orderCards == null ||
+                orderProvider.orderCards!.isEmpty)) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFFFE7831), // 메인 컬러
+            ),
+          );
+        }
+
+        // status가 'completed' 또는 'refunded'인 주문만 필터링
+        List<Order> orderList = (orderProvider.orderCards ?? [])
+            .where((order) =>
+                order.status.toLowerCase() == 'completed' ||
+                order.status.toLowerCase() == 'refunded')
+            .toList();
 
         print('orderList length: ${orderList.length}');
         if (orderList.isEmpty) {
@@ -192,23 +208,23 @@ class _OrderListPageState extends State<OrderListPage>
               ],
             ),
             SizedBox(height: 16),
-            // 상품 정보
+            // 상품 정보 (텍스트만)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   order.menu_name,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 15,
                     color: Colors.black87,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 SizedBox(height: 8),
                 Text(
                   "${order.price}원",
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: Colors.black87,
                     fontWeight: FontWeight.bold,
                   ),
