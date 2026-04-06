@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cafeplatform/firebase_options_prod.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -15,23 +17,32 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
 
-  if (kDebugMode) {
-    FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.debug,
-        appleProvider: AppleProvider.appAttest,
-        webProvider:
-            ReCaptchaV3Provider("6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"));
-  } else {
-    FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.playIntegrity,
-        appleProvider: AppleProvider.appAttest,
-        webProvider:
-            ReCaptchaV3Provider("6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"));
-  }
+  unawaited(() async {
+    try {
+      if (kDebugMode) {
+        await FirebaseAppCheck.instance
+            .activate(
+              androidProvider: AndroidProvider.debug,
+              appleProvider: AppleProvider.appAttest,
+              webProvider: ReCaptchaV3Provider(
+                  "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
+            )
+            .timeout(const Duration(seconds: 10));
+      } else {
+        await FirebaseAppCheck.instance
+            .activate(
+              androidProvider: AndroidProvider.playIntegrity,
+              appleProvider: AppleProvider.appAttest,
+              webProvider: ReCaptchaV3Provider(
+                  "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
+            )
+            .timeout(const Duration(seconds: 15));
+      }
+    } catch (e) {
+      debugPrint('Firebase App Check activate: $e');
+    }
+  }());
 
   var kakaoNative = '275e555cdb8196634a6aef161abe3f84';
   var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';

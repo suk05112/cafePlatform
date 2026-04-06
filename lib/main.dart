@@ -17,7 +17,6 @@ import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:cafeplatform/Home.dart';
 import 'package:cafeplatform/MenuForStore.dart';
 import 'package:cafeplatform/SignIn/terms_agreement_page.dart';
-import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/cafeList/cafe_list_map_view.dart';
 import 'package:cafeplatform/cafeList/cafe_list_page.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
@@ -38,6 +37,7 @@ import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:app_links/app_links.dart';
 import 'package:cafeplatform/widget/network_checker.dart';
+import 'package:cafeplatform/utils/fcm_token_util.dart';
 
 // 백그라운드 메시지 핸들러 (top-level 함수여야 함)
 @pragma('vm:entry-point')
@@ -69,40 +69,46 @@ FutureOr<void> main() async {
     print("Firebase 이미 초기화됨 또는 초기화 오류: $e");
   }
 
-  await _initialize();
-
-  runApp(MyApp());
+  // MyApp을 즉시 띄우고, 무거운 초기화는 _StartupShell에서 비동기로 진행 (릴리스 스플래시 정지 완화)
+  runApp(const _StartupShell());
   // handleDeepLinks();
 }
 
+/// 네이버맵 — UI를 막지 않음 ([release 스플래시 정지](https://medium.com/@chetan.akarte/flutter-app-freezes-on-the-splash-screen-in-release-mode-e15a6045a189) 대응)
+Future<void> _initNaverMapSdk() async {
+  try {
+    await NaverMapSdk.instance
+        .initialize(
+          clientId: 'ofzfofvuev',
+          onAuthFailed: (ex) =>
+              log("********* 네이버맵 인증오류 : $ex *********"),
+        )
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () =>
+              log('네이버맵 SDK 초기화 타임아웃 — 지도 기능에 제한이 있을 수 있음'),
+        );
+  } catch (e, st) {
+    log('네이버맵 SDK 초기화 오류: $e', stackTrace: st);
+  }
+}
+
 Future<void> _initialize() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  Firebase.initializeApp();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown, // 필요 없으면 제거
+    DeviceOrientation.portraitDown,
   ]);
 
-  await NaverMapSdk.instance.initialize(
-      clientId: 'ofzfofvuev',
-      onAuthFailed: (ex) => log("********* 네이버맵 인증오류 : $ex *********"));
-
-  // Firebase Crashlytics 초기화 및 에러 핸들러 설정
   try {
-    // Crashlytics 수집 활성화/비활성화 설정
-    // Debug 모드에서도 테스트를 위해 활성화 (필요시 false로 변경)
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
 
-    // Flutter 에러 핸들러 설정
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-      // 디버그 모드에서는 원래 에러도 표시
       if (kDebugMode) {
         FlutterError.presentError(errorDetails);
       }
     };
 
-    // 플랫폼 레벨 에러 핸들러 설정
     PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
@@ -113,11 +119,12 @@ Future<void> _initialize() async {
     print("❌ Firebase Crashlytics 에러 핸들러 설정 오류: $e");
   }
 
-  // FCM 토큰 초기화 및 저장
-  await _initializeFCM();
+  // setBaseClient는 스플래시·로그인에서 호출 (여기서 await 하면 App Check·토큰과 겹쳐 수십 초 대기 유발)
 
+  // FCM·네이버맵은 백그라운드에서 진행 (스플래시/첫 화면을 막지 않음)
+  unawaited(_initializeFCM());
+  unawaited(_initNaverMapSdk());
   getPermission();
-  await Api().setBaseClient(Api.BASE_URL);
 }
 
 void handleDeepLink(Uri uri) async {
@@ -334,8 +341,11 @@ Future<void> _initializeFCM() async {
       }
     }
 
-    // FCM 토큰 가져오기
-    String? token = await messaging.getToken();
+    // FCM 토큰 (iOS는 APNs 준비 후 요청 — 미준비 시 getToken 장시간 대기 방지)
+    final token = await fetchFcmTokenRespectingIosApns();
+    if (token == null) {
+      print('FCM getToken 실패/타임아웃 — onTokenRefresh로 나중에 받을 수 있음');
+    }
 
     if (token != null) {
       print('FCM 토큰: $token');
@@ -385,6 +395,26 @@ getPermission() async {
     print('거절됨');
     Permission.contacts.request(); // 현재 거절된 상태니 팝업창 띄워달라는 코드
   }
+}
+
+/// 첫 프레임에서 곧바로 [MyApp]을 그린 뒤, 무거운 초기화는 백그라운드에서 수행한다.
+/// (스플래시/런치스크린에서 멈춤 — [Medium](https://medium.com/@chetan.akarte/flutter-app-freezes-on-the-splash-screen-in-release-mode-e15a6045a189))
+class _StartupShell extends StatefulWidget {
+  const _StartupShell();
+
+  @override
+  State<_StartupShell> createState() => _StartupShellState();
+}
+
+class _StartupShellState extends State<_StartupShell> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_initialize());
+  }
+
+  @override
+  Widget build(BuildContext context) => const MyApp();
 }
 
 // StatelessWidget은 변화지 않는 화면을 작업할 때 사용.
@@ -490,17 +520,13 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (context) => OrderProvider()),
         ChangeNotifierProvider(create: (context) => UserProvider()),
       ],
-      child: Consumer<UserProvider>(
-        builder: (context, userProvider, _) {
-          return NetworkChecker(
-            child: GetMaterialApp(
-              title: "MyApp",
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(primarySwatch: Colors.blue),
-              home: SplashScreen(),
-            ),
-          );
-        },
+      child: NetworkChecker(
+        child: GetMaterialApp(
+          title: "MyApp",
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(primarySwatch: Colors.blue),
+          home: SplashScreen(),
+        ),
       ),
       /*
         child: GetMaterialApp(
@@ -570,9 +596,7 @@ class _TabPageState extends State<TabPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _pages[_selectedIndex], // 페이지와 연결
-      ),
+      body: _pages[_selectedIndex],
       backgroundColor: Colors.white,
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType

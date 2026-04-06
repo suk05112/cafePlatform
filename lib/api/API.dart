@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -118,7 +119,9 @@ class Api {
     try {
       // 첫 번째 시도
       try {
-        final tokenResult = await FirebaseAppCheck.instance.getToken();
+        final tokenResult = await FirebaseAppCheck.instance
+            .getToken()
+            .timeout(const Duration(seconds: 12));
         if (tokenResult != null) {
           // getToken() 반환값 처리 (String 또는 AppCheckToken 객체)
           String? tokenString;
@@ -136,6 +139,12 @@ class Api {
             return _cachedAppCheckToken;
           }
         }
+      } on TimeoutException catch (_) {
+        print('⚠️ Firebase App Check getToken 타임아웃');
+        if (_cachedAppCheckToken != null) {
+          return _cachedAppCheckToken;
+        }
+        return null;
       } catch (e) {
         final errorMessage = e.toString().toLowerCase();
 
@@ -147,7 +156,9 @@ class Api {
 
           // 두 번째 시도
           try {
-            final tokenResult = await FirebaseAppCheck.instance.getToken();
+            final tokenResult = await FirebaseAppCheck.instance
+                .getToken()
+                .timeout(const Duration(seconds: 12));
             if (tokenResult != null) {
               // getToken() 반환값 처리 (String 또는 AppCheckToken 객체)
               String? tokenString;
@@ -207,15 +218,46 @@ class Api {
     return ApiClient(dio, baseUrl: baseUrl);
   }
 
+  static Future<String?> _idTokenForSetBase(User? user, bool quickStart) async {
+    if (user == null) return null;
+    if (quickStart) {
+      try {
+        return await user
+            .getIdToken()
+            .timeout(const Duration(seconds: 6));
+      } catch (_) {
+        return null;
+      }
+    }
+    return user.getIdToken();
+  }
+
+  static Future<String?> _appCheckForSetBase(bool quickStart) async {
+    if (quickStart) {
+      try {
+        return await _getAppCheckToken()
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {
+        return null;
+      }
+    }
+    return _getAppCheckToken();
+  }
+
   /// 이 함수가 호출 된 이후,
   /// Api().client 의 baseURL 은 변경됩니다.
-  // ApiClient setBaseClient(String baseUrl, [accessToken]) {
-  Future<ApiClient> setBaseClient(String baseUrl) async {
+  ///
+  /// [quickStart]: 스플래시·첫 진입 시 App Check/토큰을 짧게만 기다리고 병렬로 처리해
+  /// 화면 전환이 수십 초 걸리는 것을 줄입니다. 로그인 성공 후 등에는 생략(기본 false).
+  Future<ApiClient> setBaseClient(String baseUrl, {bool quickStart = false}) async {
     final user = FirebaseAuth.instance.currentUser;
-    final idToken = await user?.getIdToken(); // Firebase ID Token
 
-    // App Check 토큰 가져오기 (공통 함수 사용)
-    final appCheckToken = await _getAppCheckToken();
+    final tokens = await Future.wait<String?>([
+      _idTokenForSetBase(user, quickStart),
+      _appCheckForSetBase(quickStart),
+    ]);
+    final idToken = tokens[0];
+    final appCheckToken = tokens[1];
 
     final baseHeaders = await _getHeaders();
 

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:provider/provider.dart';
@@ -23,8 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAutoLogin() async {
-    // 스플래시 화면 표시 시간 (최소 1초)
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(milliseconds: 400));
 
     if (!mounted) return;
 
@@ -42,9 +44,12 @@ class _SplashScreenState extends State<SplashScreen> {
           userProvider.user != null) {
         // Firebase Auth 세션이 유효한지 확인
         try {
-          await firebaseUser.getIdToken();
-          // 세션이 유효하면 API 클라이언트 설정
-          await Api().setBaseClient(Api.BASE_URL);
+          await firebaseUser
+              .getIdToken()
+              .timeout(const Duration(seconds: 8));
+          await Api()
+              .setBaseClient(Api.BASE_URL, quickStart: true)
+              .timeout(const Duration(seconds: 14));
 
           // pending_gifticon_id가 있는지 확인
           final prefs = await SharedPreferences.getInstance();
@@ -115,8 +120,8 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             SizedBox(height: 32),
-            Image.asset(
-              'assets/gifnut_logo.png',
+            SvgPicture.asset(
+              'assets/gifnut_logo.svg',
               height: 120,
               width: 120,
             ),

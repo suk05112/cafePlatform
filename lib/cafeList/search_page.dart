@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cafeplatform/cafeList/cafe_list_map_view.dart';
+import 'package:cafeplatform/cafeList/region_picker_sheet.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/model/Store.dart';
-import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:cafeplatform/model/region.dart';
+import 'package:cafeplatform/provider/store_provider.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:cafeplatform/utils/store_distance.dart';
 
+/// Figma: 검색 전용 (1683:1533) — 흰 배경, 지역·검색·지도·결과 리스트
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
 
   @override
-  _SearchPageState createState() => _SearchPageState();
+  State<SearchPage> createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<SearchPage> {
@@ -21,11 +28,27 @@ class _SearchPageState extends State<SearchPage> {
   String? _currentQuery;
   int? _nextCursor;
   bool _hasMore = false;
+  double _refLat = kDefaultReferenceLatitude;
+  double _refLng = kDefaultReferenceLongitude;
 
+  static const Color _pageBg = Colors.white;
+  static const Color _searchFill = Color(0xFFFAFAFA);
+  static const Color _searchBorder = Color(0xFFEEEEEE);
+  static const Color _hintColor = Color(0xFF9F9F9F);
+  static const Color _titleColor = Color(0xFF333333);
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      resolveDistanceReferencePoint().then((ref) {
+        if (!mounted) return;
+        setState(() {
+          _refLat = ref.$1;
+          _refLng = ref.$2;
+        });
+      });
+    });
   }
 
   @override
@@ -36,7 +59,6 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _onScroll() {
-    // 스크롤이 하단에 가까워지면 다음 페이지 로드
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoadingMore && _hasMore && _currentQuery != null) {
@@ -45,115 +67,169 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  String _regionLabel(StoreProvider storeProvider) {
+    final code = storeProvider.selectedRegionCode;
+    if (code == null || code.isEmpty) return '전체';
+    for (final Region r in storeProvider.availableRegions) {
+      if (r.region_code == code) return r.region_name;
+    }
+    return '지역';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final storeProvider = context.watch<StoreProvider>();
+
     return Scaffold(
-        appBar: const CommonAppBar(title: "매장검색"),
-        backgroundColor: Colors.grey[50],
-        body: SafeArea(
-          child: Column(
-            children: [
-              // 검색바 영역
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
+      backgroundColor: _pageBg,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, size: 28),
+                    color: Colors.black87,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: InkWell(
+                onTap: () => showStoreRegionPickerBottomSheet(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '현재 지역',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                          letterSpacing: -0.3,
                         ),
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: "매장명으로 검색",
-                            hintStyle: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 15,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: Colors.grey[600],
-                              size: 20,
-                            ),
-                            suffixIcon: _searchController.text.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(
-                                      Icons.clear,
-                                      color: Colors.grey[600],
-                                      size: 20,
-                                    ),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        storeCards = [];
-                                        _hasSearched = false;
-                                      });
-                                    },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _regionLabel(storeProvider),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                            letterSpacing: -0.5,
                           ),
-                          style: const TextStyle(fontSize: 15),
-                          onSubmitted: (value) {
-                            if (value.trim().isNotEmpty) {
-                              _performSearch(value.trim());
-                            }
-                          },
-                          onChanged: (value) {
-                            setState(() {});
-                          },
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.search, color: Colors.white),
-                        onPressed: () {
-                          if (_searchController.text.trim().isNotEmpty) {
-                            _performSearch(_searchController.text.trim());
-                          }
-                        },
-                      ),
-                    ),
-                  ],
+                      Icon(Icons.keyboard_arrow_down,
+                          size: 20, color: Colors.grey.shade700),
+                    ],
+                  ),
                 ),
               ),
-              // 검색 결과 영역
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(),
-                      )
-                    : _hasSearched && storeCards.isEmpty
-                        ? _buildEmptyState()
-                        : storeCards.isEmpty
-                            ? _buildInitialState()
-                            : _buildSearchResults(),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: _buildSearchField()),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: Icon(Icons.map_outlined,
+                          color: Colors.grey.shade800, size: 26),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CafeListMapView(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _hasSearched && storeCards.isEmpty
+                      ? _buildEmptyState()
+                      : storeCards.isEmpty
+                          ? _buildInitialState()
+                          : _buildSearchResults(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Container(
+      height: 47,
+      decoration: BoxDecoration(
+        color: _searchFill,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: _searchBorder),
+      ),
+      alignment: Alignment.centerLeft,
+      child: TextField(
+        controller: _searchController,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.3,
+          color: _titleColor,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: '매장명, 메뉴명으로 검색해보세요',
+          hintStyle: const TextStyle(
+            color: _hintColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.3,
           ),
-        ));
+          prefixIcon: Icon(Icons.search, color: Colors.grey.shade500, size: 22),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear, color: Colors.grey.shade600, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      storeCards = [];
+                      _hasSearched = false;
+                    });
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+        ),
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (value) {
+          if (value.trim().isNotEmpty) {
+            _performSearch(value.trim());
+          }
+        },
+      ),
+    );
   }
 
   void _performSearch(String query) {
@@ -179,26 +255,23 @@ class _SearchPageState extends State<SearchPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
+          Icon(Icons.search_rounded, size: 56, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
           Text(
-            "매장명을 검색해보세요",
+            '매장·메뉴를 검색해보세요',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            "원하는 카페를 찾아보세요",
+            '상단 검색창에 키워드를 입력하면 목록이 표시됩니다',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+              fontSize: 13,
+              color: Colors.grey.shade600,
             ),
           ),
         ],
@@ -211,26 +284,22 @@ class _SearchPageState extends State<SearchPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_off,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
+          Icon(Icons.search_off_rounded, size: 56, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
           Text(
-            "검색 결과가 없습니다",
+            '검색 결과가 없습니다',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            "다른 검색어로 시도해보세요",
+            '다른 검색어로 다시 시도해 보세요',
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+              fontSize: 13,
+              color: Colors.grey.shade600,
             ),
           ),
         ],
@@ -239,57 +308,66 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildSearchResults() {
-    return ListView.builder(
+    return ListView.separated(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
       itemCount: storeCards.length + (_isLoadingMore ? 1 : 0),
+      separatorBuilder: (_, __) => const SizedBox.shrink(),
       itemBuilder: (context, index) {
-        // 로딩 인디케이터 표시
         if (index == storeCards.length) {
           return const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
           );
         }
-        final storeCard = storeCards[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: StoreCardWidget(storeCard),
+        return _DiscoveryStoreRow(
+          storeCard: storeCards[index],
+          refLat: _refLat,
+          refLng: _refLng,
+          buildImage: _buildStoreImage,
+          onTap: () {
+            final c = storeCards[index];
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (context) => StorePage(
+                  storeId: c.store_id,
+                  storeName: c.store_name,
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
   Widget _buildStoreImage(String imageUrl, double width, double height) {
-    // URL 검증 및 정리
     final cleanedUrl = imageUrl.trim();
 
-    // URL이 비어있거나 유효하지 않은 경우
     if (cleanedUrl.isEmpty ||
         (!cleanedUrl.startsWith('http://') &&
             !cleanedUrl.startsWith('https://'))) {
       return Container(
         width: width,
         height: height,
-        color: Colors.grey[100],
+        color: Colors.grey.shade300,
         child: Icon(
-          Icons.storefront,
-          size: width > height ? height * 0.6 : width * 0.6,
-          color: Colors.grey[400],
+          Icons.storefront_outlined,
+          size: width > height ? height * 0.45 : width * 0.45,
+          color: Colors.white70,
         ),
       );
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       child: Image.network(
         cleanedUrl,
         width: width,
         height: height,
-        fit: BoxFit.cover, // 비율 유지하면서 컨테이너 채우기
-        headers: {
+        fit: BoxFit.cover,
+        headers: const {
           'User-Agent':
               'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
         },
@@ -298,11 +376,11 @@ class _SearchPageState extends State<SearchPage> {
           return Container(
             width: width,
             height: height,
-            color: Colors.grey[200],
+            color: Colors.grey.shade200,
             child: Center(
               child: SizedBox(
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   value: loadingProgress.expectedTotalBytes != null
@@ -314,41 +392,16 @@ class _SearchPageState extends State<SearchPage> {
             ),
           );
         },
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (wasSynchronouslyLoaded) return child;
-          if (frame != null) return child;
-          // 프레임이 null이면 로딩 중이거나 에러
-          return Container(
-            width: width,
-            height: height,
-            color: Colors.grey[200],
-            child: Container(
-              width: width,
-              height: height,
-              color: Colors.grey[100],
-              child: Icon(
-                Icons.storefront,
-                size: width > height ? height * 0.6 : width * 0.6,
-                color: Colors.grey[400],
-              ),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          print('이미지 로드 오류: $error, URL: $cleanedUrl');
-          print('스택 트레이스: $stackTrace');
-          return Container(
-            width: width,
-            height: height,
-            color: Colors.grey[100],
-            child: Icon(
-              Icons.storefront,
-              size: width > height ? height * 0.6 : width * 0.6,
-              color: Colors.grey[400],
-            ),
-          );
-        },
-        // 캐시 최적화
+        errorBuilder: (_, __, ___) => Container(
+          width: width,
+          height: height,
+          color: Colors.grey.shade300,
+          child: Icon(
+            Icons.storefront_outlined,
+            size: width * 0.45,
+            color: Colors.white70,
+          ),
+        ),
         cacheWidth: width.toInt(),
         cacheHeight: height.toInt(),
         filterQuality: FilterQuality.medium,
@@ -356,114 +409,14 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget StoreCardWidget(StoreCard? storeCard) {
-    if (storeCard == null) return const SizedBox.shrink();
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => StorePage(
-              storeId: storeCard.store_id,
-              storeName: storeCard.store_name,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 매장 이미지
-            SizedBox(
-              width: 120,
-              height: 120,
-              child: _buildStoreImage(storeCard.store_logo, 120, 120),
-            ),
-            // 매장 정보
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      storeCard.store_name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            storeCard.store_address ?? '위치 정보 없음',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // 화살표 아이콘
-            Padding(
-              padding: const EdgeInsets.only(right: 16, top: 16),
-              child: Icon(
-                Icons.chevron_right,
-                color: Colors.grey[400],
-                size: 24,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> searchStore(String query) async {
     try {
-      // cursor는 null로 첫 페이지 요청, limit은 10 사용
       final searchResponse =
           await Api().client.searchStoreByQuery(query, null, 10);
       final storeList = searchResponse.store;
-      print("검색 결과: ${storeList.length}개");
 
       if (searchResponse.pagination != null) {
         final pagination = searchResponse.pagination!;
-        print(
-            "페이지네이션 정보 - has_next: ${pagination.has_next}, next_cursor: ${pagination.next_cursor}");
-
         if (mounted) {
           setState(() {
             storeCards = storeList;
@@ -506,13 +459,9 @@ class _SearchPageState extends State<SearchPage> {
           .client
           .searchStoreByQuery(_currentQuery!, _nextCursor, 10);
       final storeList = searchResponse.store;
-      print("추가 검색 결과: ${storeList.length}개");
 
       if (searchResponse.pagination != null) {
         final pagination = searchResponse.pagination!;
-        print(
-            "추가 페이지네이션 정보 - has_next: ${pagination.has_next}, next_cursor: ${pagination.next_cursor}");
-
         if (mounted) {
           setState(() {
             storeCards.addAll(storeList);
@@ -539,5 +488,162 @@ class _SearchPageState extends State<SearchPage> {
         });
       }
     }
+  }
+}
+
+class _DiscoveryStoreRow extends StatelessWidget {
+  const _DiscoveryStoreRow({
+    required this.storeCard,
+    required this.refLat,
+    required this.refLng,
+    required this.buildImage,
+    required this.onTap,
+  });
+
+  final StoreCard storeCard;
+  final double refLat;
+  final double refLng;
+  final Widget Function(String url, double w, double h) buildImage;
+  final VoidCallback onTap;
+
+  static const Color _titleColor = Color(0xFF333333);
+  static const Color _subtitleColor = Color(0xFF757575);
+
+  @override
+  Widget build(BuildContext context) {
+    final desc = (storeCard.store_description != null &&
+            storeCard.store_description!.trim().isNotEmpty)
+        ? storeCard.store_description!.trim()
+        : (storeCard.store_address ?? '위치 정보 없음');
+
+    final showOpenBadge =
+        storeCard.open_yn != null && storeCard.open_yn!.toUpperCase() == 'Y';
+
+    final distanceLabel = storeDistanceLabel(
+      refLat,
+      refLng,
+      storeCard.store_lat,
+      storeCard.store_lng,
+    );
+
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(
+                          child: buildImage(
+                            storeCard.store_logo,
+                            100,
+                            100,
+                          ),
+                        ),
+                        if (showOpenBadge)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color:
+                                    ColorAssset.mainColor.withValues(alpha: 0.95),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  bottomRight: Radius.circular(6),
+                                ),
+                              ),
+                              child: const Text(
+                                'OPEN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          storeCard.store_name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: _titleColor,
+                            height: 1.2,
+                            letterSpacing: -0.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          desc,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: _subtitleColor,
+                            height: 1.25,
+                            letterSpacing: -0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (distanceLabel != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.map_outlined,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                distanceLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade600,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              color: const Color(0xFFEEEEEE),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

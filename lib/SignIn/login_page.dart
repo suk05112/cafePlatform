@@ -17,7 +17,7 @@ import 'package:cafeplatform/api/user_response.dart';
 import 'package:cafeplatform/Payment/register_gifticon_page.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class LoginPage extends StatefulWidget {
@@ -30,6 +30,9 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  /// 테스트용: true면 아이디 로그인 버튼만 눌러도 인증 없이 다음 화면으로 이동합니다.
+  static const bool _kBypassEmailLoginForTest = true;
+
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
   final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
@@ -89,6 +92,30 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleEmailLogin() async {
+    if (_kBypassEmailLoginForTest) {
+      if (!mounted) return;
+      Provider.of<UserProvider>(context, listen: false).setUser(
+        my_app.User(
+          user_id: 0,
+          name: '테스트',
+          email: 'test@gifnut.com',
+          phone_number: '',
+          uid: 'test_bypass',
+        ),
+      );
+      if (widget.returnToPrevious && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const TabPage(initialIndex: 0),
+          ),
+        );
+      }
+      return;
+    }
+
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("이메일과 비밀번호를 입력해주세요.")),
@@ -110,10 +137,15 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text,
       );
 
+      if (!mounted) return;
+
       if (userCredential.user != null) {
         try {
-          await Api().setBaseClient(Api.BASE_URL);
+          await Api().setBaseClient(Api.BASE_URL, quickStart: true);
+          if (!mounted) return;
           var response = await Api().client.loginUser(emailWithDomain, 'email');
+
+          if (!mounted) return;
 
           if (response.user_id != null) {
             final user = my_app.User(
@@ -132,9 +164,12 @@ class _LoginPageState extends State<LoginPage> {
             final prefs = await SharedPreferences.getInstance();
             final pendingGifticonId = prefs.getInt('pending_gifticon_id');
 
+            if (!mounted) return;
+
             if (pendingGifticonId != null) {
               // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
               await prefs.remove('pending_gifticon_id');
+              if (!mounted) return;
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
@@ -207,13 +242,17 @@ class _LoginPageState extends State<LoginPage> {
         SnackBar(content: Text(errorMessage)),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("로그인 중 오류가 발생했습니다.")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("로그인 중 오류가 발생했습니다.")),
+        );
+      }
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -682,7 +721,7 @@ class _LoginPageState extends State<LoginPage> {
 
         // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
         try {
-          await Api().setBaseClient(Api.BASE_URL);
+          await Api().setBaseClient(Api.BASE_URL, quickStart: true);
           // 전화번호를 E.164 형식(+82)으로 변환
           final formattedPhoneNumber =
               _formatToE164(finalPhoneAuthResult.phoneNumber);
@@ -847,7 +886,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       print("displayname: ${userCredential.user?.displayName ?? "none"}");
-      await Api().setBaseClient(Api.BASE_URL);
+      await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
       try {
         // SNS provider를 서버 형식으로 변환
@@ -1098,7 +1137,7 @@ class _LoginPageState extends State<LoginPage> {
         await userCredential.user?.updateDisplayName(userName);
 
         // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
-        await Api().setBaseClient(Api.BASE_URL);
+        await Api().setBaseClient(Api.BASE_URL, quickStart: true);
         // 전화번호를 E.164 형식(+82)으로 변환
         final formattedPhoneNumber =
             _formatToE164(finalPhoneAuthResult.phoneNumber);
@@ -1285,7 +1324,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       print("displayname: ${userCredential.user?.displayName ?? "none"}");
-      await Api().setBaseClient(Api.BASE_URL);
+      await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
       try {
         var response = await Api().client.loginUser(emailForCheck, provider);
@@ -1450,7 +1489,7 @@ class _LoginPageState extends State<LoginPage> {
       if (fcmToken == null || fcmToken.isEmpty) {
         print('SharedPreferences에 FCM 토큰이 없어 Firebase Messaging에서 직접 가져옵니다.');
         try {
-          fcmToken = await FirebaseMessaging.instance.getToken();
+          fcmToken = await fetchFcmTokenRespectingIosApns();
           if (fcmToken != null) {
             await prefs.setString('fcm_token', fcmToken);
             print('FCM 토큰을 Firebase Messaging에서 가져와 저장했습니다: $fcmToken');

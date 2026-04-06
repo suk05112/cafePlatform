@@ -13,7 +13,7 @@ import 'package:dio/dio.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:cafeplatform/api/user_response.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
 
@@ -588,7 +588,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       if (fcmToken == null || fcmToken.isEmpty) {
         print('SharedPreferences에 FCM 토큰이 없어 Firebase Messaging에서 직접 가져옵니다.');
         try {
-          fcmToken = await FirebaseMessaging.instance.getToken();
+          fcmToken = await fetchFcmTokenRespectingIosApns();
           if (fcmToken != null) {
             await prefs.setString('fcm_token', fcmToken);
             print('FCM 토큰을 Firebase Messaging에서 가져와 저장했습니다: $fcmToken');

@@ -64,6 +64,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
       if (mounted) {
         final storeProvider =
             Provider.of<StoreProvider>(context, listen: false);
+        final list = storeProvider.listViewStores;
+        if (list != null &&
+            list.isNotEmpty &&
+            (storeProvider.mapViewStores == null ||
+                storeProvider.mapViewStores!.isEmpty)) {
+          storeProvider.setMapViewStores(List<Store>.from(list));
+        }
         final storesForMap = _effectiveStores(storeProvider);
         _initialTarget = await _resolveInitialTarget(storesForMap);
         if (mounted) {
@@ -139,68 +146,98 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     //   }
     // });
 
-    return Stack(
-      children: [
-        NaverMap(
-          options: NaverMapViewOptions(
-            indoorEnable: false,
-            locationButtonEnable: true,
-            scrollGesturesEnable: true,
-            consumeSymbolTapEvents: true,
-            initialCameraPosition: NCameraPosition(
-              target: initialTarget,
-              zoom: 13,
-            ),
-            mapType: NMapType.basic,
-            activeLayerGroups: [NLayerGroup.building, NLayerGroup.transit],
-          ),
-          onMapReady: (controller) {
-            _mapController = controller;
-            final markers = <NMarker>[];
-            for (final store in storesForMap) {
-              final marker = NMarker(
-                id: store.store_id.toString(),
-                position: NLatLng(store.store_lat, store.store_lng),
-              );
-              marker.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
-              _markers[store.store_id.toString()] = marker;
-              marker.setOnTapListener((overlay) {
-                if (_selectedStore.value?.store_id == store.store_id) {
-                  _clearSelection();
-                } else {
-                  _updateMarkerSelection(overlay, store);
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8E8E8),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: NaverMap(
+              options: NaverMapViewOptions(
+                indoorEnable: false,
+                locationButtonEnable: true,
+                scrollGesturesEnable: true,
+                consumeSymbolTapEvents: true,
+                initialCameraPosition: NCameraPosition(
+                  target: initialTarget,
+                  zoom: 13,
+                ),
+                mapType: NMapType.basic,
+                activeLayerGroups: [NLayerGroup.building, NLayerGroup.transit],
+              ),
+              onMapReady: (controller) {
+                _mapController = controller;
+                final markers = <NMarker>[];
+                for (final store in storesForMap) {
+                  final marker = NMarker(
+                    id: store.store_id.toString(),
+                    position: NLatLng(store.store_lat, store.store_lng),
+                  );
+                  try {
+                    marker
+                        .setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+                  } catch (_) {
+                    // 에셋 실패 시 기본 마커 사용
+                  }
+                  _markers[store.store_id.toString()] = marker;
+                  marker.setOnTapListener((overlay) {
+                    if (_selectedStore.value?.store_id == store.store_id) {
+                      _clearSelection();
+                    } else {
+                      _updateMarkerSelection(overlay, store);
+                    }
+                  });
+                  markers.add(marker);
                 }
-              });
-              markers.add(marker);
-            }
-            if (markers.isNotEmpty) {
-              controller.addOverlayAll(markers.toSet());
-            }
-          },
-          onMapTapped: (point, latLng) {
-            _clearSelection();
-          },
-        ),
-        SafeArea(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 140),
-              child: _buildLocationSearchButton2(),
+                if (markers.isNotEmpty) {
+                  controller.addOverlayAll(markers.toSet());
+                }
+              },
+              onMapTapped: (point, latLng) {
+                _clearSelection();
+              },
             ),
           ),
-        ),
-        ValueListenableBuilder<Store?>(
-          valueListenable: _selectedStore,
-          builder: (_, store, __) {
-            if (store == null) return const SizedBox.shrink();
-            return Align(
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 0, 0),
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  elevation: 2,
+                  shadowColor: Colors.black26,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    color: Colors.black87,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Align(
               alignment: Alignment.bottomCenter,
-              child: _buildBottomCard(store),
-            );
-          },
-        ),
-      ],
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 140),
+                child: _buildLocationSearchButton2(),
+              ),
+            ),
+          ),
+          ValueListenableBuilder<Store?>(
+            valueListenable: _selectedStore,
+            builder: (_, store, __) {
+              if (store == null) return const SizedBox.shrink();
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: _buildBottomCard(store),
+              );
+            },
+          ),
+        ],
+      ),
     );
 
     /*Stack(
@@ -385,17 +422,16 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   }
 
   List<Store> _effectiveStores(StoreProvider storeProvider) {
-    // 검색된 매장이 있으면 우선 표시
     if (_searchedStores.isNotEmpty) return _searchedStores;
-    // Provider에서 지도 뷰 전용 데이터 가져오기
     if (storeProvider.mapViewStores != null &&
         storeProvider.mapViewStores!.isNotEmpty) {
       return storeProvider.mapViewStores!;
-    } else {
-      return [];
-      // return _dummyStores;
     }
-    return _dummyStores;
+    final list = storeProvider.listViewStores;
+    if (list != null && list.isNotEmpty) {
+      return list;
+    }
+    return [];
   }
 
   Future<NLatLng> _resolveInitialTarget(List<Store> stores) async {
@@ -637,20 +673,24 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   }
 
   void _updateMarkerSelection(NMarker selectedMarker, Store store) {
-    // 이전 선택된 마커를 기본 아이콘으로 변경
     if (_activeMarker != null) {
-      _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      try {
+        _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      } catch (_) {}
     }
-    // 새로 선택된 마커를 selected_pin 아이콘으로 변경
-    selectedMarker
-        .setIcon(NOverlayImage.fromAssetImage('assets/selected_pin.png'));
+    try {
+      selectedMarker
+          .setIcon(NOverlayImage.fromAssetImage('assets/selected_pin.png'));
+    } catch (_) {}
     _activeMarker = selectedMarker;
     _selectedStore.value = store;
   }
 
   void _clearSelection() {
     if (_activeMarker != null) {
-      _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      try {
+        _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      } catch (_) {}
       _activeMarker = null;
     }
     _selectedStore.value = null;

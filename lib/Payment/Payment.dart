@@ -15,6 +15,8 @@ import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/terms/payment_terms.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:cafeplatform/Payment/figma_payment_method_section.dart';
+import 'package:cafeplatform/Payment/payment_ui_tokens.dart';
 import 'package:provider/provider.dart';
 import 'package:tosspayments_widget_sdk_flutter/model/payment_info.dart';
 import 'package:tosspayments_widget_sdk_flutter/model/payment_widget_options.dart';
@@ -28,11 +30,32 @@ import 'package:flutter/services.dart';
 import 'package:cafeplatform/utils/number_formatter.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
 
+/// true: Figma(1683:764) 결제 UI · 토스 위젯 미사용 · PG 연동 전
+const bool _kUseFigmaPaymentUi = true;
+
 class Payment extends StatefulWidget {
-  const Payment({super.key, required this.type, required this.menu});
+  const Payment({
+    super.key,
+    required this.type,
+    required this.menu,
+    this.exchangeAddress,
+    this.exchangeLat,
+    this.exchangeLng,
+    this.exchangePlaceName,
+    /// 매장 화면 등에서 `menu.store_id`가 0일 때 교환처 API 조회용
+    this.contextStoreId,
+    /// 주문정보 행 매장명 (없으면 생략)
+    this.storeDisplayName,
+  });
 
   final int type;
-  final Menu menu; // 메뉴 객체를 저장할 필드 추가
+  final Menu menu;
+  final String? exchangeAddress;
+  final double? exchangeLat;
+  final double? exchangeLng;
+  final String? exchangePlaceName;
+  final int? contextStoreId;
+  final String? storeDisplayName;
 
   @override
   State<Payment> createState() => _PaymentState();
@@ -42,10 +65,14 @@ class _PaymentState extends State<Payment> {
   String receiver = "";
   String receiverPhoneNumber = "";
 
-  // 토스페이먼츠 위젯 관련 상태
-  late PaymentWidget _paymentWidget;
+  // 토스페이먼츠 위젯 관련 상태 (_kUseFigmaPaymentUi 이면 미사용)
+  PaymentWidget? _paymentWidget;
   PaymentMethodWidgetControl? _paymentMethodWidgetControl;
   AgreementWidgetControl? _agreementWidgetControl;
+
+  /// Figma 결제수단 UI
+  String _figmaPaymentLabel = '카카오페이';
+  bool _figmaTermsAgreed = false;
 
   /// 한국 전화번호를 국제 형식으로 변환 (01012345678 -> +821012345678)
   String _convertToInternationalFormat(String phoneNumber) {
@@ -93,38 +120,38 @@ class _PaymentState extends State<Payment> {
     super.initState();
     print("Payment initState ${widget.menu.name} ${widget.menu.store_id}");
 
-    // PaymentWidget 초기화
-    // TODO: 실제 clientKey와 customerKey로 교체 필요
-    _paymentWidget = PaymentWidget(
-      clientKey: "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm", // 테스트 키
-      customerKey: "zG5XLcHhA7c3tuJsV_H3j", // 테스트 키
-    );
+    if (_kUseFigmaPaymentUi) {
+      _isLoadingWidgets = false;
+    } else {
+      _paymentWidget = PaymentWidget(
+        clientKey: "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm",
+        customerKey: "zG5XLcHhA7c3tuJsV_H3j",
+      );
 
-    // 위젯이 빌드된 후에 렌더링 호출 (약간의 지연을 두어 웹뷰 위젯이 완전히 초기화될 때까지 대기)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          try {
-            _renderPaymentWidgets();
-          } catch (e) {
-            print("PaymentWidget 초기화 오류: $e");
-            if (mounted) {
-              setState(() {
-                _isLoadingWidgets = false;
-              });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            try {
+              _renderPaymentWidgets();
+            } catch (e) {
+              print("PaymentWidget 초기화 오류: $e");
+              if (mounted) {
+                setState(() {
+                  _isLoadingWidgets = false;
+                });
+              }
             }
           }
-        }
+        });
       });
-    });
+    }
   }
 
   void _renderPaymentWidgets() {
-    if (!mounted) return;
+    if (!mounted || _paymentWidget == null) return;
 
     try {
-      // 결제수단 위젯 렌더링
-      _paymentWidget
+      _paymentWidget!
           .renderPaymentMethods(
         selector: 'payment-methods',
         amount: Amount(
@@ -151,8 +178,7 @@ class _PaymentState extends State<Payment> {
         }
       });
 
-      // 약관 위젯 렌더링
-      _paymentWidget
+      _paymentWidget!
           .renderAgreement(selector: 'payment-agreement')
           .then((control) {
         if (mounted) {
@@ -206,7 +232,7 @@ class _PaymentState extends State<Payment> {
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
-        appBar: const CommonAppBar(title: "결제하기"),
+        appBar: CommonAppBar(title: type == 2 ? "선물하기" : "결제하기"),
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
@@ -216,26 +242,24 @@ class _PaymentState extends State<Payment> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// 주문정보
+                      /// 주문정보 (Figma 1683:764)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text("주문정보",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
+                                style: PaymentUiTokens.sectionTitle),
                             const SizedBox(height: 12),
-                            _buildCompactGiftInfo(),
+                            _buildFigmaOrderInfo(),
                           ],
                         ),
                       ),
                       Container(
                           height: 14,
                           width: double.infinity,
-                          color: Color(0xFFF5F6FA)),
+                          color: PaymentUiTokens.bar),
 
-                      /// 받는 분 정보(선물하기일 때 표시)
                       if (type == 2) ...[
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
@@ -250,48 +274,95 @@ class _PaymentState extends State<Payment> {
                         Container(
                             height: 14,
                             width: double.infinity,
-                            color: Color(0xFFF5F6FA)),
+                            color: PaymentUiTokens.bar),
                       ],
 
-                      /// 결제수단
+                      /// 결제 수단
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text("결제 수단",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
+                                style: PaymentUiTokens.sectionTitle),
                             const SizedBox(height: 12),
-                            Stack(
-                              children: [
-                                // 위젯은 항상 렌더링 (DOM에 존재해야 함)
-                                Opacity(
-                                  opacity: _isLoadingWidgets ? 0.0 : 1.0,
-                                  child: Column(
-                                    children: [
-                                      PaymentMethodWidget(
-                                        paymentWidget: _paymentWidget,
-                                        selector: 'payment-methods',
-                                      ),
-                                      const SizedBox(height: 12),
-                                      AgreementWidget(
-                                        paymentWidget: _paymentWidget,
-                                        selector: 'payment-agreement',
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // 로딩 중일 때 프로그레스바 표시
-                                if (_isLoadingWidgets)
-                                  const SizedBox(
-                                    height: 200,
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
+                            if (_kUseFigmaPaymentUi) ...[
+                              FigmaPaymentMethodSection(
+                                initialSelection: _figmaPaymentLabel,
+                                onSelectionChanged: (label) {
+                                  setState(() => _figmaPaymentLabel = label);
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Checkbox(
+                                      value: _figmaTermsAgreed,
+                                      activeColor: ColorAssset.mainColor,
+                                      onChanged: (v) => setState(
+                                          () => _figmaTermsAgreed = v ?? false),
                                     ),
                                   ),
-                              ],
-                            ),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute<void>(
+                                            builder: (context) =>
+                                                Payment_Terms(),
+                                          ),
+                                        );
+                                      },
+                                      child: const Padding(
+                                        padding: EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          '결제 및 개인정보 처리에 동의합니다. (필수)',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.black87,
+                                            height: 1.35,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else
+                              Stack(
+                                children: [
+                                  Opacity(
+                                    opacity: _isLoadingWidgets ? 0.0 : 1.0,
+                                    child: Column(
+                                      children: [
+                                        PaymentMethodWidget(
+                                          paymentWidget: _paymentWidget!,
+                                          selector: 'payment-methods',
+                                        ),
+                                        const SizedBox(height: 12),
+                                        AgreementWidget(
+                                          paymentWidget: _paymentWidget!,
+                                          selector: 'payment-agreement',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_isLoadingWidgets)
+                                    const SizedBox(
+                                      height: 200,
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                ],
+                              ),
                           ],
                         ),
                       ),
@@ -307,13 +378,14 @@ class _PaymentState extends State<Payment> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text("결제정보",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
+                                style: PaymentUiTokens.sectionTitle),
                             const SizedBox(height: 10),
                             _priceRow("총 상품금액", price),
                             const SizedBox(height: 5),
                             _priceRow("할인금액", discount),
-                            const Divider(),
+                            const Divider(
+                                height: 1, color: PaymentUiTokens.divider),
+                            const SizedBox(height: 5),
                             _priceRow("최종 결제금액", finalPrice, bold: true),
                           ],
                         ),
@@ -321,7 +393,7 @@ class _PaymentState extends State<Payment> {
                       Container(
                           height: 14,
                           width: double.infinity,
-                          color: Color(0xFFF5F6FA)),
+                          color: PaymentUiTokens.bar),
                       // Padding(
                       //   padding: const EdgeInsets.symmetric(horizontal: 20),
                       //   child: Notice(),
@@ -340,105 +412,98 @@ class _PaymentState extends State<Payment> {
 
   /// 단일 금액 Row
   Widget _priceRow(String label, int amount, {bool bold = false}) {
+    final priceStr = amount.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
             style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[700],
+                color: PaymentUiTokens.labelMuted,
                 fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
-        Text("${amount.toString()}원",
+        Text("$priceStr원",
             style: TextStyle(
                 fontSize: 14,
-                fontWeight: bold ? FontWeight.bold : FontWeight.w400)),
+                color: Colors.black,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
       ],
     );
   }
 
-  // 기존 CommonPaymentWidget.getGiftInfo()와 동일한 정보이되,
-  // 결제 화면에서는 더 작게, 설명 없이 보여주는 컴팩트 카드
-  Widget _buildCompactGiftInfo() {
+  /// Figma 1683:764 주문정보 행 (56² 썸네일 · 매장 · 메뉴명 · 가격)
+  Widget _buildFigmaOrderInfo() {
     final menu = widget.menu;
-    return Container(
-      // padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        // boxShadow: [
-        //   BoxShadow(
-        //     color: Colors.black.withOpacity(0.03),
-        //     blurRadius: 8,
-        //     offset: const Offset(0, 4),
-        //   ),
-        // ],
-      ),
-      child: Row(
-        children: [
-          // 메뉴 이미지가 있을 때만 표시
-          if (menu.menu_image_url != null &&
-              menu.menu_image_url!.isNotEmpty) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: Image.network(
-                  menu.menu_image_url!,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const SizedBox.shrink();
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    // 이미지 로드 실패 시에도 표시하지 않음
-                    print('메뉴 이미지 로드 오류: $error');
-                    return const SizedBox.shrink();
-                  },
-                  // 이미지 프레임이 없거나 유효하지 않을 때 처리
-                  frameBuilder:
-                      (context, child, frame, wasSynchronouslyLoaded) {
-                    if (wasSynchronouslyLoaded) return child;
-                    return AnimatedOpacity(
-                      opacity: frame == null ? 0.0 : 1.0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                      child: child,
-                    );
-                  },
+    final store = widget.storeDisplayName?.trim() ?? '';
+    final priceStr = menu.price.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    final hasImg = menu.menu_image_url != null &&
+        menu.menu_image_url!.trim().isNotEmpty;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child: hasImg
+                ? Image.network(
+                    menu.menu_image_url!.trim(),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => ColoredBox(
+                      color: const Color(0xFFE6E6E6),
+                      child: Icon(Icons.local_cafe_outlined,
+                          color: Colors.grey.shade400),
+                    ),
+                  )
+                : ColoredBox(
+                    color: const Color(0xFFE6E6E6),
+                    child: Icon(Icons.local_cafe_outlined,
+                        color: Colors.grey.shade400),
+                  ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (store.isNotEmpty)
+                Text(
+                  store,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: PaymentUiTokens.orderStore,
+                    height: 1.2,
+                  ),
+                ),
+              Text(
+                menu.name ?? '',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: PaymentUiTokens.orderText,
+                  height: 22.5 / 13,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '$priceStr원',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: PaymentUiTokens.orderText,
+                  height: 22.5 / 13,
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  menu.name ?? "",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "${menu.price}원",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -498,6 +563,7 @@ class _PaymentState extends State<Payment> {
             foregroundColor: Colors.white,
             backgroundColor: ColorAssset.mainColor,
           ),
+          onPressed: _submitCheckout,
           child: Text(
             '${widget.menu.price}원 결제하기',
             style: const TextStyle(
@@ -505,200 +571,194 @@ class _PaymentState extends State<Payment> {
               fontSize: 16,
             ),
           ),
-          onPressed: () async {
-            // 키보드 닫기
-            FocusScope.of(context).unfocus();
-
-            // 약관 동의 확인
-            if (_agreementWidgetControl == null ||
-                _paymentMethodWidgetControl == null) {
-              _showToast('결제위젯이 준비되지 않았습니다.');
-              return;
-            }
-
-            final agreement =
-                await _agreementWidgetControl?.getAgreementStatus();
-            if (agreement?.agreedRequiredTerms != true) {
-              _showToast('필수 약관에 모두 동의해주세요.');
-              return;
-            }
-
-            // 선택된 결제수단 확인
-            final selectedPaymentMethod =
-                await _paymentMethodWidgetControl?.getSelectedPaymentMethod();
-
-            if (selectedPaymentMethod == null) {
-              _showToast('결제수단을 선택해주세요.');
-              return;
-            }
-
-            // 선택된 결제수단 정보 출력 (디버깅용)
-            print('선택된 결제수단: ${selectedPaymentMethod.method}');
-            print('결제 타입: ${selectedPaymentMethod.type}');
-            if (selectedPaymentMethod.easyPay != null) {
-              print('간편결제: ${selectedPaymentMethod.easyPay?.provider}');
-            }
-
-            // 결제 수단에 따라 payment 값 설정
-            String paymentValue;
-            final method = selectedPaymentMethod.method?.toLowerCase() ?? '';
-            if (method == 'card') {
-              paymentValue = '카드';
-            } else if (selectedPaymentMethod.easyPay != null) {
-              // 간편결제인 경우 provider 값 사용
-              paymentValue = selectedPaymentMethod.easyPay!.provider ?? '간편결제';
-            } else {
-              // 기본값
-              paymentValue = selectedPaymentMethod.method ?? '기타';
-            }
-            print('결제 수단: $paymentValue');
-
-            // 선물하기인 경우 받는 분 정보 검증
-            if (widget.type == 2) {
-              if (receiver.trim().isEmpty) {
-                _showToast('받는 분의 이름을 입력해주세요.');
-                return;
-              }
-              if (receiverPhoneNumber.trim().isEmpty) {
-                _showToast('받는 분의 전화번호를 입력해주세요.');
-                return;
-              }
-              // 전화번호 형식 검증 (3-4-4 형식: 010-1234-5678)
-              final phoneNumber =
-                  receiverPhoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-              // 숫자만 추출하여 10-11자리인지 확인
-              if (phoneNumber.length != 10 && phoneNumber.length != 11) {
-                _showToast('올바른 전화번호를 입력해주세요. (10-11자리)');
-                return;
-              }
-              // 3-4-4 형식 검증 (하이픈 포함 13자리 또는 12자리)
-              final phonePattern = RegExp(r'^010-\d{4}-\d{4}$');
-              if (!phonePattern.hasMatch(receiverPhoneNumber)) {
-                _showToast('전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
-                return;
-              }
-            }
-
-            // 1단계: gifticon, order 정보 등록 (결제 전)
-            final user = Provider.of<UserProvider>(context, listen: false).user;
-            if (user == null) {
-              // 로그인 페이지로 이동 (로그인 후 이전 페이지로 돌아옴)
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => LoginPage(returnToPrevious: true),
-                ),
-              );
-              return;
-            }
-
-            // store_id 유효성 검증
-            final storeId = widget.menu.store_id;
-            if (storeId <= 0) {
-              _showToast('유효하지 않은 메뉴 정보입니다. 다시 선택해주세요.');
-              print(
-                  'ERROR: Invalid store_id: $storeId (menu_id: ${widget.menu.menu_id})');
-              return;
-            }
-
-            Gifticon gifticon = Gifticon();
-            print(
-                'gifticon 생성 - store_id: $storeId, menu_id: ${widget.menu.menu_id}, menu_name: ${widget.menu.name}');
-            gifticon.store_id = storeId;
-            gifticon.type = widget.type;
-            gifticon.name = widget.menu.name ?? "";
-            gifticon.sender = user.name;
-            gifticon.receiver = receiver;
-            // 전화번호를 국제 형식으로 변환 (01012345678 -> 821012345678)
-            final internationalPhone =
-                _convertToInternationalFormat(receiverPhoneNumber);
-            print('전화번호 변환: $receiverPhoneNumber -> $internationalPhone');
-            gifticon.receiver_phone_number = internationalPhone;
-            gifticon.payment = paymentValue;
-            gifticon.menu_id = widget.menu.menu_id;
-            gifticon.total_price = widget.menu.price;
-            gifticon.paymentKey = null; // 결제 전이므로 NULL
-            gifticon.order_id = 0;
-
-            try {
-              // 정보 등록 API 호출
-              final registrationResponse = await Api().client.purchaseGifticon(
-                    user.user_id,
-                    gifticon,
-                  );
-
-              print(
-                  "정보 등록 완료: order_id=${registrationResponse.order_id}, gifticon_id=${registrationResponse.gifticon_id}, order_no=${registrationResponse.order_no}");
-
-              // order_id 저장
-              setState(() {
-                _orderId = registrationResponse.order_id;
-              });
-
-              // gifticon 객체에 ID 업데이트
-              gifticon.order_id = registrationResponse.order_id;
-              gifticon.gifticon_id = registrationResponse.gifticon_id;
-
-              // 주문 ID 생성 (토스페이먼츠용 - 서버에서 받은 order_no 사용)
-              final orderName = widget.type == 1
-                  ? widget.menu.name
-                  : '${widget.menu.name} (선물)';
-
-              // 2단계: 토스페이먼츠 결제 요청
-              final paymentResult = await _paymentWidget.requestPayment(
-                paymentInfo: PaymentInfo(
-                  orderId: registrationResponse.order_no,
-                  orderName: orderName ?? '',
-                ),
-              );
-
-              if (paymentResult.success != null) {
-                // 결제 성공 처리
-                print("결제 성공: ${paymentResult.success}");
-                await _handlePaymentSuccess(
-                  paymentKey: paymentResult.success?.paymentKey ?? "",
-                  orderId: registrationResponse.order_id,
-                  gifticon: gifticon,
-                );
-              } else if (paymentResult.fail != null) {
-                // 결제 실패 처리
-                print("결제 실패: ${paymentResult.fail}");
-                await _handlePaymentFailure(
-                  orderId: registrationResponse.order_id,
-                );
-                _showToast('결제에 실패했습니다. 다시 시도해주세요.');
-              }
-            } on DioException catch (e) {
-              print("정보 등록 실패: $e");
-
-              // 외래키 제약 오류 감지
-              if (e.response?.statusCode == 500) {
-                final errorMessage = e.response?.data?.toString() ?? '';
-                if (errorMessage.contains('foreign key constraint') ||
-                    errorMessage.contains('store_id') ||
-                    errorMessage.contains('Cannot add or update a child row')) {
-                  _showToast('유효하지 않은 가게 정보입니다. 메뉴를 다시 선택해주세요.');
-                  print(
-                      'ERROR: Foreign key constraint failed for store_id: $storeId');
-                  return;
-                }
-              }
-
-              _showToast('주문 정보 등록에 실패했습니다. 다시 시도해주세요.');
-            } catch (e) {
-              print("결제 오류: $e");
-              if (_orderId != null) {
-                // 정보 등록은 성공했지만 결제 중 오류 발생
-                await _handlePaymentFailure(
-                  orderId: _orderId!,
-                );
-              }
-              _showToast('결제 중 오류가 발생했습니다.');
-            }
-          },
         ),
       ),
     );
+  }
+
+  Future<void> _submitCheckout() async {
+    FocusScope.of(context).unfocus();
+
+    late final String paymentValue;
+    if (_kUseFigmaPaymentUi) {
+      if (!_figmaTermsAgreed) {
+        _showToast('결제 약관에 동의해 주세요.');
+        return;
+      }
+      if (_figmaPaymentLabel.isEmpty) {
+        _showToast('결제수단을 선택해주세요.');
+        return;
+      }
+      paymentValue = _figmaPaymentLabel;
+    } else {
+      if (_agreementWidgetControl == null ||
+          _paymentMethodWidgetControl == null) {
+        _showToast('결제위젯이 준비되지 않았습니다.');
+        return;
+      }
+
+      final agreement = await _agreementWidgetControl?.getAgreementStatus();
+      if (agreement?.agreedRequiredTerms != true) {
+        _showToast('필수 약관에 모두 동의해주세요.');
+        return;
+      }
+
+      final selectedPaymentMethod =
+          await _paymentMethodWidgetControl?.getSelectedPaymentMethod();
+
+      if (selectedPaymentMethod == null) {
+        _showToast('결제수단을 선택해주세요.');
+        return;
+      }
+
+      print('선택된 결제수단: ${selectedPaymentMethod.method}');
+      final method = selectedPaymentMethod.method?.toLowerCase() ?? '';
+      if (method == 'card') {
+        paymentValue = '카드';
+      } else if (selectedPaymentMethod.easyPay != null) {
+        paymentValue =
+            selectedPaymentMethod.easyPay!.provider ?? '간편결제';
+      } else {
+        paymentValue = selectedPaymentMethod.method ?? '기타';
+      }
+    }
+    print('결제 수단: $paymentValue');
+
+    if (widget.type == 2) {
+      if (receiver.trim().isEmpty) {
+        _showToast('받는 분의 이름을 입력해주세요.');
+        return;
+      }
+      if (receiverPhoneNumber.trim().isEmpty) {
+        _showToast('받는 분의 전화번호를 입력해주세요.');
+        return;
+      }
+      final phoneNumber =
+          receiverPhoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+      if (phoneNumber.length != 10 && phoneNumber.length != 11) {
+        _showToast('올바른 전화번호를 입력해주세요. (10-11자리)');
+        return;
+      }
+      final phonePattern = RegExp(r'^010-\d{4}-\d{4}$');
+      if (!phonePattern.hasMatch(receiverPhoneNumber)) {
+        _showToast('전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
+        return;
+      }
+    }
+
+    final user = Provider.of<UserProvider>(context, listen: false).user;
+    if (user == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LoginPage(returnToPrevious: true),
+        ),
+      );
+      return;
+    }
+
+    final storeId = widget.menu.store_id > 0
+        ? widget.menu.store_id
+        : (widget.contextStoreId ?? 0);
+    if (storeId <= 0) {
+      _showToast('유효하지 않은 메뉴 정보입니다. 다시 선택해주세요.');
+      print(
+          'ERROR: Invalid store_id: $storeId (menu_id: ${widget.menu.menu_id})');
+      return;
+    }
+
+    Gifticon gifticon = Gifticon();
+    print(
+        'gifticon 생성 - store_id: $storeId, menu_id: ${widget.menu.menu_id}, menu_name: ${widget.menu.name}');
+    gifticon.store_id = storeId;
+    gifticon.type = widget.type;
+    gifticon.name = widget.menu.name ?? "";
+    gifticon.sender = user.name;
+    gifticon.receiver = receiver;
+    final internationalPhone =
+        _convertToInternationalFormat(receiverPhoneNumber);
+    print('전화번호 변환: $receiverPhoneNumber -> $internationalPhone');
+    gifticon.receiver_phone_number = internationalPhone;
+    gifticon.payment = paymentValue;
+    gifticon.menu_id = widget.menu.menu_id;
+    gifticon.total_price = widget.menu.price;
+    gifticon.paymentKey = null;
+    gifticon.order_id = 0;
+
+    try {
+      final registrationResponse = await Api().client.purchaseGifticon(
+            user.user_id,
+            gifticon,
+          );
+
+      print(
+          "정보 등록 완료: order_id=${registrationResponse.order_id}, gifticon_id=${registrationResponse.gifticon_id}, order_no=${registrationResponse.order_no}");
+
+      setState(() {
+        _orderId = registrationResponse.order_id;
+      });
+
+      gifticon.order_id = registrationResponse.order_id;
+      gifticon.gifticon_id = registrationResponse.gifticon_id;
+
+      final orderName = widget.type == 1
+          ? widget.menu.name
+          : '${widget.menu.name} (선물)';
+
+      if (_kUseFigmaPaymentUi) {
+        if (mounted) {
+          _showToast('주문이 등록되었습니다. (PG 연동 후 결제가 완료됩니다)');
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      final paymentResult = await _paymentWidget!.requestPayment(
+        paymentInfo: PaymentInfo(
+          orderId: registrationResponse.order_no,
+          orderName: orderName ?? '',
+        ),
+      );
+
+      if (paymentResult.success != null) {
+        print("결제 성공: ${paymentResult.success}");
+        await _handlePaymentSuccess(
+          paymentKey: paymentResult.success?.paymentKey ?? "",
+          orderId: registrationResponse.order_id,
+          gifticon: gifticon,
+        );
+      } else if (paymentResult.fail != null) {
+        print("결제 실패: ${paymentResult.fail}");
+        await _handlePaymentFailure(
+          orderId: registrationResponse.order_id,
+        );
+        _showToast('결제에 실패했습니다. 다시 시도해주세요.');
+      }
+    } on DioException catch (e) {
+      print("정보 등록 실패: $e");
+
+      if (e.response?.statusCode == 500) {
+        final errorMessage = e.response?.data?.toString() ?? '';
+        if (errorMessage.contains('foreign key constraint') ||
+            errorMessage.contains('store_id') ||
+            errorMessage.contains('Cannot add or update a child row')) {
+          _showToast('유효하지 않은 가게 정보입니다. 메뉴를 다시 선택해주세요.');
+          print(
+              'ERROR: Foreign key constraint failed for store_id: $storeId');
+          return;
+        }
+      }
+
+      _showToast('주문 정보 등록에 실패했습니다. 다시 시도해주세요.');
+    } catch (e) {
+      print("결제 오류: $e");
+      if (_orderId != null) {
+        await _handlePaymentFailure(
+          orderId: _orderId!,
+        );
+      }
+      _showToast('결제 중 오류가 발생했습니다.');
+    }
   }
 
   Future<void> _handlePaymentSuccess({
@@ -1344,15 +1404,17 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('받는 분 정보',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            style: PaymentUiTokens.sectionTitle),
         const SizedBox(height: 12),
         TextField(
           controller: _receiverController,
           style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
             labelText: "받는 분 이름 *",
-            labelStyle:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            labelStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: PaymentUiTokens.labelMuted),
             hintText: "받는 분의 이름을 입력해주세요",
             border: borderStyle,
             focusedBorder: borderStyle,
@@ -1378,8 +1440,10 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
           ],
           decoration: InputDecoration(
             labelText: "전화번호 *",
-            labelStyle:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            labelStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: PaymentUiTokens.labelMuted),
             hintText: "받을 분의 전화번호를 입력해주세요 (예: 010-1234-5678)",
             border: borderStyle,
             focusedBorder: borderStyle,
@@ -1401,8 +1465,10 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
           style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
             labelText: "메시지 (생략가능)",
-            labelStyle:
-                const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
+            labelStyle: const TextStyle(
+                fontWeight: FontWeight.w400,
+                fontSize: 14,
+                color: PaymentUiTokens.labelMuted),
             hintText: "메시지를 입력해주세요",
             border: borderStyle,
             focusedBorder: borderStyle,
@@ -1416,7 +1482,7 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
           "기프티콘은 카카오톡(문자)으로 전달됩니다.",
           style: TextStyle(
             fontSize: 11,
-            color: Colors.grey,
+            color: PaymentUiTokens.captionGrey,
           ),
         ),
       ],

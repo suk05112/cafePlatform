@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:cafeplatform/dummyData.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/menu.dart';
@@ -11,10 +10,26 @@ import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:cafeplatform/provider/menu_provider.dart';
 import 'package:cafeplatform/Payment/select_gift_type_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:cafeplatform/widget/store_map_page.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+
+/// Figma StorePage (1695:1372) — 타이포·색·메뉴 카드·구분 바
+class _StoreFigma {
+  static const Color textPrimary = Color(0xFF121217);
+  static const Color textMuted = Color(0xFF6B6B73);
+  static const Color textBody = Color(0xFF3B3B42);
+  static const Color menuTitle = Color(0xFF17171C);
+  static const Color divider = Color(0xFFE3E3ED);
+  static const Color sliderPlaceholder = Color(0xFFE0E3ED);
+  static const Color menuImagePlaceholder = Color(0xFFE5E8ED);
+  static const Color sectionBar = Color(0xFFF5F6FA);
+  static const double horizontalInset = 16;
+  static const double sliderHeight = 251;
+}
 
 class StorePage extends StatefulWidget {
   StorePage({super.key, required this.storeId, required this.storeName});
@@ -119,80 +134,105 @@ class _StorePageState extends State<StorePage> {
             ),
             // 매장명과 설명
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.fromLTRB(
+                _StoreFigma.horizontalInset,
+                16,
+                _StoreFigma.horizontalInset,
+                0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 매장명
                   Text(
                     widget.storeName,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      letterSpacing: -0.3,
+                      fontWeight: FontWeight.w700,
+                      color: _StoreFigma.textPrimary,
+                      height: 1.22,
                     ),
                   ),
-                  // 매장설명
                   if (storeData?.store_description != null &&
                       (storeData?.store_description ?? '').isNotEmpty) ...[
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       storeData!.store_description,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[700],
-                        height: 1.5,
+                        fontWeight: FontWeight.w400,
+                        color: _StoreFigma.textMuted,
+                        height: 1.21,
                       ),
                     ),
                   ],
                 ],
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 20),
             // 매장 정보
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _StoreFigma.horizontalInset,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 제목
-                  Text(
+                  const Text(
                     "매장 정보",
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      fontWeight: FontWeight.w700,
+                      color: _StoreFigma.textPrimary,
+                      height: 1.21,
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Divider(height: 1, color: Colors.grey[300]),
-                  SizedBox(height: 8),
-                  // 주소
-                  _buildCompactInfoRow(
-                    icon: Icons.location_on,
-                    text: (storeData?.store_address != null &&
-                            storeData!.store_address.isNotEmpty)
-                        ? storeData.store_address
-                        : "주소 정보 없음",
+                  const SizedBox(height: 12),
+                  _storeInfoIconRow(
+                    icon: Icons.location_on_outlined,
+                    iconColor: _StoreFigma.textMuted,
+                    child: Text(
+                      (storeData != null &&
+                              storeData.store_address.isNotEmpty)
+                          ? storeData.store_address
+                          : "주소 정보 없음",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: storeData != null &&
+                                storeData.store_address.isNotEmpty
+                            ? _StoreFigma.textBody
+                            : _StoreFigma.textMuted,
+                        height: 1.21,
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 6),
-                  // 전화번호
-                  _buildCompactInfoRow(
-                    icon: Icons.phone,
-                    text: storeData?.store_telephone ?? "전화번호 정보 없음",
+                  const SizedBox(height: 10),
+                  _storeInfoIconRow(
+                    icon: Icons.phone_outlined,
+                    iconColor: _StoreFigma.textMuted,
+                    child: Text(
+                      (storeData != null &&
+                              storeData.store_telephone.isNotEmpty)
+                          ? storeData.store_telephone
+                          : "전화번호 정보 없음",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: storeData != null &&
+                                storeData.store_telephone.isNotEmpty
+                            ? _StoreFigma.textBody
+                            : _StoreFigma.textMuted,
+                        height: 1.21,
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 6),
-                  // 매장위치 (클릭 가능)
+                  const SizedBox(height: 10),
                   GestureDetector(
                     onTap: () {
                       final lat = storeData?.store_lat ?? 0;
                       final lng = storeData?.store_lng ?? 0;
-                      print("지도에서 보기 클릭: lat=$lat, lng=$lng");
                       if (lat != 0 && lng != 0) {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          MaterialPageRoute<void>(
                             builder: (context) => StoreMapPage(
                               latitude: lat,
                               longitude: lng,
@@ -202,30 +242,29 @@ class _StorePageState extends State<StorePage> {
                         );
                       }
                     },
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.map,
-                          size: 16,
-                          color: Colors.grey[500],
+                    child: _storeInfoIconRow(
+                      icon: Icons.map_outlined,
+                      iconColor: ColorAssset.mainColor,
+                      child: Text(
+                        "지도에서 보기",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          color: ColorAssset.mainColor,
+                          height: 1.21,
                         ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "지도에서 보기",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 16),
+            Container(
+              height: 14,
+              width: double.infinity,
+              color: _StoreFigma.sectionBar,
+            ),
             // 메뉴리스트
             _buildMenuSection(storeData),
             SizedBox(height: 20),
@@ -235,37 +274,26 @@ class _StorePageState extends State<StorePage> {
     );
   }
 
+  Widget _storeInfoIconRow({
+    required IconData icon,
+    required Color iconColor,
+    required Widget child,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(width: 10),
+        Expanded(child: child),
+      ],
+    );
+  }
+
   String _formatPrice(int price) {
     return price.toString().replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]},',
         );
-  }
-
-  Widget _buildCompactInfoRow({
-    required IconData icon,
-    required String text,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey[500],
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildMenuSection(Store? storeData) {
@@ -278,26 +306,23 @@ class _StorePageState extends State<StorePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "메뉴",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Divider(height: 1, color: Colors.grey[300]),
-                SizedBox(height: 8),
-              ],
+            padding: const EdgeInsets.fromLTRB(
+              _StoreFigma.horizontalInset,
+              16,
+              _StoreFigma.horizontalInset,
+              8,
+            ),
+            child: const Text(
+              "메뉴",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _StoreFigma.textPrimary,
+                height: 1.21,
+              ),
             ),
           ),
-          SizedBox(height: 8),
-          _buildMenuGrid(menuList),
+          _buildMenuGrid(menuList, null),
         ],
       );
     } else {
@@ -310,26 +335,23 @@ class _StorePageState extends State<StorePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "메뉴",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Divider(height: 1, color: Colors.grey[300]),
-                    SizedBox(height: 2),
-                  ],
+                padding: const EdgeInsets.fromLTRB(
+                  _StoreFigma.horizontalInset,
+                  16,
+                  _StoreFigma.horizontalInset,
+                  8,
+                ),
+                child: const Text(
+                  "메뉴",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _StoreFigma.textPrimary,
+                    height: 1.21,
+                  ),
                 ),
               ),
-              SizedBox(height: 2),
-              _buildMenuGrid(menuList),
+              _buildMenuGrid(menuList, storeData),
             ],
           );
         },
@@ -337,7 +359,7 @@ class _StorePageState extends State<StorePage> {
     }
   }
 
-  Widget _buildMenuGrid(List<Menu> menuList) {
+  Widget _buildMenuGrid(List<Menu> menuList, Store? storeData) {
     if (menuList.isEmpty) {
       return Center(
         child: Padding(
@@ -357,120 +379,182 @@ class _StorePageState extends State<StorePage> {
 
     return ListView.builder(
       shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: menuList.length,
-      itemBuilder: (context, index) => _buildMenuCard(menuList[index]),
+      itemBuilder: (context, index) => _buildMenuCard(
+        menuList[index],
+        storeData,
+        showBottomDivider: index < menuList.length - 1,
+      ),
     );
   }
 
-  Widget _buildMenuCard(Menu menu) {
+  Widget _buildMenuCard(
+    Menu menu,
+    Store? storeData, {
+    required bool showBottomDivider,
+  }) {
     final hasImage =
-        menu.menu_image_url != null && menu.menu_image_url!.isNotEmpty;
+        menu.menu_image_url != null && menu.menu_image_url!.trim().isNotEmpty;
+    final desc = menu.description?.trim();
+    final hasDesc = desc != null && desc.isNotEmpty;
 
-    return GestureDetector(
-      onTap: () {
-        // store_id가 0이거나 유효하지 않은 경우 widget.storeId로 설정
-        if (menu.store_id <= 0 && widget.storeId > 0) {
-          menu.store_id = widget.storeId;
-          print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
-        }
-        Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SelectGiftPage(menu: menu),
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    menu.name ?? '메뉴명 없음',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '${_formatPrice(menu.price)}원',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          if (menu.store_id <= 0 && widget.storeId > 0) {
+            menu.store_id = widget.storeId;
+            print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
+          }
+          Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
+
+          Store? forExchange = storeData;
+          if (widget.storeId > 0) {
+            try {
+              forExchange = await Provider.of<StoreProvider>(context, listen: false)
+                  .fetchDetailStore(widget.storeId);
+            } catch (_) {
+              forExchange = storeData;
+            }
+          }
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (context) => SelectGiftPage(
+                menu: menu,
+                contextStoreId: widget.storeId > 0 ? widget.storeId : null,
+                exchangeAddress: forExchange?.store_address,
+                exchangeLat: forExchange?.store_lat,
+                exchangeLng: forExchange?.store_lng,
+                exchangePlaceName: (forExchange?.store_name.isNotEmpty == true)
+                    ? forExchange!.store_name
+                    : widget.storeName,
               ),
             ),
-            if (hasImage) ...[
-              SizedBox(width: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: (menu.menu_image_url != null &&
-                        menu.menu_image_url!.isNotEmpty)
-                    ? Image.network(
-                        menu.menu_image_url!,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return SizedBox(
-                            width: 80,
-                            height: 80,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                _StoreFigma.horizontalInset,
+                12,
+                _StoreFigma.horizontalInset,
+                12,
+              ),
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            menu.name ?? '메뉴명 없음',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: _StoreFigma.menuTitle,
+                              height: 1.21,
+                            ),
+                          ),
+                          if (hasDesc) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              desc,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w400,
+                                fontSize: 13,
+                                color: _StoreFigma.menuTitle,
+                                height: 1.21,
                               ),
                             ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          print("메뉴 이미지 로드 오류: $error");
-                          return const SizedBox.shrink();
-                        },
-                        frameBuilder:
-                            (context, child, frame, wasSynchronouslyLoaded) {
-                          if (wasSynchronouslyLoaded) return child;
-                          return AnimatedOpacity(
-                            opacity: frame == null ? 0.0 : 1.0,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                            child: child,
-                          );
-                        },
-                      )
-                    : const SizedBox.shrink(),
+                          ],
+                          const SizedBox(height: 9),
+                          Text(
+                            '${_formatPrice(menu.price)}원',
+                            style: TextStyle(
+                              color: ColorAssset.mainColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              height: 1.21,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: hasImage
+                          ? Image.network(
+                              menu.menu_image_url!.trim(),
+                              width: 85,
+                              height: 85,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  width: 85,
+                                  height: 85,
+                                  color: _StoreFigma.menuImagePlaceholder,
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 85,
+                                  height: 85,
+                                  color: _StoreFigma.menuImagePlaceholder,
+                                );
+                              },
+                              frameBuilder:
+                                  (context, child, frame, wasSynchronouslyLoaded) {
+                                if (wasSynchronouslyLoaded) return child;
+                                return AnimatedOpacity(
+                                  opacity: frame == null ? 0.0 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
+                                  child: child,
+                                );
+                              },
+                            )
+                          : Container(
+                              width: 85,
+                              height: 85,
+                              color: _StoreFigma.menuImagePlaceholder,
+                            ),
+                    ),
+                  ],
+                ),
+            ),
+            if (showBottomDivider)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _StoreFigma.horizontalInset,
+                ),
+                child: const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: _StoreFigma.divider,
+                ),
               ),
-            ],
           ],
         ),
       ),
@@ -633,13 +717,13 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
     try {
       return Container(
         width: double.infinity,
-        height: 240,
+        height: _StoreFigma.sliderHeight,
         color: Colors.white,
         child: Image.file(
           File(image.path),
           key: ValueKey('${widget.store?.store_id}_${image.path}_$index'),
           width: double.infinity,
-          height: 240,
+          height: _StoreFigma.sliderHeight,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             print("이미지 로드 오류: $error, 파일: ${image.path}");
@@ -658,14 +742,14 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
             return Image(
               image: const AssetImage('assets/coffee.jpeg'),
               width: double.infinity,
-              height: 240,
+              height: _StoreFigma.sliderHeight,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 // Asset 이미지도 실패하면 빈 컨테이너 반환
                 return Container(
                   width: double.infinity,
-                  height: 240,
-                  color: Colors.grey[200],
+                  height: _StoreFigma.sliderHeight,
+                  color: _StoreFigma.sliderPlaceholder,
                 );
               },
             );
@@ -677,8 +761,8 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
       // 전체적으로 실패하면 빈 컨테이너 반환
       return Container(
         width: double.infinity,
-        height: 240,
-        color: Colors.grey[200],
+        height: _StoreFigma.sliderHeight,
+        color: _StoreFigma.sliderPlaceholder,
       );
     }
   }
@@ -693,7 +777,7 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
             dotHeight: 6,
             dotWidth: 6,
             activeDotColor: Colors.white,
-            dotColor: Colors.white.withOpacity(0.6)),
+            dotColor: Colors.white.withValues(alpha: 0.6)),
       ));
 
   @override
@@ -701,19 +785,19 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
     if (isLoadingImages) {
       return Container(
         width: double.infinity,
-        height: 240,
-        color: Colors.grey[200],
-        child: Center(child: CircularProgressIndicator()),
+        height: _StoreFigma.sliderHeight,
+        color: _StoreFigma.sliderPlaceholder,
+        child: const Center(child: CircularProgressIndicator()),
       );
     } else if (images.isEmpty) {
       return Container(
         width: double.infinity,
-        height: 240,
-        color: Colors.grey,
+        height: _StoreFigma.sliderHeight,
+        color: _StoreFigma.sliderPlaceholder,
         child: Image(
-          image: AssetImage('assets/coffee.jpeg'),
+          image: const AssetImage('assets/coffee.jpeg'),
           width: double.infinity,
-          height: 240,
+          height: _StoreFigma.sliderHeight,
           fit: BoxFit.cover,
         ),
       );
@@ -741,154 +825,6 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
         Align(
             alignment: Alignment.bottomCenter, child: indicator(images.length))
       ]);
-    }
-  }
-}
-
-// 지도 전용 화면
-class StoreMapPage extends StatelessWidget {
-  final double latitude;
-  final double longitude;
-  final String storeName;
-
-  const StoreMapPage({
-    super.key,
-    required this.latitude,
-    required this.longitude,
-    required this.storeName,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CommonAppBar(
-        title: "매장위치",
-      ),
-      body: NaverMapWidget(
-        latitude: latitude,
-        longitude: longitude,
-        fullScreen: true,
-      ),
-    );
-  }
-}
-
-class NaverMapWidget extends StatefulWidget {
-  final double latitude;
-  final double longitude;
-  final bool fullScreen;
-
-  const NaverMapWidget({
-    super.key,
-    required this.latitude,
-    required this.longitude,
-    this.fullScreen = false,
-  });
-
-  @override
-  _NaverMapWidgetState createState() => _NaverMapWidgetState();
-}
-
-class _NaverMapWidgetState extends State<NaverMapWidget>
-    with AutomaticKeepAliveClientMixin {
-  late NaverMapController _mapController;
-  final Completer<NaverMapController> mapControllerCompleter = Completer();
-  bool _isMapReady = false;
-  bool _isDisposed = false;
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  void dispose() {
-    _isDisposed = true;
-    // 지도 컨트롤러 정리
-    if (_isMapReady && mapControllerCompleter.isCompleted) {
-      try {
-        _mapController.dispose();
-      } catch (e) {
-        print('NaverMapWidget dispose 오류 (무시 가능): $e');
-      }
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context); // AutomaticKeepAliveClientMixin 요구사항
-
-    if (widget.fullScreen) {
-      return NaverMap(
-        options: NaverMapViewOptions(
-          initialCameraPosition: NCameraPosition(
-            target: NLatLng(widget.latitude, widget.longitude),
-            zoom: 15,
-          ),
-          indoorEnable: true,
-          locationButtonEnable: true,
-          consumeSymbolTapEvents: false,
-        ),
-        onMapReady: (controller) async {
-          if (_isMapReady || _isDisposed) return;
-          _isMapReady = true;
-
-          if (_isDisposed) return;
-          _mapController = controller;
-          if (!mapControllerCompleter.isCompleted) {
-            mapControllerCompleter.complete(controller);
-          }
-
-          if (_isDisposed) return;
-          // 마커 추가
-          final marker = NMarker(
-            id: 'store',
-            position: NLatLng(widget.latitude, widget.longitude),
-          );
-          marker.setIcon(NOverlayImage.fromAssetImage("assets/pin.png"));
-          controller.addOverlay(marker);
-
-          print("Naver Map is ready.");
-        },
-      );
-    } else {
-      return Container(
-          margin: EdgeInsets.all(15),
-          height: MediaQuery.of(context).size.height / 4,
-          child: ClipRRect(
-              borderRadius: BorderRadius.circular(5),
-              child: NaverMap(
-                options: NaverMapViewOptions(
-                  initialCameraPosition: NCameraPosition(
-                    target: NLatLng(widget.latitude, widget.longitude),
-                    zoom: 13,
-                  ),
-                  indoorEnable: true,
-                  locationButtonEnable: true,
-                  consumeSymbolTapEvents: false,
-                ),
-                onMapReady: (controller) async {
-                  if (_isMapReady || _isDisposed) return;
-                  _isMapReady = true;
-
-                  if (_isDisposed) return;
-                  _mapController = controller;
-                  if (!mapControllerCompleter.isCompleted) {
-                    mapControllerCompleter.complete(controller);
-                  }
-
-                  if (_isDisposed) return;
-                  // 마커 추가
-                  final marker = NMarker(
-                    id: 'store',
-                    position: NLatLng(widget.latitude, widget.longitude),
-                  );
-                  marker
-                      .setIcon(NOverlayImage.fromAssetImage("assets/pin.png"));
-                  controller.addOverlay(marker);
-
-                  print("Naver Map is ready.");
-                },
-              )));
     }
   }
 }
