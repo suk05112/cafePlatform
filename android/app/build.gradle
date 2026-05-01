@@ -72,11 +72,16 @@ android {
         dev {
             dimension "default"
             applicationIdSuffix ".dev"
-            resValue "string", "app_name", "MyApp Dev"
+            resValue "string", "app_name", "Gifnut Dev"
         }
         prod {
             dimension "default"
-            resValue "string", "app_name", "MyApp"
+            resValue "string", "app_name", "Gifnut"
+        }
+        mock {
+            dimension "default"
+            applicationIdSuffix ".mock"
+            resValue "string", "app_name", "Gifnut Mock"
         }
     }
 }
