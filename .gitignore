@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase config (contains API keys — manage outside version control)
+ios/Runner/Firebase/**/GoogleService-Info.plist
+android/app/src/**/google-services.json
