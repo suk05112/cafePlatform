@@ -88,18 +88,6 @@
 		F383C7EE8F11960B28BD91A9 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		03B570162F0DB9C600976317 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-			);
-			target = 97C146ED1CF9000F007C117D /* Runner */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		03B5700E2F0DB8F400976317 /* Firebase */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (03B570162F0DB9C600976317 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Firebase; sourceTree = "<group>"; };
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		256E8AAD8674347DCBE237CB /* Frameworks */ = {
@@ -198,7 +186,6 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
-				03B5700E2F0DB8F400976317 /* Firebase */,
 				03B570042F0DAF6800976317 /* Runner.entitlements */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
@@ -256,7 +243,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				03B5700E2F0DB8F400976317 /* Firebase */,
 			);
 			name = Runner;
 			productName = Runner;
