@@ -92,8 +92,6 @@
 		03B570162F0DB9C600976317 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Debug/GoogleService-Info.plist",
-				"Release/GoogleService-Info.plist",
 			);
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 		};
