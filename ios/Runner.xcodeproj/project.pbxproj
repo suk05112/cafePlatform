@@ -242,8 +242,6 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
@@ -1211,7 +1209,7 @@
 			};
 			name = Release;
 		};
-		83D3F818563F4475BD0AB674 /* Debug-mock */ = {
+		BA54D462F4C12A8B4D28A660 /* Debug-mock */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -1313,7 +1311,7 @@
 			};
 			name = "Debug-mock";
 		};
-		2EF9EDDD0FD04AAE8B43AF5D /* Release-mock */ = {
+		851EBB5F142D598AAF8D1D1F /* Release-mock */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -1434,11 +1432,11 @@
 				97C147031CF9000F007C117D /* Debug */,
 				03B56FF02F0D82F200976317 /* Debug-prod */,
 				03B56FED2F0D82E600976317 /* Debug-dev */,
-				83D3F818563F4475BD0AB674 /* Debug-mock */,
+				BA54D462F4C12A8B4D28A660 /* Debug-mock */,
 				97C147041CF9000F007C117D /* Release */,
 				03B56FF62F0D830C00976317 /* Release-prod */,
 				03B56FF32F0D830000976317 /* Release-dev */,
-				2EF9EDDD0FD04AAE8B43AF5D /* Release-mock */,
+				851EBB5F142D598AAF8D1D1F /* Release-mock */,
 				249021D3217E4FDB00AE95B9 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
