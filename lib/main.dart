@@ -42,7 +42,9 @@ import 'package:cafeplatform/utils/fcm_token_util.dart';
 // 백그라운드 메시지 핸들러 (top-level 함수여야 함)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+  }
   print('백그라운드 메시지 수신: ${message.messageId}');
   print('메시지 데이터: ${message.data}');
   if (message.notification != null) {
@@ -60,14 +62,6 @@ FutureOr<void> main() async {
 
   // 백그라운드 메시지 핸들러 등록 (Firebase 초기화 전에 등록해야 함)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Firebase가 이미 초기화되지 않은 경우에만 초기화
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    // 이미 초기화된 경우 무시
-    print("Firebase 이미 초기화됨 또는 초기화 오류: $e");
-  }
 
   // MyApp을 즉시 띄우고, 무거운 초기화는 _StartupShell에서 비동기로 진행 (릴리스 스플래시 정지 완화)
   runApp(const _StartupShell());
