@@ -14,9 +14,13 @@ import 'main.dart' as runner;
 Future<void> main() async {
   F.appFlavor = Flavor.prod;
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase already initialized: $e');
+  }
 
   unawaited(() async {
     try {

@@ -4,6 +4,7 @@ import 'package:cafeplatform/firebase_options_dev.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
 import 'config/flavors.dart';
@@ -13,9 +14,13 @@ import 'main.dart' as runner;
 Future<void> main() async {
   F.appFlavor = Flavor.dev;
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase already initialized: $e');
+  }
 
   var kakaoNative = 'c1428635d1b36023f66bba9374fda4e8';
   var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';
