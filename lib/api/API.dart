@@ -7,6 +7,7 @@ import 'package:cafeplatform/config/config.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:get/get.dart' hide Response;
 
 class Api {
   static final _singleton = Api._internal();
@@ -343,6 +344,16 @@ class AuthInterceptor extends Interceptor {
     handler.next(response);
   }
 
+  void _showErrorSnackbar(String message) {
+    if (Get.context == null) return;
+    Get.snackbar(
+      '오류',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 3),
+    );
+  }
+
   @override
   void onError(
     DioException err,
@@ -350,6 +361,33 @@ class AuthInterceptor extends Interceptor {
   ) async {
     print(['dio error interceptor']);
     print('❌ Error: ${err.type} [${err.type}]: ${err.message}');
+
+    switch (err.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.connectionError:
+        _showErrorSnackbar('인터넷 연결을 확인해 주세요.');
+        break;
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        _showErrorSnackbar('네트워크가 불안정합니다. 잠시 후 다시 시도해 주세요.');
+        break;
+      case DioExceptionType.badResponse:
+        final statusCode = err.response?.statusCode ?? 0;
+        if (statusCode >= 500) {
+          _showErrorSnackbar('서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+        }
+        // 4xx는 아래 401 처리 포함, 각 화면에서 개별 처리
+        break;
+      case DioExceptionType.unknown:
+        if (err.error is SocketException) {
+          _showErrorSnackbar('인터넷 연결을 확인해 주세요.');
+        } else {
+          _showErrorSnackbar('알 수 없는 오류가 발생했습니다.');
+        }
+        break;
+      default:
+        break;
+    }
 
     if (err.response?.statusCode == 401) {
       print('[401 interceptor] at ${err.requestOptions.path}');
