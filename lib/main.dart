@@ -303,6 +303,13 @@ Future<void> _initializeFCM() async {
 
     print('FCM 알림 권한 상태: ${settings.authorizationStatus}');
 
+    // iOS 포그라운드에서도 알림 배너/소리/배지 표시
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
     // 포그라운드 메시지 핸들러
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print('포그라운드 메시지 수신!');
