@@ -224,7 +224,7 @@ class _PhoneNumberVerificationWidgetState
         await _auth.signOut();
       }
     } on DioException catch (e) {
-      // API 호출 실패 처리
+      // API 호출 실패 처리 - Firebase 계정 롤백
       String errorMessage = '네트워크 오류가 발생했습니다.';
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
@@ -235,9 +235,8 @@ class _PhoneNumberVerificationWidgetState
       } else if (e.response != null) {
         errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
       }
-
+      try { await _auth.currentUser?.delete(); } catch (_) {}
       if (mounted) {
-        await _auth.signOut();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -248,9 +247,7 @@ class _PhoneNumberVerificationWidgetState
       }
     } catch (e) {
       print("자동 인증 처리 오류: $e");
-      if (mounted) {
-        await _auth.signOut();
-      }
+      try { await _auth.currentUser?.delete(); } catch (_) {}
     } finally {
       _handlingAutoVerification = false;
       _setLoading(false);
@@ -470,8 +467,9 @@ class _PhoneNumberVerificationWidgetState
                                                     errorMessage =
                                                         '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
                                                   }
+                                                  // Firebase 계정 롤백 (signOut은 세션만 끊고 계정은 남음)
+                                                  try { await _auth.currentUser?.delete(); } catch (_) {}
                                                   if (mounted) {
-                                                    await _auth.signOut();
                                                     ScaffoldMessenger.of(
                                                             context)
                                                         .showSnackBar(SnackBar(
@@ -482,8 +480,6 @@ class _PhoneNumberVerificationWidgetState
                                                       backgroundColor:
                                                           Colors.red[700],
                                                     ));
-                                                  } else {
-                                                    await _auth.signOut();
                                                   }
                                                   _handlingAutoVerification =
                                                       false;
@@ -492,8 +488,9 @@ class _PhoneNumberVerificationWidgetState
                                                 } catch (e) {
                                                   print(
                                                       "전화번호 가입 확인 오류: $e");
+                                                  // Firebase 계정 롤백
+                                                  try { await _auth.currentUser?.delete(); } catch (_) {}
                                                   if (mounted) {
-                                                    await _auth.signOut();
                                                     ScaffoldMessenger.of(
                                                             context)
                                                         .showSnackBar(SnackBar(
@@ -504,8 +501,6 @@ class _PhoneNumberVerificationWidgetState
                                                       backgroundColor:
                                                           Colors.red[700],
                                                     ));
-                                                  } else {
-                                                    await _auth.signOut();
                                                   }
                                                   _handlingAutoVerification =
                                                       false;

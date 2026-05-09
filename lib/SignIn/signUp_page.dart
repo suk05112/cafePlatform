@@ -436,7 +436,8 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             );
           }
         } on DioException catch (e) {
-          // 서버 회원가입 실패 시 Firebase 계정은 유지 (재시도 가능)
+          // 서버 회원가입 실패 시 Firebase 계정 롤백
+          try { await linkedUser!.delete(); } catch (_) {}
           String errorMessage = "회원가입 중 서버 오류가 발생했습니다.";
           if (e.response != null) {
             final statusCode = e.response?.statusCode;
@@ -460,7 +461,8 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
                 onPressed: () {});
           }
         } catch (e) {
-          // 서버 회원가입 실패 시 Firebase 계정은 유지 (재시도 가능)
+          // 서버 회원가입 실패 시 Firebase 계정 롤백
+          try { await linkedUser!.delete(); } catch (_) {}
           print("회원가입 API 오류: $e");
           if (mounted) {
             setState(() {
