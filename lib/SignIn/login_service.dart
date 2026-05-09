@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -265,6 +266,8 @@ class LoginService {
           );
       print(" isRegisteredUser$response");
       return response.isRegistered;
+    } on DioException {
+      rethrow;
     } catch (e) {
       print("❌ Error: $e");
       return false;

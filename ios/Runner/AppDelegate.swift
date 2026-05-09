@@ -1,33 +1,36 @@
 import Flutter
 import UIKit
+import UserNotifications
 import FirebaseCore
+import FirebaseAuth
+import FirebaseMessaging
 import FirebaseCrashlytics
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+@objc class AppDelegate: FlutterAppDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     FirebaseApp.configure()
     FirebaseConfiguration.shared.setLoggerLevel(.min)
-    // iOS: APNs 등록 — 토큰이 늦으면 FCM getToken()이 오래 대기하는 원인이 됨
-    // (참고: https://joominl.tistory.com/36 )
+    UNUserNotificationCenter.current().delegate = self
     application.registerForRemoteNotifications()
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
 
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-
-    let flavorChannel = FlutterMethodChannel(
-      name: "flavor",
-      binaryMessenger: engineBridge.applicationRegistrar.messenger()
-    )
-    flavorChannel.setMethodCallHandler { _, result in
-      let flavor = Bundle.main.infoDictionary?["App-Flavor"]
-      result(flavor)
+    let controller = window?.rootViewController as? FlutterViewController
+    if let controller = controller {
+      let flavorChannel = FlutterMethodChannel(
+        name: "flavor",
+        binaryMessenger: controller.binaryMessenger
+      )
+      flavorChannel.setMethodCallHandler { _, result in
+        let flavor = Bundle.main.infoDictionary?["App-Flavor"]
+        result(flavor)
+      }
     }
+
+    GeneratedPluginRegistrant.register(with: self)
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   override func application(
@@ -61,5 +64,36 @@ import FirebaseCrashlytics
     handleOpen url: URL
   ) -> Bool {
     return super.application(application, handleOpen: url)
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    print("✅ APNs 토큰 등록됨")
+    Auth.auth().setAPNSToken(deviceToken, type: .unknown)
+    Messaging.messaging().apnsToken = deviceToken
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("❌ APNs 등록 실패: \(error)")
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    print("📨 didReceiveRemoteNotification 호출됨")
+    if Auth.auth().canHandleNotification(userInfo) {
+      print("✅ FirebaseAuth가 notification 처리함")
+      completionHandler(.noData)
+      return
+    }
+    Messaging.messaging().appDidReceiveMessage(userInfo)
+    completionHandler(.newData)
   }
 }
