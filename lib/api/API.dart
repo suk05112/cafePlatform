@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cafeplatform/api/ApiClient.dart';
 import 'package:cafeplatform/config/config.dart';
+import 'package:cafeplatform/config/flavors.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -90,7 +91,7 @@ class Api {
     return {
       'Content-Type': 'application/json; charset=UTF-8',
       'User-Agent': userAgent,
-      // 'X-API-KEY': 'app-id=loplat-go-android,signature=d8d6513401f6714cc98b72bc5bc7e2bfcca13b4fe89b22183f470537e57c040c',
+      if (F.appFlavor == Flavor.dev) 'X-Firebase-Project': 'dev',
     };
   }
 
