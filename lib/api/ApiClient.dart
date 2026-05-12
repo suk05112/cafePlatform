@@ -118,7 +118,7 @@ abstract class ApiClient {
     @Path('gifticon_id') int gifticonId,
   );
 
-  @GET("/order/refund/{order_id}")
+  @POST("/order/refund/{order_id}")
   Future<void> refundGifticon(
     @Path('order_id') int orderId,
   );

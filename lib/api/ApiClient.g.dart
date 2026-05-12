@@ -473,7 +473,7 @@ class _ApiClient implements ApiClient {
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     await _dio.fetch<void>(_setStreamType<void>(Options(
-      method: 'GET',
+      method: 'POST',
       headers: _headers,
       extra: _extra,
     )

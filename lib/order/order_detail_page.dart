@@ -24,6 +24,7 @@ class OrderDetailPage extends StatefulWidget {
 class _OrderDetailPageState extends State<OrderDetailPage>
     with SingleTickerProviderStateMixin {
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isRefunding = false;
 
   @override
   void initState() {
@@ -64,7 +65,9 @@ class _OrderDetailPageState extends State<OrderDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Stack(
+      children: [
+        Scaffold(
         backgroundColor: Colors.grey[50],
         appBar: const CommonAppBar(title: '주문 상세내역'),
         body: SafeArea(
@@ -140,7 +143,17 @@ class _OrderDetailPageState extends State<OrderDetailPage>
               ),
             );
           },
-        )));
+        ))),
+        if (_isRefunding)
+          const ModalBarrier(dismissible: false, color: Colors.black26),
+        if (_isRefunding)
+          Center(
+            child: CircularProgressIndicator(
+              color: ColorAssset.mainColor,
+            ),
+          ),
+      ],
+    );
   }
 
   Widget gifticonInfoList(OrderDetailResponse orderDetail) {
@@ -672,6 +685,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
   }
 
   Future<void> _handleRefund() async {
+    setState(() => _isRefunding = true);
     try {
       // 환불 API 호출
       await Api().client.refundGifticon(widget.orderId);
@@ -720,6 +734,8 @@ class _OrderDetailPageState extends State<OrderDetailPage>
       if (mounted) {
         _showRefundFailureDialog("예기치 않은 오류가 발생했습니다.");
       }
+    } finally {
+      if (mounted) setState(() => _isRefunding = false);
     }
   }
 
