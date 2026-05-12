@@ -31,7 +31,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   /// 테스트용: true면 아이디 로그인 버튼만 눌러도 인증 없이 다음 화면으로 이동합니다.
-  static const bool _kBypassEmailLoginForTest = true;
+  static const bool _kBypassEmailLoginForTest = false;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 

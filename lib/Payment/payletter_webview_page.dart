@@ -77,6 +77,16 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
               return NavigationDecision.prevent;
             }
 
+            // 페이레터 return URL — 백엔드가 gifnut://payment/result 로 302 리다이렉트함
+            // iOS WKWebView는 302를 onNavigationRequest 없이 자동으로 따라가므로 여기서 가로챔
+            if ((uri.scheme == 'http' || uri.scheme == 'https') &&
+                (uri.host.contains('gifnut.com') ||
+                    uri.host.contains('502company.com')) &&
+                uri.path.endsWith('/order/payment/return')) {
+              _handlePayletterReturnUrl(uri);
+              return NavigationDecision.prevent;
+            }
+
             // http/https는 웹뷰에서 처리
             if (uri.scheme == 'http' || uri.scheme == 'https') {
               return NavigationDecision.navigate;
@@ -113,7 +123,7 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
         final tid = uri.queryParameters['tid'];
         final message = uri.queryParameters['message'];
 
-        final isSuccess = code == '0';
+        final isSuccess = code == null || code == '0';
         _popWithResult(PayletterResultData(
           result: isSuccess ? PayletterResult.success : PayletterResult.fail,
           orderNo: orderNo,
@@ -134,12 +144,31 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
     });
   }
 
+  void _handlePayletterReturnUrl(Uri uri) {
+    debugPrint('[Payletter] return URL intercepted: $uri');
+    final params = uri.queryParameters;
+    final code = params['code'];
+    final orderNo = params['order_no'];
+    final tid = params['tid'];
+    final message = params['message'];
+
+    // 백엔드가 이 URL을 gifnut://payment/result?{params} 로 302 포워딩하므로
+    // 동일한 기준으로 처리: code가 없거나 '0'이면 성공
+    final isSuccess = code == null || code == '0';
+    _popWithResult(PayletterResultData(
+      result: isSuccess ? PayletterResult.success : PayletterResult.fail,
+      orderNo: orderNo,
+      tid: tid,
+      message: message,
+    ));
+  }
+
   void _handleGifnutPaymentDeepLink(Uri uri) {
     debugPrint('[Payletter] gifnut payment deep link: $uri');
 
     if (uri.path == '/result') {
       final code = uri.queryParameters['code'];
-      final isSuccess = code == '0';
+      final isSuccess = code == null || code == '0';
       _popWithResult(PayletterResultData(
         result: isSuccess ? PayletterResult.success : PayletterResult.fail,
         orderNo: uri.queryParameters['order_no'],
