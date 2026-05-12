@@ -5,10 +5,12 @@
 // import 'package:bootpay/model/item.dart';
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/Payment/CompletePayment.dart';
+import 'package:cafeplatform/Payment/payletter_webview_page.dart';
+import 'package:cafeplatform/api/payment_url_request.dart';
+import 'package:cafeplatform/api/payment_url_response.dart';
 import 'package:cafeplatform/utils/kakao_share_helper.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
-import 'package:cafeplatform/api/gifticon_response.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/model/user.dart';
@@ -18,14 +20,12 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/Payment/figma_payment_method_section.dart';
 import 'package:cafeplatform/Payment/payment_ui_tokens.dart';
 import 'package:provider/provider.dart';
-import 'package:tosspayments_widget_sdk_flutter/model/payment_info.dart';
 import 'package:tosspayments_widget_sdk_flutter/model/payment_widget_options.dart';
 import 'package:tosspayments_widget_sdk_flutter/payment_widget.dart';
 import 'package:tosspayments_widget_sdk_flutter/widgets/agreement.dart';
 import 'package:tosspayments_widget_sdk_flutter/widgets/payment_method.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:cafeplatform/utils/number_formatter.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
@@ -74,35 +74,9 @@ class _PaymentState extends State<Payment> {
   String _figmaPaymentLabel = '카카오페이';
   bool _figmaTermsAgreed = false;
 
-  /// 한국 전화번호를 국제 형식으로 변환 (01012345678 -> +821012345678)
-  String _convertToInternationalFormat(String phoneNumber) {
-    // 하이픈, 공백 등 모든 비숫자 제거
-    final digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-
-    String internationalFormat;
-
-    // 첫 번째 0을 제거하고 82를 앞에 추가
-    if (digitsOnly.startsWith('0')) {
-      internationalFormat = '82${digitsOnly.substring(1)}';
-    }
-    // 이미 82로 시작하는 경우 그대로 사용
-    else if (digitsOnly.startsWith('82')) {
-      internationalFormat = digitsOnly;
-    }
-    // 그 외의 경우 82를 앞에 추가
-    else {
-      internationalFormat = '82$digitsOnly';
-    }
-
-    // + 기호 추가
-    return '+$internationalFormat';
-  }
-
-  // 주문 정보 저장
-  int? _orderId;
-
   // 결제 위젯 로딩 상태
   bool _isLoadingWidgets = true;
+  bool _isSubmitting = false;
 
   void _checkWidgetsReady() {
     if (_paymentMethodWidgetControl != null &&
@@ -231,7 +205,9 @@ class _PaymentState extends State<Payment> {
         // 화면 탭 시 키보드 닫기
         FocusScope.of(context).unfocus();
       },
-      child: Scaffold(
+      child: Stack(
+        children: [
+          Scaffold(
         appBar: CommonAppBar(title: type == 2 ? "선물하기" : "결제하기"),
         backgroundColor: Colors.white,
         body: SafeArea(
@@ -406,6 +382,12 @@ class _PaymentState extends State<Payment> {
             ],
           ),
         ),
+          ),
+          if (_isSubmitting)
+            const ModalBarrier(dismissible: false, color: Colors.black26),
+          if (_isSubmitting)
+            const Center(child: CircularProgressIndicator()),
+        ],
       ),
     );
   }
@@ -667,75 +649,75 @@ class _PaymentState extends State<Payment> {
       return;
     }
 
-    Gifticon gifticon = Gifticon();
-    print(
-        'gifticon 생성 - store_id: $storeId, menu_id: ${widget.menu.menu_id}, menu_name: ${widget.menu.name}');
-    gifticon.store_id = storeId;
-    gifticon.type = widget.type;
-    gifticon.name = widget.menu.name ?? "";
-    gifticon.sender = user.name;
-    gifticon.receiver = receiver;
-    final internationalPhone =
-        _convertToInternationalFormat(receiverPhoneNumber);
-    print('전화번호 변환: $receiverPhoneNumber -> $internationalPhone');
-    gifticon.receiver_phone_number = internationalPhone;
-    gifticon.payment = paymentValue;
-    gifticon.menu_id = widget.menu.menu_id;
-    gifticon.total_price = widget.menu.price;
-    gifticon.paymentKey = null;
-    gifticon.order_id = 0;
+    final rawPhone = receiverPhoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    final pgcode = _toPgcode(paymentValue);
 
+    final request = PaymentUrlRequest(
+      type: widget.type,
+      sender: user.name,
+      receiver: widget.type == 2 ? receiver : user.name,
+      receiverPhoneNumber: rawPhone,
+      menuId: widget.menu.menu_id ?? 0,
+      storeId: storeId,
+      totalPrice: widget.menu.price,
+      pgcode: pgcode,
+      payment: paymentValue,
+    );
+
+    print('결제 URL 요청 - user_id: ${user.user_id}, store_id: $storeId, pgcode: $pgcode');
+
+    setState(() => _isSubmitting = true);
     try {
-      final registrationResponse = await Api().client.purchaseGifticon(
-            user.user_id,
-            gifticon,
-          );
+      final PaymentUrlResponse paymentUrlResponse =
+          await Api().client.getPaymentUrl(user.user_id, request);
 
-      print(
-          "정보 등록 완료: order_id=${registrationResponse.order_id}, gifticon_id=${registrationResponse.gifticon_id}, order_no=${registrationResponse.order_no}");
+      print('결제 URL 수신 - order_id: ${paymentUrlResponse.orderId}, mobile_url: ${paymentUrlResponse.mobileUrl}');
 
-      setState(() {
-        _orderId = registrationResponse.order_id;
-      });
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
 
-      gifticon.order_id = registrationResponse.order_id;
-      gifticon.gifticon_id = registrationResponse.gifticon_id;
-
-      final orderName = widget.type == 1
-          ? widget.menu.name
-          : '${widget.menu.name} (선물)';
-
-      if (_kUseFigmaPaymentUi) {
-        if (mounted) {
-          _showToast('주문이 등록되었습니다. (PG 연동 후 결제가 완료됩니다)');
-          Navigator.of(context).pop();
-        }
-        return;
-      }
-
-      final paymentResult = await _paymentWidget!.requestPayment(
-        paymentInfo: PaymentInfo(
-          orderId: registrationResponse.order_no,
-          orderName: orderName ?? '',
+      final resultData = await Navigator.of(context).push<PayletterResultData>(
+        MaterialPageRoute(
+          builder: (_) => PayletterWebViewPage(
+            mobileUrl: paymentUrlResponse.mobileUrl,
+          ),
         ),
       );
 
-      if (paymentResult.success != null) {
-        print("결제 성공: ${paymentResult.success}");
-        await _handlePaymentSuccess(
-          paymentKey: paymentResult.success?.paymentKey ?? "",
-          orderId: registrationResponse.order_id,
-          gifticon: gifticon,
+      if (!mounted) return;
+
+      if (resultData?.result == PayletterResult.success) {
+        final gifticon = Gifticon()
+          ..gifticon_id = paymentUrlResponse.gifticonId
+          ..order_id = paymentUrlResponse.orderId
+          ..order_no = paymentUrlResponse.orderNo
+          ..store_id = storeId
+          ..type = widget.type
+          ..name = widget.menu.name ?? ''
+          ..sender = user.name
+          ..receiver = widget.type == 2 ? receiver : user.name
+          ..receiver_phone_number = rawPhone
+          ..payment = paymentValue
+          ..menu_id = widget.menu.menu_id
+          ..total_price = widget.menu.price;
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => CompletePayment(
+              giftType: widget.type,
+              gifticon: gifticon,
+            ),
+          ),
         );
-      } else if (paymentResult.fail != null) {
-        print("결제 실패: ${paymentResult.fail}");
-        await _handlePaymentFailure(
-          orderId: registrationResponse.order_id,
-        );
-        _showToast('결제에 실패했습니다. 다시 시도해주세요.');
+      } else if (resultData?.result == PayletterResult.cancel) {
+        _showToast('결제가 취소되었습니다.');
+      } else if (resultData?.result == PayletterResult.fail) {
+        final msg = resultData?.message;
+        _showToast(msg != null && msg.isNotEmpty ? msg : '결제에 실패했습니다. 다시 시도해주세요.');
       }
     } on DioException catch (e) {
-      print("정보 등록 실패: $e");
+      print('결제 URL 요청 실패: $e');
+      if (mounted) setState(() => _isSubmitting = false);
 
       if (e.response?.statusCode == 500) {
         final errorMessage = e.response?.data?.toString() ?? '';
@@ -743,355 +725,34 @@ class _PaymentState extends State<Payment> {
             errorMessage.contains('store_id') ||
             errorMessage.contains('Cannot add or update a child row')) {
           _showToast('유효하지 않은 가게 정보입니다. 메뉴를 다시 선택해주세요.');
-          print(
-              'ERROR: Foreign key constraint failed for store_id: $storeId');
+          print('ERROR: Foreign key constraint failed for store_id: $storeId');
           return;
         }
       }
 
-      _showToast('주문 정보 등록에 실패했습니다. 다시 시도해주세요.');
+      _showToast('결제 요청에 실패했습니다. 다시 시도해주세요.');
     } catch (e) {
-      print("결제 오류: $e");
-      if (_orderId != null) {
-        await _handlePaymentFailure(
-          orderId: _orderId!,
-        );
-      }
+      print('결제 오류: $e');
+      if (mounted) setState(() => _isSubmitting = false);
       _showToast('결제 중 오류가 발생했습니다.');
     }
   }
 
-  Future<void> _handlePaymentSuccess({
-    required String paymentKey,
-    required int orderId,
-    required Gifticon gifticon,
-  }) async {
-    // 3단계: 결제 결과 서버에 전달
-    bool success = false;
-    int retryCount = 0;
-    const maxRetries = 3;
-
-    while (!success && retryCount < maxRetries) {
-      try {
-        final paymentResultRequest = PaymentResultRequest(
-          order_id: orderId,
-          payment_key: paymentKey,
-          is_success: true,
-        );
-
-        await Api().client.sendPaymentResult(paymentResultRequest);
-        print("결제 결과 서버 전달 완료: order_id=$orderId");
-        success = true;
-
-        // gifticon 객체에 payment_key 업데이트
-        gifticon.paymentKey = paymentKey;
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CompletePayment(
-              giftType: widget.type,
-              gifticon: gifticon,
-            ),
-          ),
-        );
-        return;
-      } on DioException catch (e) {
-        retryCount++;
-        print("결제 결과 전달 실패 (시도 $retryCount/$maxRetries): $e");
-
-        if (retryCount >= maxRetries) {
-          // 최대 재시도 횟수 초과
-          _handleServerRegistrationFailure(
-            paymentKey: paymentKey,
-            gifticon: gifticon,
-            error: e,
-          );
-          return;
-        }
-
-        // 재시도 전 대기 (지수 백오프)
-        await Future.delayed(Duration(seconds: retryCount));
-      } catch (e) {
-        retryCount++;
-        print("결제 결과 전달 실패 (시도 $retryCount/$maxRetries): $e");
-
-        if (retryCount >= maxRetries) {
-          // 최대 재시도 횟수 초과
-          _handleServerRegistrationFailure(
-            paymentKey: paymentKey,
-            gifticon: gifticon,
-            error: e,
-          );
-          return;
-        }
-
-        // 재시도 전 대기
-        await Future.delayed(Duration(seconds: retryCount));
-      }
-    }
-  }
-
-  Future<void> _handlePaymentFailure({
-    required int orderId,
-  }) async {
-    // 결제 실패 결과 서버에 전달 (is_success가 false면 payment_key는 null)
-    try {
-      final paymentResultRequest = PaymentResultRequest(
-        order_id: orderId,
-        payment_key: null, // 결제 실패 시 payment_key는 null
-        is_success: false,
-      );
-
-      await Api().client.sendPaymentResult(paymentResultRequest);
-      print("결제 실패 결과 서버 전달 완료: order_id=$orderId");
-    } catch (e) {
-      print("결제 실패 결과 전달 실패: $e");
-    }
-  }
-
-  void _handleServerRegistrationFailure({
-    required String paymentKey,
-    required Gifticon gifticon,
-    required dynamic error,
-  }) {
-    String errorTitle = "서버 등록 실패";
-    String errorDetail = "";
-    IconData errorIcon = Icons.error_outline;
-    Color errorColor = Colors.orange;
-
-    if (error is DioException) {
-      if (error.response != null) {
-        final statusCode = error.response!.statusCode;
-        if (statusCode == 500) {
-          errorTitle = "서버 오류";
-          errorDetail = "서버에 일시적인 문제가 발생했습니다.\n잠시 후 다시 시도해주세요.";
-          errorIcon = Icons.cloud_off_outlined;
-          errorColor = Colors.red;
-        } else if (statusCode == 400) {
-          errorTitle = "요청 오류";
-          errorDetail = "잘못된 요청입니다.\n고객센터로 문의해주세요.";
-          errorIcon = Icons.info_outline;
-          errorColor = Colors.orange;
-        } else if (statusCode == 401) {
-          errorTitle = "인증 실패";
-          errorDetail = "인증에 실패했습니다.\n다시 로그인해주세요.";
-          errorIcon = Icons.lock_outline;
-          errorColor = Colors.orange;
-        } else {
-          errorTitle = "서버 오류";
-          errorDetail = "서버 오류가 발생했습니다.\n(오류 코드: $statusCode)";
-          errorIcon = Icons.error_outline;
-          errorColor = Colors.red;
-        }
-      } else {
-        errorTitle = "네트워크 오류";
-        errorDetail = "인터넷 연결에 문제가 있습니다.\n연결을 확인해주세요.";
-        errorIcon = Icons.wifi_off;
-        errorColor = Colors.orange;
-      }
-    } else {
-      errorTitle = "알 수 없는 오류";
-      errorDetail = "예기치 않은 오류가 발생했습니다.";
-      errorIcon = Icons.error_outline;
-      errorColor = Colors.red;
-    }
-
-    // 결제 정보를 로컬에 저장 (나중에 재시도용)
-    _saveFailedPaymentInfo(paymentKey, gifticon);
-
-    _showBeautifulErrorDialog(
-      title: errorTitle,
-      detail: errorDetail,
-      icon: errorIcon,
-      iconColor: errorColor,
-      paymentKey: paymentKey,
-    );
-  }
-
-  void _showBeautifulErrorDialog({
-    required String title,
-    required String detail,
-    required IconData icon,
-    required Color iconColor,
-    required String paymentKey,
-  }) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            padding: EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 아이콘
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 40,
-                    color: iconColor,
-                  ),
-                ),
-                SizedBox(height: 20),
-
-                // 제목
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 12),
-
-                // 설명
-                Text(
-                  "결제는 완료되었지만\n서버에 등록하지 못했습니다.",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 16),
-
-                // 상세 메시지
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    detail,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[800],
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                SizedBox(height: 20),
-
-                // 결제 정보 안내
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.blue[200]!,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 18,
-                        color: Colors.blue[700],
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "결제 정보는 안전하게 보관되었습니다.\n고객센터로 문의하시면 빠르게 처리해드리겠습니다.",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue[900],
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 8),
-
-                // 결제 키 (작은 글씨)
-                Text(
-                  "결제 키: ${paymentKey.substring(0, 12)}...",
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[500],
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                SizedBox(height: 24),
-
-                // 확인 버튼
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context); // 다이얼로그 닫기
-                      Navigator.pop(context); // 결제 페이지 닫기
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      "확인",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _saveFailedPaymentInfo(
-      String paymentKey, Gifticon gifticon) async {
-    // SharedPreferences에 실패한 결제 정보 저장 (나중에 재시도하거나 고객센터 문의 시 사용)
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final failedPayments = prefs.getStringList('failed_payments') ?? [];
-      final paymentInfo = {
-        'paymentKey': paymentKey,
-        'timestamp': DateTime.now().toIso8601String(),
-        'menu_id': gifticon.menu_id.toString(),
-        'store_id': gifticon.store_id.toString(),
-        'price': gifticon.total_price.toString(),
-        'receiver': gifticon.receiver,
-        'receiver_phone': gifticon.receiver_phone_number,
-      };
-      failedPayments.add(paymentInfo.toString());
-      await prefs.setStringList('failed_payments', failedPayments);
-      print("실패한 결제 정보 저장 완료: $paymentKey");
-    } catch (e) {
-      print("실패한 결제 정보 저장 실패: $e");
-    }
+  String _toPgcode(String label) {
+    const map = {
+      'KB카드': 'creditcard',
+      '신한카드': 'creditcard',
+      '하나카드': 'creditcard',
+      '우리카드': 'creditcard',
+      '삼성카드': 'creditcard',
+      '롯데카드': 'creditcard',
+      '현대카드': 'creditcard',
+      '농협카드': 'creditcard',
+      '카카오페이': 'kakaopay',
+      '네이버페이': 'naverpay',
+      '페이코': 'payco',
+    };
+    return map[label] ?? 'creditcard';
   }
 
   void _showToast(String message) {
