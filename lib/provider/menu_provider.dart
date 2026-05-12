@@ -8,6 +8,7 @@ class MenuProvider extends ChangeNotifier {
   late Menu? _selectedMenu;
 
   late List<Menu>? menuCards = [];
+  bool isLoading = false;
 
   void setSelectedMenu(Menu menu) {
     _selectedMenu = menu;
@@ -47,6 +48,8 @@ class MenuProvider extends ChangeNotifier {
   }
 
   Future<void> fetchMenuList(storeId) async {
+    isLoading = true;
+    notifyListeners();
     try {
       print("menu_provider::fetchMenuList:: fetch 호출");
       var response = await Api().client.getMenuList(storeId);
@@ -55,6 +58,9 @@ class MenuProvider extends ChangeNotifier {
     } catch (error) {
       print("menu_provider::fetchMenuList:: fetch 오류: $error");
       setMenuCard(null);
+    } finally {
+      isLoading = false;
+      notifyListeners();
     }
   }
 

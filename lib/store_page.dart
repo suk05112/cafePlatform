@@ -48,29 +48,16 @@ class _StorePageState extends State<StorePage> {
   @override
   void initState() {
     super.initState();
-    // 초기화 메서드 호출
-    _initializeStoreData();
-    // 메뉴 데이터 로드
-    if (widget.storeId >= 0) {
+    if (widget.storeId < 0) {
+      store = StoreDummyRepository.stores.firstWhere(
+          (s) => s?.store_id == widget.storeId,
+          orElse: () => StoreDummyRepository.stores[0]);
+    } else {
+      futureStore = Provider.of<StoreProvider>(context, listen: false)
+          .fetchDetailStore(widget.storeId);
       Provider.of<MenuProvider>(context, listen: false)
           .fetchMenuList(widget.storeId);
     }
-  }
-
-  Future<void> _initializeStoreData() async {
-    print("_initializeStoreData 호출");
-
-    if (widget.storeId < 0) {
-      setState(() {
-        store = StoreDummyRepository.stores.firstWhere(
-            (s) => s?.store_id == widget.storeId,
-            orElse: () => StoreDummyRepository.stores[0]);
-      });
-      return;
-    }
-    // 비동기 데이터 로드
-    futureStore = Provider.of<StoreProvider>(context, listen: false)
-        .fetchDetailStore(widget.storeId);
   }
 
   @override
@@ -351,7 +338,13 @@ class _StorePageState extends State<StorePage> {
                   ),
                 ),
               ),
-              _buildMenuGrid(menuList, storeData),
+              if (menuProvider.isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 30),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                _buildMenuGrid(menuList, storeData),
             ],
           );
         },
@@ -402,22 +395,14 @@ class _StorePageState extends State<StorePage> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () async {
+        onTap: () {
           if (menu.store_id <= 0 && widget.storeId > 0) {
             menu.store_id = widget.storeId;
             print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
           }
           Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
 
-          Store? forExchange = storeData;
-          if (widget.storeId > 0) {
-            try {
-              forExchange = await Provider.of<StoreProvider>(context, listen: false)
-                  .fetchDetailStore(widget.storeId);
-            } catch (_) {
-              forExchange = storeData;
-            }
-          }
+          final Store? forExchange = storeData;
           if (!mounted) return;
           Navigator.push(
             context,
