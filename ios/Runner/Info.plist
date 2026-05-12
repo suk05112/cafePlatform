@@ -115,6 +115,12 @@
 		<string>storykompassauth</string>
 		<string>kakaolink</string>
 		<string>kakaotalk-5.9.7</string>
+		<string>kakaotalk</string>
+		<string>naverpay</string>
+		<string>payco</string>
+		<string>supertoss</string>
+		<string>samsungpay</string>
+		<string>applepay</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>

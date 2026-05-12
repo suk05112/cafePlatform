@@ -1,3 +1,5 @@
+import 'package:cafeplatform/api/payment_url_request.dart';
+import 'package:cafeplatform/api/payment_url_response.dart';
 import 'package:cafeplatform/api/gifticon_response.dart';
 import 'package:cafeplatform/api/store_post_response.dart';
 import 'package:cafeplatform/api/user_response.dart';
@@ -92,6 +94,12 @@ abstract class ApiClient {
   @GET("/gifticon/list/{user_id}")
   Future<GifticonListResponse> getGifticonList(
     @Path('user_id') int userId,
+  );
+
+  @POST("/order/{user_id}/payment-url")
+  Future<PaymentUrlResponse> getPaymentUrl(
+    @Path('user_id') int userId,
+    @Body() PaymentUrlRequest request,
   );
 
   @POST("/order/{user_id}")

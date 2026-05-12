@@ -128,6 +128,12 @@ void handleDeepLink(Uri uri) async {
   print('  - path: ${uri.path}');
   print('  - queryParameters: ${uri.queryParameters}');
 
+  // gifnut://payment/result 또는 gifnut://payment/cancel — PayletterWebViewPage가 직접 처리
+  if (uri.scheme == 'gifnut' && uri.host == 'payment') {
+    print('페이레터 결제 딥링크 — PayletterWebViewPage에서 처리: $uri');
+    return;
+  }
+
   // 카카오 OAuth 콜백 URL은 무시 (카카오 SDK가 자체적으로 처리)
   // kakaoc...://oauth 또는 kakao...://oauth 형식의 URL은 카카오 로그인 OAuth 콜백
   if (uri.host == 'oauth' &&
