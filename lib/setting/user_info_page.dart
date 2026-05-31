@@ -603,6 +603,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
       // 서버에서 사용자 삭제 API 호출
       if (userId != null) {
         try {
+          await Api().setBaseClient(Api.BASE_URL);
           final deleteResponse =
               await Api().client.deleteUser(userId, appleAuthorizationCode);
           print(

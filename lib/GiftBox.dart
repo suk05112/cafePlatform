@@ -69,6 +69,7 @@ class _GiftBoxState extends State<GiftBox> {
       return;
     }
     try {
+      await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getGifticonList(user.user_id);
       var gifticonList = response.gifticonList;
 

@@ -668,6 +668,7 @@ class _PaymentState extends State<Payment> {
 
     setState(() => _isSubmitting = true);
     try {
+      await Api().setBaseClient(Api.BASE_URL);
       final PaymentUrlResponse paymentUrlResponse =
           await Api().client.getPaymentUrl(user.user_id, request);
 

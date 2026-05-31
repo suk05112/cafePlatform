@@ -253,6 +253,7 @@ class Api {
   /// 화면 전환이 수십 초 걸리는 것을 줄입니다. 로그인 성공 후 등에는 생략(기본 false).
   Future<ApiClient> setBaseClient(String baseUrl, {bool quickStart = false}) async {
     final user = FirebaseAuth.instance.currentUser;
+    print('[setBaseClient] currentUser: ${user?.uid ?? 'NULL'}');
 
     final tokens = await Future.wait<String?>([
       _idTokenForSetBase(user, quickStart),
@@ -260,6 +261,7 @@ class Api {
     ]);
     final idToken = tokens[0];
     final appCheckToken = tokens[1];
+    print('[setBaseClient] idToken: ${idToken != null ? '✅ 있음' : '❌ NULL'}, appCheckToken: ${appCheckToken != null ? '✅ 있음' : '❌ NULL'}');
 
     final baseHeaders = await _getHeaders();
 

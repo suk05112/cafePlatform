@@ -22,31 +22,20 @@ Future<void> main() async {
     debugPrint('Firebase already initialized: $e');
   }
 
-  unawaited(() async {
-    try {
-      if (kDebugMode) {
-        await FirebaseAppCheck.instance
-            .activate(
-              androidProvider: AndroidProvider.debug,
-              appleProvider: AppleProvider.appAttest,
-              webProvider: ReCaptchaV3Provider(
-                  "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
-            )
-            .timeout(const Duration(seconds: 10));
-      } else {
-        await FirebaseAppCheck.instance
-            .activate(
-              androidProvider: AndroidProvider.playIntegrity,
-              appleProvider: AppleProvider.appAttest,
-              webProvider: ReCaptchaV3Provider(
-                  "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
-            )
-            .timeout(const Duration(seconds: 15));
-      }
-    } catch (e) {
-      debugPrint('Firebase App Check activate: $e');
-    }
-  }());
+  try {
+    // TODO: Play Store 배포 후 아래를 playIntegrity로 되돌릴 것
+    await FirebaseAppCheck.instance
+        .activate(
+          androidProvider: AndroidProvider.debug,
+          appleProvider: AppleProvider.appAttest,
+          webProvider: ReCaptchaV3Provider(
+              "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
+        )
+        .timeout(const Duration(seconds: 10));
+    debugPrint('✅ App Check activated');
+  } catch (e) {
+    debugPrint('❌ Firebase App Check activate 실패: $e');
+  }
 
   var kakaoNative = '275e555cdb8196634a6aef161abe3f84';
   var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';
