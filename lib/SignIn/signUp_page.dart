@@ -617,6 +617,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
         allowMarketingPush: allowMarketingPush,
       );
 
+      await Api().setBaseClient(Api.BASE_URL);
       await Api().client.registerPushToken(userId, pushTokenRequest);
       print('푸시 토큰 등록 성공: userId=$userId');
     } catch (e) {

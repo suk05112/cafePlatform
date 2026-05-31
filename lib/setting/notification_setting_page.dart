@@ -98,6 +98,7 @@ class _NotificationSettingPageState extends State<NotificationSettingPage> {
         allowMarketingPush: allowMarketingPush,
       );
 
+      await Api().setBaseClient(Api.BASE_URL);
       await Api().client.updatePushToken(
             user.user_id,
             pushTokenUpdateRequest,

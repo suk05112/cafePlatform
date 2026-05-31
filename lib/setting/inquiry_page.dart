@@ -52,7 +52,9 @@ class _InquiryPageState extends State<InquiryPage>
   void fetchInquiry() {
     User? user = Provider.of<UserProvider>(context, listen: false).user;
     setState(() {
-      futureInquiryList = Api().client.getInquiry(user?.user_id ?? 0);
+      futureInquiryList = Api()
+          .setBaseClient(Api.BASE_URL)
+          .then((_) => Api().client.getInquiry(user?.user_id ?? 0));
     });
   }
 
@@ -254,11 +256,12 @@ class _InquiryPageState extends State<InquiryPage>
             ),
             onPressed: (titleController.text.trim().isNotEmpty &&
                     contentController.text.trim().isNotEmpty)
-                ? () {
+                ? () async {
                     var inquiry = Inquiry(
                         title: titleController.text,
                         content: contentController.text);
-                    Api().client.subjectInquiry(user?.user_id ?? 0, inquiry);
+                    await Api().setBaseClient(Api.BASE_URL);
+                    await Api().client.subjectInquiry(user?.user_id ?? 0, inquiry);
                     _showInquirySuccessDialog();
 
                     fetchInquiry();

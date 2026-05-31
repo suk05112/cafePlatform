@@ -40,6 +40,7 @@ class GifticonPage extends StatefulWidget {
       //       validity: DateTime(2025, 4, 1));
       //   return gifticon;
       // } else {
+      await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getGifticon(gifticonId);
       var gifticon = response.gifticon;
       print("gifticon: ${gifticon.gifticon_id}");
