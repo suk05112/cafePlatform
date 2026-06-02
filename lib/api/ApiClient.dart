@@ -102,13 +102,7 @@ abstract class ApiClient {
     @Body() PaymentUrlRequest request,
   );
 
-  @POST("/order/{user_id}")
-  Future<PurchaseGifticonResponse> purchaseGifticon(
-    @Path('user_id') int userId,
-    @Body() Gifticon gifticon,
-  );
-
-  @POST("/order/payment/result")
+@POST("/order/payment/result")
   Future<void> sendPaymentResult(
     @Body() PaymentResultRequest paymentResult,
   );

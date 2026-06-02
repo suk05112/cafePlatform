@@ -106,6 +106,7 @@ dependencies:
   aws_signature_v4: ^0.5.2
   crypto: ^3.0.7
   uri: ^1.0.0
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_native_splash: ^2.4.4

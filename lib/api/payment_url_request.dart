@@ -17,6 +17,8 @@ class PaymentUrlRequest {
   final int totalPrice;
   final String pgcode;
   final String? payment;
+  @JsonKey(name: 'idempotency_key')
+  final String? idempotencyKey;
 
   PaymentUrlRequest({
     required this.type,
@@ -28,6 +30,7 @@ class PaymentUrlRequest {
     required this.totalPrice,
     required this.pgcode,
     this.payment,
+    this.idempotencyKey,
   });
 
   factory PaymentUrlRequest.fromJson(Map<String, dynamic> json) =>

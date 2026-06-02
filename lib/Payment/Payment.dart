@@ -13,7 +13,6 @@ import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/menu.dart';
-import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/terms/payment_terms.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
@@ -29,6 +28,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:cafeplatform/utils/number_formatter.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
+import 'package:uuid/uuid.dart';
 
 /// true: Figma(1683:764) 결제 UI · 토스 위젯 미사용 · PG 연동 전
 const bool _kUseFigmaPaymentUi = true;
@@ -72,7 +72,9 @@ class _PaymentState extends State<Payment> {
 
   /// Figma 결제수단 UI
   String _figmaPaymentLabel = '카카오페이';
-  bool _figmaTermsAgreed = false;
+  // bool _figmaTermsAgreed = false;
+
+  String _idempotencyKey = const Uuid().v4();
 
   // 결제 위젯 로딩 상태
   bool _isLoadingWidgets = true;
@@ -269,48 +271,48 @@ class _PaymentState extends State<Payment> {
                                   setState(() => _figmaPaymentLabel = label);
                                 },
                               ),
-                              const SizedBox(height: 16),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: Checkbox(
-                                      value: _figmaTermsAgreed,
-                                      activeColor: ColorAssset.mainColor,
-                                      onChanged: (v) => setState(
-                                          () => _figmaTermsAgreed = v ?? false),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute<void>(
-                                            builder: (context) =>
-                                                Payment_Terms(),
-                                          ),
-                                        );
-                                      },
-                                      child: const Padding(
-                                        padding: EdgeInsets.only(top: 2),
-                                        child: Text(
-                                          '결제 및 개인정보 처리에 동의합니다. (필수)',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.black87,
-                                            height: 1.35,
-                                            decoration:
-                                                TextDecoration.underline,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              // const SizedBox(height: 16),
+                              // Row(
+                              //   crossAxisAlignment: CrossAxisAlignment.start,
+                              //   children: [
+                              //     SizedBox(
+                              //       width: 24,
+                              //       height: 24,
+                              //       child: Checkbox(
+                              //         value: _figmaTermsAgreed,
+                              //         activeColor: ColorAssset.mainColor,
+                              //         onChanged: (v) => setState(
+                              //             () => _figmaTermsAgreed = v ?? false),
+                              //       ),
+                              //     ),
+                              //     Expanded(
+                              //       child: GestureDetector(
+                              //         onTap: () {
+                              //           Navigator.push(
+                              //             context,
+                              //             MaterialPageRoute<void>(
+                              //               builder: (context) =>
+                              //                   Payment_Terms(),
+                              //             ),
+                              //           );
+                              //         },
+                              //         child: const Padding(
+                              //           padding: EdgeInsets.only(top: 2),
+                              //           child: Text(
+                              //             '결제 및 개인정보 처리에 동의합니다. (필수)',
+                              //             style: TextStyle(
+                              //               fontSize: 13,
+                              //               color: Colors.black87,
+                              //               height: 1.35,
+                              //               decoration:
+                              //                   TextDecoration.underline,
+                              //             ),
+                              //           ),
+                              //         ),
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
                             ] else
                               Stack(
                                 children: [
@@ -563,11 +565,11 @@ class _PaymentState extends State<Payment> {
 
     late final String paymentValue;
     if (_kUseFigmaPaymentUi) {
-      if (!_figmaTermsAgreed) {
-        _showToast('결제 약관에 동의해 주세요.');
-        return;
-      }
-      if (_figmaPaymentLabel.isEmpty) {
+      // if (!_figmaTermsAgreed) {
+      //   _showToast('결제 약관에 동의해 주세요.');
+      //   return;
+      // }
+if (_figmaPaymentLabel.isEmpty) {
         _showToast('결제수단을 선택해주세요.');
         return;
       }
@@ -662,6 +664,7 @@ class _PaymentState extends State<Payment> {
       totalPrice: widget.menu.price,
       pgcode: pgcode,
       payment: paymentValue,
+      idempotencyKey: _idempotencyKey,
     );
 
     print('결제 URL 요청 - user_id: ${user.user_id}, store_id: $storeId, pgcode: $pgcode');
@@ -676,6 +679,12 @@ class _PaymentState extends State<Payment> {
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);
+
+      if (paymentUrlResponse.mobileUrl.isEmpty) {
+        _showToast('결제 URL을 받지 못했습니다. 다시 시도해주세요.');
+        setState(() => _idempotencyKey = const Uuid().v4());
+        return;
+      }
 
       final resultData = await Navigator.of(context).push<PayletterResultData>(
         MaterialPageRoute(
@@ -711,8 +720,10 @@ class _PaymentState extends State<Payment> {
           ),
         );
       } else if (resultData?.result == PayletterResult.cancel) {
+        setState(() => _idempotencyKey = const Uuid().v4());
         _showToast('결제가 취소되었습니다.');
       } else if (resultData?.result == PayletterResult.fail) {
+        setState(() => _idempotencyKey = const Uuid().v4());
         final msg = resultData?.message;
         _showToast(msg != null && msg.isNotEmpty ? msg : '결제에 실패했습니다. 다시 시도해주세요.');
       }
@@ -731,6 +742,7 @@ class _PaymentState extends State<Payment> {
         }
       }
 
+      // 네트워크 오류 시 동일 UUID 재사용 (서버 중복 차단)
       _showToast('결제 요청에 실패했습니다. 다시 시도해주세요.');
     } catch (e) {
       print('결제 오류: $e');
@@ -841,143 +853,6 @@ class ApplyPoints extends StatelessWidget {
   }
 }
 
-class paymentBtn extends StatefulWidget {
-  const paymentBtn({
-    super.key,
-    required this.type,
-    required this.menu,
-    required this.receiver,
-    required this.receiverPhoneNumber,
-  });
-
-  final int type;
-  final Menu menu;
-  final String receiver;
-  final String receiverPhoneNumber;
-
-  @override
-  _paymentBtn createState() =>
-      _paymentBtn(); // StatefulWidget은 상태를 생성하는 createState() 메서드로 구현한다.
-}
-
-class _paymentBtn extends State<paymentBtn> {
-  String webApplicationId = '6757d28731d38115ba3fc912';
-  String androidApplicationId = '6757d28731d38115ba3fc913';
-  String iosApplicationId = '6757d28731d38115ba3fc914';
-
-  @override
-  Widget build(BuildContext context) {
-    final menu = widget.menu;
-
-    User? user = Provider.of<UserProvider>(context).user;
-
-    return Center(
-        // Elevated Button 위젯
-        child: SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          foregroundColor: Colors.white,
-          backgroundColor: ColorAssset.mainColor,
-        ),
-        child: Text('${menu.price}원 결제하기'),
-
-        // 클릭 이벤트
-        onPressed: () {
-          // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
-          setState(() {
-            Gifticon gifticon = Gifticon();
-            gifticon.store_id = widget.menu.store_id;
-            gifticon.type = widget.type;
-            gifticon.name = menu.name ?? "";
-            gifticon.sender = user?.name ?? "user is null";
-            gifticon.receiver = widget.receiver;
-            gifticon.receiver_phone_number = widget.receiverPhoneNumber;
-            gifticon.payment = "kakao";
-            gifticon.menu_id = widget.menu.menu_id;
-            gifticon.total_price = widget.menu.price;
-            // bootpayTest(context, gifticon, _menu);
-
-            print("user info: ${user?.user_id}, ${user?.email}, ${user?.name}");
-            // shareKaKaotalk(gifticon);
-            // Api()
-            //     .client
-            //     .purchaseGifticon(user?.user_id ?? 0, gifticon)
-            //     .then((value) {
-            //   if (value.statusCode == 200) {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(builder: (context) => CompletePayment()),
-            //     );
-            //   } else {
-            //     print("결제 실패");
-            //   }
-            // });
-          });
-        },
-      ),
-    ));
-  }
-
-/*
-  void bootpayTest(BuildContext context, Gifticon gifticon, Menu menu) {
-    Payload payload = getPayload(gifticon, menu);
-    if (kIsWeb) {
-      payload.extra?.openType = "iframe";
-    }
-
-    Bootpay().requestPayment(
-      context: context,
-      payload: payload,
-      showCloseButton: false,
-      // closeButton: Icon(Icons.close, size: 35.0, color: Colors.black54),
-      onCancel: (String data) {
-        print('------- onCancel: $data');
-      },
-      onError: (String data) {
-        print('------- onError: $data');
-      },
-      onClose: () {
-        print('------- onClose');
-        Bootpay().dismiss(context); //명시적으로 부트페이 뷰 종료 호출
-        //TODO - 원하시는 라우터로 페이지 이동
-      },
-      onIssued: (String data) {
-        print('------- onIssued: $data');
-      },
-      onConfirm: (String data) {
-        print('------- onConfirm: $data');
-        /**
-            1. 바로 승인하고자 할 때
-            return true;
-         **/
-        /***
-            2. 비동기 승인 하고자 할 때
-            checkQtyFromServer(data);
-            return false;
-         ***/
-        /***
-            3. 서버승인을 하고자 하실 때 (클라이언트 승인 X)
-            return false; 후에 서버에서 결제승인 수행
-         */
-        // checkQtyFromServer(data);
-        return true;
-      },
-      onDone: (String data) {
-        print('------- onDone: $data');
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => CompletePayment()),
-        );
-      },
-    );
-  }
-  */
-}
 
 /*
   Payload getPayload(Gifticon gifticon, Menu menu) {

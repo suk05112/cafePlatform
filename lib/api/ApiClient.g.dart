@@ -384,37 +384,6 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<PurchaseGifticonResponse> purchaseGifticon(
-    int userId,
-    Gifticon gifticon,
-  ) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    final _data = <String, dynamic>{};
-    _data.addAll(gifticon.toJson());
-    final _result = await _dio.fetch<Map<String, dynamic>>(
-        _setStreamType<PurchaseGifticonResponse>(Options(
-      method: 'POST',
-      headers: _headers,
-      extra: _extra,
-    )
-            .compose(
-              _dio.options,
-              '/order/${userId}',
-              queryParameters: queryParameters,
-              data: _data,
-            )
-            .copyWith(
-                baseUrl: _combineBaseUrls(
-              _dio.options.baseUrl,
-              baseUrl,
-            ))));
-    final _value = PurchaseGifticonResponse.fromJson(_result.data!);
-    return _value;
-  }
-
-  @override
   Future<void> sendPaymentResult(PaymentResultRequest paymentResult) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

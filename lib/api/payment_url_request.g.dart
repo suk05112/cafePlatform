@@ -17,6 +17,7 @@ PaymentUrlRequest _$PaymentUrlRequestFromJson(Map<String, dynamic> json) =>
       totalPrice: json['total_price'] as int,
       pgcode: json['pgcode'] as String,
       payment: json['payment'] as String?,
+      idempotencyKey: json['idempotency_key'] as String?,
     );
 
 Map<String, dynamic> _$PaymentUrlRequestToJson(PaymentUrlRequest instance) =>
@@ -30,4 +31,5 @@ Map<String, dynamic> _$PaymentUrlRequestToJson(PaymentUrlRequest instance) =>
       'total_price': instance.totalPrice,
       'pgcode': instance.pgcode,
       'payment': instance.payment,
+      'idempotency_key': instance.idempotencyKey,
     };
