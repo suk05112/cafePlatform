@@ -581,10 +581,7 @@ class _GifticonPageState extends State<GifticonPage>
 
   Widget useButton(gifticon) {
     String statusText = gifticonStatus(gifticon?.status, gifticon.validity);
-    bool available = false;
-    if (statusText == "사용가능") {
-      available = true;
-    }
+    bool available = statusText == "사용가능" && gifticon.store_id != null;
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -595,13 +592,13 @@ class _GifticonPageState extends State<GifticonPage>
           ),
           foregroundColor: Colors.white,
           backgroundColor:
-              available == true ? ColorAssset.mainColor : Colors.grey[400],
+              available ? ColorAssset.mainColor : Colors.grey[400],
           elevation: 0,
         ),
         onPressed: available == false
             ? null
             : () async {
-                await ShowQR(gifticon.gifticon_id, gifticon.store_id);
+                await ShowQR(gifticon.gifticon_id, gifticon.store_id!);
               },
         child: Text(
           '사용하기',
