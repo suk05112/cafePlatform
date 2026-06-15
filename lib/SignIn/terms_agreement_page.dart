@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:cafeplatform/setting/terms_page.dart';
 
 enum TermsType {
-  service('https://www.502company.com/term/user/service/'),
-  privacy('https://www.502company.com/term/user/privacy-consent/'),
-  marketing('https://www.502company.com/term/user/marketing/');
-  // service('https://www.502company.com/terms/service'),
-  // privacy('https://www.502company.com/terms/privacy'),
-  // marketing('https://www.502company.com/terms/marketing');
+  service('SERVICE'),
+  privacy('PRIVACY'),
+  marketing('MARKETING');
 
-  const TermsType(this.url);
-  final String url;
+  const TermsType(this.termType);
+  final String termType;
 }
 
 class TermsAgreementPage extends StatefulWidget {
@@ -65,10 +62,22 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
       context,
       MaterialPageRoute(
         builder: (_) => TermsWebViewPage(
-          url: type.url,
+          title: _termTitle(type),
+          termType: type.termType,
         ),
       ),
     );
+  }
+
+  String _termTitle(TermsType type) {
+    switch (type) {
+      case TermsType.service:
+        return '이용약관';
+      case TermsType.privacy:
+        return '개인정보 수집 및 이용동의';
+      case TermsType.marketing:
+        return 'E-mail 및 SMS 광고성 정보 수신동의';
+    }
   }
 
   Future<void> _handleNext() async {
@@ -287,48 +296,3 @@ class _AgreementTile extends StatelessWidget {
   }
 }
 
-class TermsWebViewPage extends StatefulWidget {
-  const TermsWebViewPage({super.key, required this.url});
-
-  final String url;
-
-  @override
-  State<TermsWebViewPage> createState() => _TermsWebViewPageState();
-}
-
-class _TermsWebViewPageState extends State<TermsWebViewPage> {
-  bool _isLoading = true;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CommonAppBar(title: '약관 상세'),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            SizedBox.expand(
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-                initialSettings: InAppWebViewSettings(
-                  javaScriptEnabled: true,
-                  domStorageEnabled: true,
-                  useHybridComposition: true,
-                  transparentBackground: false,
-                  enableViewportScale: true,
-                ),
-                onLoadStart: (controller, url) =>
-                    setState(() => _isLoading = true),
-                onLoadStop: (controller, url) =>
-                    setState(() => _isLoading = false),
-              ),
-            ),
-            if (_isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
