@@ -6,6 +6,7 @@ import 'package:cafeplatform/SignIn/login_page.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
+import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cafeplatform/api/API.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,6 +33,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+
+      // 지역 목록을 백그라운드에서 미리 로드 (바텀시트 지연 방지)
+      unawaited(storeProvider.fetchAvailableRegions());
 
       // UserProvider에서 로그인 상태를 먼저 확인 (비동기 로드 완료 대기)
       await userProvider.fetchUser();

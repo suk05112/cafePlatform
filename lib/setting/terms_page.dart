@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -297,7 +298,9 @@ class _TermsWebViewPageState extends State<TermsWebViewPage> {
               ),
             if (_isLoading && !_hasError)
               Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(ColorAssset.mainColor),
+                ),
               ),
           ],
         ),

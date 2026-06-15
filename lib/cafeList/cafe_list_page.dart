@@ -60,6 +60,7 @@ class _CafeListState extends State<CafeList> {
   static const Color _subtitleColor = Color(0xFF757575);
 
   String? _selectedRegionCode;
+  bool _isRegionPickerOpen = false;
   final ScrollController _scrollController = ScrollController();
   double _refLat = kDefaultReferenceLatitude;
   double _refLng = kDefaultReferenceLongitude;
@@ -303,7 +304,16 @@ class _CafeListState extends State<CafeList> {
                   ),
                 ),
               ),
-              if (filteredListViewStores.isEmpty && !storeProvider.isLoadingMore)
+              if (storeProvider.listViewIsLoading)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(ColorAssset.mainColor),
+                    ),
+                  ),
+                )
+              else if (filteredListViewStores.isEmpty && !storeProvider.isLoadingMore)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: _buildEmptyStoreState(),
@@ -731,7 +741,12 @@ class _CafeListState extends State<CafeList> {
     );
 
     return InkWell(
-      onTap: () => showStoreRegionPickerBottomSheet(context),
+      onTap: () async {
+        if (_isRegionPickerOpen) return;
+        _isRegionPickerOpen = true;
+        await showStoreRegionPickerBottomSheet(context);
+        _isRegionPickerOpen = false;
+      },
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
