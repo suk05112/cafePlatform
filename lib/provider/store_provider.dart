@@ -14,6 +14,7 @@ class StoreProvider extends ChangeNotifier {
   List<Store>? _listViewStores = [];
   String? _listViewNextCursor;
   bool _listViewHasMore = false;
+  bool _listViewIsLoading = false;
   bool _listViewIsLoadingMore = false;
   String? _listViewCurrentDistrictCode;
 
@@ -32,6 +33,7 @@ class StoreProvider extends ChangeNotifier {
   List<Store>? get listViewStores => _listViewStores;
   String? get listViewNextCursor => _listViewNextCursor;
   bool get listViewHasMore => _listViewHasMore;
+  bool get listViewIsLoading => _listViewIsLoading;
   bool get listViewIsLoadingMore => _listViewIsLoadingMore;
 
   // 지도 뷰 getters
@@ -142,7 +144,9 @@ class StoreProvider extends ChangeNotifier {
     try {
       _listViewCurrentDistrictCode = districtCode;
       if (!append) {
+        _listViewIsLoading = true;
         _listViewIsLoadingMore = false;
+        notifyListeners();
       } else {
         _listViewIsLoadingMore = true;
         notifyListeners();
@@ -163,17 +167,17 @@ class StoreProvider extends ChangeNotifier {
       if (append) {
         appendListViewStores(storeList, nextCursor, hasNext);
       } else {
-        // 새 검색 시에는 setListViewStores를 사용하되, 페이지네이션 정보는 별도로 설정
         _listViewStores = storeList;
         _listViewNextCursor = nextCursor;
         _listViewHasMore = hasNext;
+        _listViewIsLoading = false;
         _listViewIsLoadingMore = false;
-        // 하위 호환성을 위해 기존 필드도 업데이트
         this.storeCards = storeList;
         notifyListeners();
       }
     } catch (error) {
       print("store_provider::fetchListViewStoresByDistrict:: fetch 오류: $error");
+      _listViewIsLoading = false;
       _listViewIsLoadingMore = false;
       notifyListeners();
       if (!append) {
@@ -287,6 +291,7 @@ class StoreProvider extends ChangeNotifier {
   }
 
   Future<void> fetchAvailableRegions() async {
+    if (_availableRegions.isNotEmpty) return;
     try {
       print("store_provider::fetchAvailableRegions:: fetch 호출");
       var response = await Api().client.getAvailableRegions();

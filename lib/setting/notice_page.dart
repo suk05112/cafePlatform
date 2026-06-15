@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/notice_response.dart';
@@ -140,7 +141,7 @@ class _NoticePageState extends State<NoticePage> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: _isLoading
-            ? Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(ColorAssset.mainColor)))
             : _hasError
                 ? Center(
                     child: Padding(
