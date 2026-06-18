@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cafeplatform/api/API.dart';
@@ -134,7 +135,7 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
               ? Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
+                    CircularProgressIndicator(color: ColorAssset.mainColor),
                     SizedBox(height: 24),
                     Text(
                       '기프티콘을 등록하는 중입니다...',

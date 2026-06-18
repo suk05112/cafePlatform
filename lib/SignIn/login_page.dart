@@ -556,7 +556,7 @@ class _LoginPageState extends State<LoginPage> {
                 Container(
                   color: Colors.black.withOpacity(0.3),
                   child: const Center(
-                    child: CircularProgressIndicator(),
+                    child: CircularProgressIndicator(color: ColorAssset.mainColor),
                   ),
                 ),
             ],

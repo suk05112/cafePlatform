@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/business_info_response.dart';
 import 'package:cafeplatform/setting/inquiry_page.dart';
@@ -386,7 +387,7 @@ class _SettingPageState extends State<SettingPage> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
           );
         } else if (snapshot.hasError) {
           return Container(

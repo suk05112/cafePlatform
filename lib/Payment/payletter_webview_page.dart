@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
@@ -226,7 +227,7 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
           children: [
             WebViewWidget(controller: _controller),
             if (_isLoading)
-              const Center(child: CircularProgressIndicator()),
+              Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
           ],
         ),
       ),

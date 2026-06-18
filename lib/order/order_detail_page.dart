@@ -75,7 +75,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
           future: _fetchOrderDetail(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
             }
 
             if (snapshot.hasError) {

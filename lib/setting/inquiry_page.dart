@@ -313,7 +313,7 @@ class _InquiryPageState extends State<InquiryPage>
                 child: SizedBox(
               width: 30,
               height: 30,
-              child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(color: ColorAssset.mainColor),
             ));
           } else if (snapshot.hasError) {
             return Center(

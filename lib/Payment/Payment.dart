@@ -336,7 +336,7 @@ class _PaymentState extends State<Payment> {
                                     const SizedBox(
                                       height: 200,
                                       child: Center(
-                                        child: CircularProgressIndicator(),
+                                        child: CircularProgressIndicator(color: ColorAssset.mainColor),
                                       ),
                                     ),
                                 ],
@@ -388,7 +388,7 @@ class _PaymentState extends State<Payment> {
           if (_isSubmitting)
             const ModalBarrier(dismissible: false, color: Colors.black26),
           if (_isSubmitting)
-            const Center(child: CircularProgressIndicator()),
+            const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
         ],
       ),
     );

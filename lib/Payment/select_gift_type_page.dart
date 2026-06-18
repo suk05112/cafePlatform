@@ -118,7 +118,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
 
   Widget _guideTabBody() {
     if (!_termsLoaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
     }
     if (_guideTab == 0) {
       return Text(

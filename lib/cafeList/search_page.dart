@@ -165,7 +165,7 @@ class _SearchPageState extends State<SearchPage> {
             ),
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor))
                   : _hasSearched && storeCards.isEmpty
                       ? _buildEmptyState()
                       : storeCards.isEmpty
@@ -317,7 +317,7 @@ class _SearchPageState extends State<SearchPage> {
         if (index == storeCards.length) {
           return const Padding(
             padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
           );
         }
         return _DiscoveryStoreRow(
