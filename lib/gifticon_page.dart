@@ -106,7 +106,7 @@ class _GifticonPageState extends State<GifticonPage>
                 future: futureGifticon,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
+                    return Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
                   } else if (snapshot.hasError) {
                     return Center(
                       child: Column(

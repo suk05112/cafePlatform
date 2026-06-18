@@ -29,7 +29,6 @@ class MenuPostResponse {
 class Menu {
   int menu_id;
   int store_id;
-  @JsonKey(name: 'menu_name')
   String? name;
   int price;
   @JsonKey(name: 'menu_photo')

@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
@@ -499,7 +500,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
               child: const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(color: ColorAssset.mainColor),
                   SizedBox(height: 16),
                   Text(
                     '회원 탈퇴 처리 중...',

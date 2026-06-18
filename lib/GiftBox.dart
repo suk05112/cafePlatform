@@ -7,8 +7,9 @@ import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 
 class GiftBox extends StatefulWidget {
   const GiftBox({super.key});
@@ -17,57 +18,33 @@ class GiftBox extends StatefulWidget {
   _GiftBoxState createState() => _GiftBoxState();
 }
 
-class _GiftBoxState extends State<GiftBox> {
+class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
   List<Gifticon> usedGifticons = [];
   List<Gifticon> unusedGifticons = [];
-  bool showUsed = false; // 현재 보여줄 리스트 선택 (true: 사용된 기프티콘, false: 미사용)
+  String? _currentUserName;
+  bool _isLoading = true;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    print("_GiftBoxState initState");
-    // makeFakeData(); // 테스트용
-    fetchGifticons(); // API 호출 - 테스트 시 주석 처리
+    _tabController = TabController(length: 2, vsync: this);
+    fetchGifticons();
   }
 
-  void makeFakeData() {
-    print("🔹 makeFakeData 호출됨");
-    setState(() {
-      usedGifticons = [
-        Gifticon(
-            gifticon_id: 1,
-            name: "사용된 기프티콘",
-            status: "USED",
-            store_name: "테스트 카페",
-            sender: "sender",
-            description: "description",
-            validity: DateTime(2024, 1, 1)) // 과거 날짜로 설정
-      ];
-      unusedGifticons = [
-        Gifticon(
-            gifticon_id: 2,
-            name: "사용안된 기프티콘",
-            status: "UNUSED",
-            store_name: "테스트 카페",
-            sender: "sender",
-            description: "description",
-            validity: DateTime(2026, 12, 31)) // 미래 날짜로 설정
-      ];
-      print(
-          "🔹 makeFakeData 완료 - usedGifticons: ${usedGifticons.length}, unusedGifticons: ${unusedGifticons.length}");
-    });
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchGifticons() async {
-    print("🔹 fetchGifticons 실행됨"); // ✅ 함수 호출 확인
-
     User? user =
         await Provider.of<UserProvider>(context, listen: false).fetchUser();
-
-    if (user == null) {
-      print("🚨 유저가 null임");
-      return;
-    }
+    if (user == null) return;
+    setState(() {
+      _currentUserName = user.name;
+    });
     try {
       await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getGifticonList(user.user_id);
@@ -75,33 +52,23 @@ class _GiftBoxState extends State<GiftBox> {
 
       setState(() {
         usedGifticons = gifticonList
-            .where((gifticon) =>
-                gifticon.status == 'USED' ||
-                gifticon.status == 'EXPIRED' ||
-                gifticon.status == 'CANCELED' ||
-                (gifticon.validity != null &&
-                    gifticon.validity!.isBefore(DateTime.now())))
+            .where((g) =>
+                g.status == 'USED' ||
+                g.status == 'EXPIRED' ||
+                g.status == 'CANCELED' ||
+                (g.validity != null && g.validity!.isBefore(DateTime.now())))
             .toList();
         unusedGifticons = gifticonList
-            .where((gifticon) =>
-                gifticon.status == 'UNUSED' &&
-                (gifticon.validity == null ||
-                    (gifticon.validity!.isAfter(DateTime.now()) ||
-                        gifticon.validity!.isAtSameMomentAs(DateTime.now()))))
+            .where((g) =>
+                g.status == 'UNUSED' &&
+                (g.validity == null || !g.validity!.isBefore(DateTime.now())))
             .toList();
-
-        for (var gifticon in unusedGifticons) {
-          print("unusedGifticons: ${gifticon.gifticon_id}");
-          print("unusedGifticons: ${gifticon.toJson()}");
-        }
+        _isLoading = false;
       });
     } catch (error) {
       print("Error fetching gifticons: $error");
+      setState(() => _isLoading = false);
     }
-  }
-
-  void _navigateToHome() {
-    Get.offAll(() => const TabPage(initialIndex: 0));
   }
 
   @override
@@ -122,136 +89,73 @@ class _GiftBoxState extends State<GiftBox> {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home, color: Colors.black),
-            onPressed: _navigateToHome,
-            tooltip: '홈으로 가기',
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(49),
+          child: Column(
+            children: [
+              Container(height: 1, color: Colors.grey[200]),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.black87,
+                indicatorWeight: 2,
+                dividerColor: Colors.transparent,
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+                labelColor: Colors.black87,
+                unselectedLabelColor: Colors.grey[400],
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.3,
+                ),
+                tabs: [
+                  Tab(text: "미사용 (${unusedGifticons.length})"),
+                  Tab(text: "사용완료 (${usedGifticons.length})"),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
       backgroundColor: Colors.white,
       body: NetworkAwareWidget(
         onRetry: fetchGifticons,
-        child: Column(
-          children: <Widget>[
-            // 탭 선택 버튼
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: ColorAssset.mainColor,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : TabBarView(
+                controller: _tabController,
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          showUsed = false;
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: Duration(milliseconds: 200),
-                        curve: Curves.easeInOut,
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: !showUsed ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: !showUsed
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                    spreadRadius: 0,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            "미사용 (${unusedGifticons.length})",
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight:
-                                  !showUsed ? FontWeight.w700 : FontWeight.w500,
-                              color:
-                                  !showUsed ? Colors.black87 : Colors.grey[500],
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  _GifticonListView(
+                    gifticonList: unusedGifticons,
+                    currentUserName: _currentUserName,
                   ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          showUsed = true;
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: Duration(milliseconds: 200),
-                        curve: Curves.easeInOut,
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: showUsed ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: showUsed
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                    spreadRadius: 0,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            "사용완료 (${usedGifticons.length})",
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight:
-                                  showUsed ? FontWeight.w700 : FontWeight.w500,
-                              color:
-                                  showUsed ? Colors.black87 : Colors.grey[500],
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  _GifticonListView(
+                    gifticonList: usedGifticons,
+                    currentUserName: _currentUserName,
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: GifticonGridview(
-                gifticonList: showUsed ? usedGifticons : unusedGifticons,
-                showUsed: showUsed,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
-  // }
 }
 
-// ✅ GifticonGridview: API에서 받아온 데이터를 받아서 보여주는 위젯
-class GifticonGridview extends StatelessWidget {
+class _GifticonListView extends StatelessWidget {
   final List<Gifticon> gifticonList;
-  final bool showUsed;
+  final String? currentUserName;
 
-  const GifticonGridview({
-    super.key,
+  const _GifticonListView({
     required this.gifticonList,
-    this.showUsed = false,
+    required this.currentUserName,
   });
 
   @override
@@ -261,17 +165,14 @@ class GifticonGridview extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.card_giftcard_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            SizedBox(height: 16),
+            Icon(Icons.card_giftcard_outlined, size: 52, color: Colors.grey[300]),
+            const SizedBox(height: 12),
             Text(
-              showUsed ? "사용 완료된 선물이 없습니다." : "사용 가능한 선물이 없습니다.",
+              "선물이 없습니다.",
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: Colors.grey[400],
+                letterSpacing: -0.3,
               ),
             ),
           ],
@@ -279,298 +180,155 @@ class GifticonGridview extends StatelessWidget {
       );
     }
 
-    return GridView.builder(
-      padding: EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.85,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: gifticonList.length,
+      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[100]),
       itemBuilder: (context, index) {
-        Gifticon gifticon = gifticonList[index];
-        bool isUsedGift = isUsed(gifticon);
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GifticonPage(
-                  gifticon_id: gifticon.gifticon_id,
-                ),
-              ),
-            );
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 이미지 영역
-                      Expanded(
-                        flex: 3,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            _buildMenuImage(gifticon.menu_url),
-                            // 이미지 하단 그라데이션
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: Container(
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black.withOpacity(0.1),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // 사용완료된 선물에 투명한 회색 오버레이
-                            if (isUsedGift)
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.black.withOpacity(0.5),
-                                      Colors.black.withOpacity(0.6),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            if (isUsedGift)
-                              Center(
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(24),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle,
-                                        size: 14,
-                                        color: Colors.grey[700],
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        "사용완료",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.grey[800],
-                                          letterSpacing: -0.2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      // 텍스트 영역
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          padding: EdgeInsets.fromLTRB(14, 14, 14, 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                gifticon.name,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: isUsedGift
-                                      ? Colors.grey[400]
-                                      : Colors.black87,
-                                  letterSpacing: -0.3,
-                                  height: 1.3,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.store,
-                                    size: 12,
-                                    color: isUsedGift
-                                        ? Colors.grey[300]
-                                        : Colors.grey[500],
-                                  ),
-                                  SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      gifticon.store_name,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isUsedGift
-                                            ? Colors.grey[300]
-                                            : Colors.grey[600],
-                                        letterSpacing: -0.2,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+        return _GifticonRow(
+          gifticon: gifticonList[index],
+          currentUserName: currentUserName,
         );
       },
     );
   }
+}
 
-  // ✅ 기프티콘이 사용되었는지 판별
-  bool isUsed(Gifticon gifticon) {
-    return gifticon.validity!.isBefore(DateTime.now());
+class _GifticonRow extends StatelessWidget {
+  final Gifticon gifticon;
+  final String? currentUserName;
+
+  const _GifticonRow({required this.gifticon, required this.currentUserName});
+
+  bool get _isUsed {
+    return gifticon.status == 'USED' ||
+        gifticon.status == 'EXPIRED' ||
+        gifticon.status == 'CANCELED' ||
+        (gifticon.validity != null && gifticon.validity!.isBefore(DateTime.now()));
   }
 
-  // ✅ 메뉴 이미지 빌드 (URL 유효성 검사 포함)
-  Widget _buildMenuImage(String? menuUrl) {
-    final cleanedUrl = menuUrl?.trim() ?? '';
+  bool get _showSender {
+    if (gifticon.sender.isEmpty) return false;
+    return gifticon.sender != currentUserName;
+  }
 
-    // URL이 비어있거나 유효하지 않은 경우
-    if (cleanedUrl.isEmpty ||
-        (!cleanedUrl.startsWith('http://') &&
-            !cleanedUrl.startsWith('https://'))) {
-      // 이미지가 없을 때 예쁜 플레이스홀더 표시
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.grey[100]!,
-              Colors.grey[200]!,
-            ],
+  String _formatValidity(DateTime validity) {
+    return '${DateFormat('yyyy.MM.dd').format(validity)} 까지';
+  }
+
+  bool get _hasImage {
+    final url = gifticon.menu_url?.trim() ?? '';
+    return url.startsWith('http://') || url.startsWith('https://');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GifticonPage(gifticon_id: gifticon.gifticon_id),
           ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        );
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Opacity(
+        opacity: _isUsed ? 0.45 : 1.0,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SvgPicture.asset(
-                'assets/gifnut_logo.svg',
-                width: 60,
-                height: 60,
-                fit: BoxFit.contain,
+              if (_hasImage) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    gifticon.menu_url!.trim(),
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        width: 72,
+                        height: 72,
+                        color: Colors.grey[100],
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      print('GiftBox image error: $error');
+                      return Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      gifticon.store_name,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      gifticon.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                        letterSpacing: -0.4,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (_showSender) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'From. ${gifticon.sender}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[400],
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ],
+                    if (gifticon.validity != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatValidity(gifticon.validity!),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[400],
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 18, color: Colors.grey[300]),
             ],
           ),
         ),
-      );
-    }
-
-    // 유효한 URL이 있을 때 네트워크 이미지 표시
-    return Image.network(
-      cleanedUrl,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.grey[100]!,
-                Colors.grey[200]!,
-              ],
-            ),
-          ),
-          child: Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        // 네트워크 이미지 로드 실패 시 플레이스홀더 표시
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.grey[100]!,
-                Colors.grey[200]!,
-              ],
-            ),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SvgPicture.asset(
-                  'assets/gifnut_logo.svg',
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.contain,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      ),
     );
   }
 }

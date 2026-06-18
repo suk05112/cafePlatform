@@ -77,7 +77,7 @@ class _StorePageState extends State<StorePage> {
                       "FutureBuilder - snapshot.connectionState: ${snapshot.connectionState}");
                   return Container(
                     color: Colors.white,
-                    child: Center(child: CircularProgressIndicator()),
+                    child: const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
                   );
                 } else if (snapshot.hasError) {
                   print("FutureBuilder - snapshot.hasError: ${snapshot.error}");
@@ -341,7 +341,7 @@ class _StorePageState extends State<StorePage> {
               if (menuProvider.isLoading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 30),
-                  child: Center(child: CircularProgressIndicator()),
+                  child: const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
                 )
               else
                 _buildMenuGrid(menuList, storeData),
@@ -497,6 +497,7 @@ class _StorePageState extends State<StorePage> {
                                       height: 22,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
+                                        color: ColorAssset.mainColor,
                                       ),
                                     ),
                                   ),
@@ -772,7 +773,7 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
         width: double.infinity,
         height: _StoreFigma.sliderHeight,
         color: _StoreFigma.sliderPlaceholder,
-        child: const Center(child: CircularProgressIndicator()),
+        child: const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
       );
     } else if (images.isEmpty) {
       return Container(

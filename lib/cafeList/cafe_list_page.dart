@@ -328,7 +328,7 @@ class _CafeListState extends State<CafeList> {
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 24),
                             child: Center(
-                              child: CircularProgressIndicator(),
+                              child: CircularProgressIndicator(color: ColorAssset.mainColor),
                             ),
                           );
                         }
