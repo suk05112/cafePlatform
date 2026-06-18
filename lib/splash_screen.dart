@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cafeplatform/SignIn/login_page.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
@@ -89,11 +88,12 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       }
 
-      // 자동 로그인 실패 또는 로그인 안됨 - 로그인 페이지로 이동
+      // 로그인 안됨 - 홈화면으로 이동
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
+          MaterialPageRoute(
+              builder: (context) => const TabPage(initialIndex: 0)),
         );
       }
     } catch (e) {
@@ -101,7 +101,8 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
+          MaterialPageRoute(
+              builder: (context) => const TabPage(initialIndex: 0)),
         );
       }
     }

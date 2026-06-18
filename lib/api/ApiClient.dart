@@ -155,6 +155,12 @@ abstract class ApiClient {
     @Header('X-FCM-Token') String? fcmToken,
   );
 
+  @DELETE("/user/push-token/{user_id}")
+  Future<void> deleteUserPushToken(
+    @Path('user_id') int userId,
+    @Header('X-FCM-Token') String fcmToken,
+  );
+
   @DELETE("/user/{user_id}")
   Future<DeleteUserResponse> deleteUser(
     @Path('user_id') int userId,

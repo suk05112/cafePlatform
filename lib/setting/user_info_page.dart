@@ -451,14 +451,26 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
   Future<void> _handleLogout(BuildContext context) async {
     try {
+      // 서버 FCM 토큰 삭제
+      final userId = userProvider.user?.user_id;
+      final prefs = await SharedPreferences.getInstance();
+      final fcmToken = prefs.getString('fcm_token');
+      if (userId != null && fcmToken != null) {
+        try {
+          await Api().setBaseClient(Api.BASE_URL);
+          await Api().client.deleteUserPushToken(userId, fcmToken);
+        } catch (e) {
+          print('서버 FCM 토큰 삭제 오류: $e');
+        }
+      }
+
       // Firebase Auth 로그아웃
       await firebase_auth.FirebaseAuth.instance.signOut();
 
       // UserProvider에서 사용자 정보 삭제
       await userProvider.clearUser();
 
-      // SharedPreferences에서 FCM 토큰 삭제 (선택사항)
-      final prefs = await SharedPreferences.getInstance();
+      // SharedPreferences에서 FCM 토큰 삭제
       await prefs.remove('fcm_token');
 
       // // 모든 스택을 제거하고 TabPage(매장 리스트)로 이동

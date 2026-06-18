@@ -3,12 +3,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
-import 'package:get/get.dart';
 import 'package:cafeplatform/Extension/datetime_extension.dart';
 import 'package:cafeplatform/Payment/GifticonInfo.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
-import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
@@ -70,10 +68,6 @@ class _GifticonPageState extends State<GifticonPage>
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  void _navigateToHome() {
-    Get.offAll(() => const TabPage(initialIndex: 0));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,13 +87,6 @@ class _GifticonPageState extends State<GifticonPage>
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.home, color: Colors.black),
-              onPressed: _navigateToHome,
-              tooltip: '홈으로 가기',
-            ),
-          ],
         ),
         body: SafeArea(
             child: FutureBuilder<Gifticon?>(

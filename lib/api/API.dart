@@ -27,14 +27,13 @@ class Api {
   static bool _isGettingToken = false; // 토큰 가져오기 중 플래그
 
   Api._internal() {
-    _initializeClients();
-  }
-
-  Future<void> _initializeClients() async {
-    final headers = await _getHeaders();
+    // User-Agent는 나중에 CustomLogInterceptor에서 동적으로 추가됨
     final options = BaseOptions(
       baseUrl: AppConfig.baseUrl,
-      headers: headers,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        if (F.appFlavor == Flavor.dev) 'X-Firebase-Project': 'dev',
+      },
       connectTimeout: Duration(seconds: 15),
       receiveTimeout: Duration(seconds: 15),
     );
