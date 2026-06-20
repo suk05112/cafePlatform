@@ -334,7 +334,6 @@ class StoreProvider extends ChangeNotifier {
     var response = await Api().client.getStoreDetailInfo(storeId);
     _store = response.store;
     _detailCache[storeId] = (store: response.store, cachedAt: DateTime.now());
-    notifyListeners();
 
     return response.store;
   }

@@ -6,6 +6,7 @@ import 'package:cafeplatform/Payment/CommonPaymentWidget.dart';
 import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/static/payment_guide_text.dart';
+import 'package:cafeplatform/api/API.dart';
 
 class SelectGiftPage extends StatefulWidget {
   const SelectGiftPage({
@@ -16,6 +17,7 @@ class SelectGiftPage extends StatefulWidget {
     this.exchangeLng,
     this.exchangePlaceName,
     this.contextStoreId,
+    this.loadStoreId,
   });
 
   final Menu menu;
@@ -24,6 +26,8 @@ class SelectGiftPage extends StatefulWidget {
   final double? exchangeLng;
   final String? exchangePlaceName;
   final int? contextStoreId;
+  /// 전달 시 initState에서 매장 정보를 로드해 exchangeAddress/Lat/Lng/PlaceName을 채움
+  final int? loadStoreId;
 
   @override
   State<SelectGiftPage> createState() => _SelectGiftPagePageState();
@@ -32,7 +36,7 @@ class SelectGiftPage extends StatefulWidget {
 class _SelectGiftPagePageState extends State<SelectGiftPage> {
   static const _termsPaths = (
     usage: 'assets/terms/usage_guide.txt',
-    refund: 'assets/terms/cancellation and refund policy and method.txt',
+    refund: 'assets/terms/cancellation and refund policy and function.txt',
   );
 
   int _guideTab = 0;
@@ -40,10 +44,37 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
   String? _refundFromAsset;
   bool _termsLoaded = false;
 
+  String? _exchangeAddress;
+  double? _exchangeLat;
+  double? _exchangeLng;
+  String? _exchangePlaceName;
+
   @override
   void initState() {
     super.initState();
+    _exchangeAddress = widget.exchangeAddress;
+    _exchangeLat = widget.exchangeLat;
+    _exchangeLng = widget.exchangeLng;
+    _exchangePlaceName = widget.exchangePlaceName;
     _loadTerms();
+    if (widget.loadStoreId != null) _loadStoreInfo(widget.loadStoreId!);
+  }
+
+  Future<void> _loadStoreInfo(int storeId) async {
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+      final resp = await Api().client.getStoreDetailInfo(storeId);
+      if (!mounted) return;
+      final s = resp.store;
+      setState(() {
+        _exchangeAddress = s.store_address;
+        _exchangeLat = s.store_lat;
+        _exchangeLng = s.store_lng;
+        if (_exchangePlaceName == null || _exchangePlaceName!.isEmpty) {
+          _exchangePlaceName = s.store_name;
+        }
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadTerms() async {
@@ -171,10 +202,11 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                             CommonPaymentWidget.buildGiftProductCard(
                               context,
                               widget.menu,
-                              exchangeAddress: widget.exchangeAddress,
-                              exchangeLat: widget.exchangeLat,
-                              exchangeLng: widget.exchangeLng,
-                              exchangePlaceName: widget.exchangePlaceName,
+                              exchangeAddress: _exchangeAddress,
+                              exchangeLat: _exchangeLat,
+                              exchangeLng: _exchangeLng,
+                              exchangePlaceName: _exchangePlaceName,
+                              contextStoreId: widget.contextStoreId ?? widget.loadStoreId,
                               asCard: false,
                               skipImage: true,
                             ),
@@ -281,8 +313,8 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                                 builder: (context) => Payment(
                                   type: 0,
                                   menu: widget.menu,
-                                  storeDisplayName: widget.exchangePlaceName,
-                                  contextStoreId: widget.contextStoreId ??
+                                  storeDisplayName: _exchangePlaceName,
+                                  contextStoreId: widget.contextStoreId ?? widget.loadStoreId ??
                                       (widget.menu.store_id > 0
                                           ? widget.menu.store_id
                                           : null),
@@ -331,12 +363,12 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                                 builder: (context) => Payment(
                                   type: 2,
                                   menu: widget.menu,
-                                  storeDisplayName: widget.exchangePlaceName,
-                                  exchangeAddress: widget.exchangeAddress,
-                                  exchangeLat: widget.exchangeLat,
-                                  exchangeLng: widget.exchangeLng,
-                                  exchangePlaceName: widget.exchangePlaceName,
-                                  contextStoreId: widget.contextStoreId ??
+                                  storeDisplayName: _exchangePlaceName,
+                                  exchangeAddress: _exchangeAddress,
+                                  exchangeLat: _exchangeLat,
+                                  exchangeLng: _exchangeLng,
+                                  exchangePlaceName: _exchangePlaceName,
+                                  contextStoreId: widget.contextStoreId ?? widget.loadStoreId ??
                                       (widget.menu.store_id > 0
                                           ? widget.menu.store_id
                                           : null),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -9,6 +10,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/user_response.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -296,19 +299,6 @@ Future<void> _initializeFCM() async {
   try {
     final messaging = FirebaseMessaging.instance;
 
-    // 알림 권한 요청 (iOS)
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
-
-    print('FCM 알림 권한 상태: ${settings.authorizationStatus}');
-
     // iOS 포그라운드에서도 알림 배너/소리/배지 표시
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
       alert: true,
@@ -400,7 +390,6 @@ getPermission() async {
     print('허락됨');
   } else if (status.isDenied) {
     print('거절됨');
-    Permission.contacts.request(); // 현재 거절된 상태니 팝업창 띄워달라는 코드
   }
 }
 
@@ -574,20 +563,87 @@ class MyWidget extends StatelessWidget {
 // 동적으로 화면을 변화하므로 StatefulWdiget 사용
 class TabPage extends StatefulWidget {
   final int initialIndex;
+  final bool showNotificationPrompt;
 
-  const TabPage({super.key, this.initialIndex = 0});
+  const TabPage({super.key, this.initialIndex = 0, this.showNotificationPrompt = false});
 
   @override
   _TabPageState createState() => _TabPageState();
 }
 
 class _TabPageState extends State<TabPage> {
-  late int _selectedIndex; // 처음에 나올 화면 지정
+  late int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    if (widget.showNotificationPrompt) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showNotificationPermissionSheet();
+      });
+    }
+  }
+
+  Future<void> _showNotificationPermissionSheet() async {
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _NotificationPermissionSheet(
+        onAllow: () async {
+          Navigator.pop(ctx);
+          final result = await FirebaseMessaging.instance.requestPermission(
+            alert: true, badge: true, sound: true,
+          );
+          final granted =
+              result.authorizationStatus == AuthorizationStatus.authorized ||
+              result.authorizationStatus == AuthorizationStatus.provisional;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('service_push_enabled', granted);
+          await prefs.setBool('marketing_push_enabled', granted);
+          if (granted && mounted) {
+            await _syncNotificationToServer();
+          }
+        },
+        onLater: () async {
+          Navigator.pop(ctx);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('service_push_enabled', false);
+          await prefs.setBool('marketing_push_enabled', false);
+        },
+      ),
+    );
+  }
+
+  Future<void> _syncNotificationToServer() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.user;
+      if (user == null) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final fcmToken = prefs.getString('fcm_token');
+      if (fcmToken == null || fcmToken.isEmpty) return;
+
+      final allowServicePush = prefs.getBool('service_push_enabled') ?? false;
+      final allowMarketingPush = prefs.getBool('marketing_push_enabled') ?? false;
+
+      await Api().client.registerPushToken(
+        user.user_id,
+        PushTokenRequest(
+          fcmToken: fcmToken,
+          deviceType: Platform.isIOS ? 'ios' : 'android',
+          allowServicePush: allowServicePush,
+          allowMarketingPush: allowMarketingPush,
+        ),
+      );
+    } catch (_) {}
   }
 
   // 이동할 페이지
@@ -630,9 +686,96 @@ class _TabPageState extends State<TabPage> {
   }
 
   void _onItemTapped(int index) {
-    // state 갱신
     setState(() {
-      _selectedIndex = index; // index는 item 순서로 0, 1, 2로 구성
+      _selectedIndex = index;
     });
+  }
+}
+
+class _NotificationPermissionSheet extends StatelessWidget {
+  final VoidCallback onAllow;
+  final VoidCallback onLater;
+
+  const _NotificationPermissionSheet({
+    required this.onAllow,
+    required this.onLater,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '주문 완료 소식을 받아보세요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '선물 도착, 주문 완료 등\n중요한 알림을 놓치지 마세요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onLater,
+                  child: const Text(
+                    '다음에 하기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onAllow,
+                  child: const Text(
+                    '알림 켜기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/Payment/register_gifticon_page.dart';
@@ -34,65 +35,57 @@ class _SplashScreenState extends State<SplashScreen> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
 
-      // 지역 목록을 백그라운드에서 미리 로드 (바텀시트 지연 방지)
       unawaited(storeProvider.fetchAvailableRegions());
-
-      // UserProvider에서 로그인 상태를 먼저 확인 (비동기 로드 완료 대기)
       await userProvider.fetchUser();
 
       final firebaseUser = fb.FirebaseAuth.instance.currentUser;
 
-      // Firebase Auth 세션이 있고, UserProvider에도 사용자 정보가 있으면 자동 로그인
       if (firebaseUser != null &&
           userProvider.isLoggedIn &&
           userProvider.user != null) {
-        // Firebase Auth 세션이 유효한지 확인
         try {
-          await firebaseUser
-              .getIdToken()
-              .timeout(const Duration(seconds: 8));
+          await firebaseUser.getIdToken().timeout(const Duration(seconds: 8));
           unawaited(Api().setBaseClient(Api.BASE_URL, quickStart: true));
 
-          // pending_gifticon_id가 있는지 확인
           final prefs = await SharedPreferences.getInstance();
           final pendingGifticonId = prefs.getInt('pending_gifticon_id');
 
-          if (mounted) {
-            if (pendingGifticonId != null) {
-              // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
-              await prefs.remove('pending_gifticon_id');
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      RegisterGifticonPage(gifticon_id: pendingGifticonId),
-                ),
-              );
-            } else {
-              // 자동 로그인 성공 - 메인 화면으로 이동
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const TabPage(initialIndex: 0)),
-              );
-            }
+          if (mounted && pendingGifticonId != null) {
+            await prefs.remove('pending_gifticon_id');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    RegisterGifticonPage(gifticon_id: pendingGifticonId),
+              ),
+            );
             return;
           }
         } catch (e) {
           print("Firebase Auth 세션 만료: $e");
-          // 세션이 만료되었으면 로그아웃 처리
           await fb.FirebaseAuth.instance.signOut();
           await userProvider.clearUser();
         }
+      } else {
+        unawaited(Api().setBaseClient(Api.BASE_URL, quickStart: true));
       }
 
-      // 로그인 안됨 - App Check 토큰 세팅은 백그라운드로, 즉시 홈화면으로 이동
-      unawaited(Api().setBaseClient(Api.BASE_URL, quickStart: true));
+      if (!mounted) return;
+
+      // 알림 권한 미결정 여부 확인 후 TabPage로 이동
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      final showPrompt =
+          settings.authorizationStatus == AuthorizationStatus.notDetermined;
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => const TabPage(initialIndex: 0)),
+            builder: (_) => TabPage(
+              initialIndex: 0,
+              showNotificationPrompt: showPrompt,
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -100,8 +93,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-              builder: (context) => const TabPage(initialIndex: 0)),
+          MaterialPageRoute(builder: (_) => const TabPage(initialIndex: 0)),
         );
       }
     }

@@ -137,7 +137,8 @@ class _OrderDetailPageState extends State<OrderDetailPage>
                     if (orderDetail.gifticons
                         .any((g) => g.is_receiver_linked == false))
                       SizedBox(height: 16),
-                    cancelButton(),
+                    if (orderDetail.status?.toUpperCase() != 'REFUNDED')
+                      cancelButton(),
                   ],
                 ),
               ),
@@ -350,7 +351,13 @@ class _OrderDetailPageState extends State<OrderDetailPage>
           SizedBox(height: 12),
           _buildInfoRow("결제방식", orderDetail.payment ?? "정보 없음"),
           SizedBox(height: 12),
-          _buildInfoRow("결제상태", _getOrderStatusText(orderDetail.status)),
+          _buildInfoRow(
+            "결제상태",
+            _getOrderStatusText(orderDetail.status),
+            valueColor: orderDetail.status?.toUpperCase() == 'REFUNDED'
+                ? Colors.red[700]
+                : null,
+          ),
           Divider(
             thickness: 1,
             height: 24,
@@ -382,7 +389,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
     return Row(
       children: [
         Text(
@@ -397,7 +404,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
           value,
           style: TextStyle(
             fontSize: 13,
-            color: Colors.black87,
+            color: valueColor ?? Colors.black87,
           ),
         ),
       ],

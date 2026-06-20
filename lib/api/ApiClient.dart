@@ -87,6 +87,15 @@ abstract class ApiClient {
     @Path('store_id') int storeId,
   );
 
+  @GET("/menu/recommend")
+  Future<RecommendMenuResponse> getRecommendMenus({
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+    @Query('district_code') String? districtCode,
+    @Query('limit') int? limit,
+    @Query('cursor') String? cursor,
+  });
+
   @POST("/menu/")
   Future<MenuPostResponse> addMenu(
     @Body() Menu menu,

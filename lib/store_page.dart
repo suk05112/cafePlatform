@@ -40,7 +40,7 @@ class StorePage extends StatefulWidget {
 
 class _StorePageState extends State<StorePage> {
   Store? store;
-  late Future<Store?> futureStore;
+  bool _storeLoading = false;
 
   @override
   void initState() {
@@ -50,10 +50,24 @@ class _StorePageState extends State<StorePage> {
           (s) => s?.store_id == widget.storeId,
           orElse: () => StoreDummyRepository.stores[0]);
     } else {
+      _loadStore();
+      Provider.of<MenuProvider>(context, listen: false)
+          .fetchMenuList(widget.storeId);
+    }
+  }
+
+  Future<void> _loadStore() async {
+    setState(() => _storeLoading = true);
+    try {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-      final menuProvider = Provider.of<MenuProvider>(context, listen: false);
-      futureStore = storeProvider.fetchDetailStore(widget.storeId);
-      menuProvider.fetchMenuList(widget.storeId);
+      final loaded = await storeProvider.fetchDetailStore(widget.storeId);
+      if (!mounted) return;
+      setState(() {
+        store = loaded;
+        _storeLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _storeLoading = false);
     }
   }
 
@@ -61,40 +75,10 @@ class _StorePageState extends State<StorePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: CommonAppBar(
-        title: "",
-      ),
-      body: widget.storeId < 0
-          ? _buildStoreContent(store)
-          : FutureBuilder<Store?>(
-              future: futureStore,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  print(
-                      "FutureBuilder - snapshot.connectionState: ${snapshot.connectionState}");
-                  return Container(
-                    color: Colors.white,
-                    child: const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
-                  );
-                } else if (snapshot.hasError) {
-                  print("FutureBuilder - snapshot.hasError: ${snapshot.error}");
-                  return _buildStoreContent(store);
-                } else if (snapshot.hasData) {
-                  print(
-                      "FutureBuilder - snapshot.hasData: ${snapshot.hasData}");
-                  print(
-                      "FutureBuilder - snapshot.data: ${snapshot.data?.store_address}");
-                  print(
-                      "FutureBuilder - snapshot.data 전체: ${snapshot.data?.toJson()}");
-                  return _buildStoreContent(snapshot.data);
-                } else {
-                  print("FutureBuilder - snapshot.else: ${snapshot.error}");
-                  return Container(
-                    color: Colors.white,
-                    child: Center(child: Text("기프티콘 읽어오기 실패")),
-                  );
-                }
-              }),
+      appBar: CommonAppBar(title: ""),
+      body: _storeLoading && store == null
+          ? const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor))
+          : _buildStoreContent(store),
     );
   }
 
@@ -113,7 +97,7 @@ class _StorePageState extends State<StorePage> {
           children: [
             // 매장사진 (스와이프)
             StoreImageSlider(
-              key: ValueKey('store_image_slider_${storeData?.store_id ?? 0}'),
+              key: ValueKey('store_image_slider_${widget.storeId}'),
               store: storeData,
             ),
             // 매장명과 설명
@@ -637,12 +621,16 @@ class StoreImageSlider extends StatefulWidget {
 
 class _StoreImageSliderState extends State<StoreImageSlider> {
   int _activeIndex = 0;
+  List<String>? _frozenUrls;
 
   List<String> get _urls {
+    if (_frozenUrls != null) return _frozenUrls!;
     if (widget.store == null || widget.store!.store_id < 0) return [];
-    return (widget.store!.store_photo_urls ?? [])
+    final urls = (widget.store!.store_photo_urls ?? [])
         .where((u) => u.isNotEmpty)
         .toList();
+    if (urls.isNotEmpty) _frozenUrls = urls;
+    return urls;
   }
 
   Widget _imageSlide(String url, int index) {
