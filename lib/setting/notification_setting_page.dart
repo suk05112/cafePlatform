@@ -6,6 +6,8 @@ import 'package:cafeplatform/api/user_response.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class NotificationSettingPage extends StatefulWidget {
   const NotificationSettingPage({super.key});
@@ -34,24 +36,112 @@ class _NotificationSettingPageState extends State<NotificationSettingPage> {
   }
 
   Future<void> _saveServicePushSetting(bool value) async {
-    // 서비스 푸시가 꺼지면 마케팅 푸시도 같이 꺼지게
-    bool marketingValue = value ? _marketingPushEnabled : false;
+    if (value) {
+      // 토글 ON: 시스템 권한 상태 먼저 확인
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      final status = settings.authorizationStatus;
 
-    // UI를 먼저 업데이트하여 토글 버튼이 즉시 움직이도록
+      if (status == AuthorizationStatus.notDetermined) {
+        // 권한 미결정 → 시스템 권한 요청
+        final result = await FirebaseMessaging.instance.requestPermission(
+          alert: true, badge: true, sound: true,
+        );
+        if (result.authorizationStatus != AuthorizationStatus.authorized &&
+            result.authorizationStatus != AuthorizationStatus.provisional) {
+          // 거부됨 → 토글 변경 없이 종료
+          return;
+        }
+      } else if (status == AuthorizationStatus.denied) {
+        // 영구 거부 → 설정 앱으로 유도
+        if (mounted) {
+          _showGoToSettingsDialog();
+        }
+        return;
+      }
+    }
+
+    final bool marketingValue = value ? _marketingPushEnabled : false;
+
     setState(() {
       _servicePushEnabled = value;
       _marketingPushEnabled = marketingValue;
     });
 
-    // 그 다음 저장 및 서버 업데이트
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('service_push_enabled', value);
     await prefs.setBool('marketing_push_enabled', marketingValue);
 
-    // 서버에 푸시 토큰 설정 업데이트
     _updatePushTokenSettings(
       allowServicePush: value,
       allowMarketingPush: marketingValue,
+    );
+  }
+
+  void _showGoToSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '알림 권한 필요',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '알림을 받으려면 설정에서 알림 접근을 허용해주세요.',
+                style: TextStyle(
+                    fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('취소',
+                          style:
+                              TextStyle(color: Colors.black54, fontSize: 15)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: ColorAssset.mainColor,
+                        foregroundColor: Colors.black,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        openAppSettings();
+                      },
+                      child: const Text('설정으로 이동',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

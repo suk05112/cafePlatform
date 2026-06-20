@@ -296,19 +296,6 @@ Future<void> _initializeFCM() async {
   try {
     final messaging = FirebaseMessaging.instance;
 
-    // 알림 권한 요청 (iOS)
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
-
-    print('FCM 알림 권한 상태: ${settings.authorizationStatus}');
-
     // iOS 포그라운드에서도 알림 배너/소리/배지 표시
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
       alert: true,
@@ -400,7 +387,6 @@ getPermission() async {
     print('허락됨');
   } else if (status.isDenied) {
     print('거절됨');
-    Permission.contacts.request(); // 현재 거절된 상태니 팝업창 띄워달라는 코드
   }
 }
 
