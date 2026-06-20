@@ -8,7 +8,6 @@ import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/model/region.dart';
 import 'package:cafeplatform/Payment/select_gift_type_page.dart';
-import 'package:cafeplatform/provider/menu_provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
@@ -422,58 +421,45 @@ class _CafeListState extends State<CafeList> {
   Future<void> _onRecommendMenuItemTap(RecommendMenu item) async {
     if (_recommendTapping) return;
     _recommendTapping = true;
-    final menuProvider = Provider.of<MenuProvider>(context, listen: false);
 
-    await menuProvider.fetchMenuList(item.storeId);
-    if (!mounted) return;
-
-    final menus = menuProvider.menuCards ?? [];
-    Menu? picked;
-    for (final m in menus) {
-      if (m.menu_id == item.menuId) {
-        picked = m;
-        break;
-      }
-    }
-
-    if (picked == null) {
-      if (!mounted) { _recommendTapping = false; return; }
-      Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => StorePage(storeId: item.storeId, storeName: item.storeName),
-        ),
-      );
-      _recommendTapping = false;
-      return;
-    }
-
-    menuProvider.setSelectedMenu(picked);
-
-    // storeProvider.fetchDetailStore() 는 notifyListeners()를 호출해
-    // 스택의 다른 StorePage들을 rebuild시키므로 직접 API 호출
-    Store? detail;
     try {
       await Api().setBaseClient(Api.BASE_URL);
-      final resp = await Api().client.getStoreDetailInfo(item.storeId);
-      detail = resp.store;
-    } catch (_) {}
-    if (!mounted) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
+      // MenuProvider.fetchMenuList()는 notifyListeners()로 스택의 StorePage를
+      // rebuild시키므로 직접 API 호출
+      final menuResp = await Api().client.getMenuList(item.storeId);
+      if (!mounted) return;
+
+      Menu? picked;
+      for (final m in menuResp.menuList) {
+        if (m.menu_id == item.menuId) { picked = m; break; }
+      }
+
+      if (picked == null) {
+        Navigator.push(context, MaterialPageRoute<void>(
+          builder: (_) => StorePage(storeId: item.storeId, storeName: item.storeName),
+        ));
+        return;
+      }
+
+      final storeResp = await Api().client.getStoreDetailInfo(item.storeId);
+      if (!mounted) return;
+      final detail = storeResp.store;
+
+      Navigator.push(context, MaterialPageRoute<void>(
         builder: (_) => SelectGiftPage(
           menu: picked!,
           contextStoreId: item.storeId,
-          exchangeAddress: detail?.store_address,
-          exchangeLat: detail?.store_lat,
-          exchangeLng: detail?.store_lng,
-          exchangePlaceName: (detail?.store_name.isNotEmpty == true) ? detail!.store_name : item.storeName,
+          exchangeAddress: detail.store_address,
+          exchangeLat: detail.store_lat,
+          exchangeLng: detail.store_lng,
+          exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : item.storeName,
         ),
-      ),
-    );
-    _recommendTapping = false;
+      ));
+    } catch (_) {
+    } finally {
+      _recommendTapping = false;
+    }
   }
 
   Widget _buildSearchAndMapRow() {
@@ -1091,34 +1077,34 @@ class _RecommendMenuListPage extends StatelessWidget {
           final hasImage = m.menuPhoto != null && m.menuPhoto!.trim().isNotEmpty;
           return GestureDetector(
             onTap: () async {
-              final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-              final menuProvider = Provider.of<MenuProvider>(context, listen: false);
-              await menuProvider.fetchMenuList(m.storeId);
-              if (!context.mounted) return;
-              final menus = menuProvider.menuCards ?? [];
-              Menu? picked;
-              for (final menu in menus) {
-                if (menu.menu_id == m.menuId) { picked = menu; break; }
-              }
-              if (picked == null) {
+              try {
+                await Api().setBaseClient(Api.BASE_URL);
+                final menuResp = await Api().client.getMenuList(m.storeId);
+                if (!context.mounted) return;
+                Menu? picked;
+                for (final menu in menuResp.menuList) {
+                  if (menu.menu_id == m.menuId) { picked = menu; break; }
+                }
+                if (picked == null) {
+                  Navigator.push(context, MaterialPageRoute<void>(
+                    builder: (_) => StorePage(storeId: m.storeId, storeName: m.storeName),
+                  ));
+                  return;
+                }
+                final storeResp = await Api().client.getStoreDetailInfo(m.storeId);
+                if (!context.mounted) return;
+                final detail = storeResp.store;
                 Navigator.push(context, MaterialPageRoute<void>(
-                  builder: (_) => StorePage(storeId: m.storeId, storeName: m.storeName),
+                  builder: (_) => SelectGiftPage(
+                    menu: picked!,
+                    contextStoreId: m.storeId,
+                    exchangeAddress: detail.store_address,
+                    exchangeLat: detail.store_lat,
+                    exchangeLng: detail.store_lng,
+                    exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : m.storeName,
+                  ),
                 ));
-                return;
-              }
-              menuProvider.setSelectedMenu(picked);
-              final detail = await storeProvider.fetchDetailStore(m.storeId);
-              if (!context.mounted) return;
-              Navigator.push(context, MaterialPageRoute<void>(
-                builder: (_) => SelectGiftPage(
-                  menu: picked!,
-                  contextStoreId: m.storeId,
-                  exchangeAddress: detail.store_address,
-                  exchangeLat: detail.store_lat,
-                  exchangeLng: detail.store_lng,
-                  exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : m.storeName,
-                ),
-              ));
+              } catch (_) {}
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
