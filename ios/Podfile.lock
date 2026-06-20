@@ -22,6 +22,8 @@ PODS:
     - Flutter
   - device_info_plus (0.0.1):
     - Flutter
+  - fast_contacts (0.0.1):
+    - Flutter
   - Firebase/Analytics (11.15.0):
     - Firebase/Core
   - Firebase/Auth (11.15.0):
@@ -292,6 +294,7 @@ DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
+  - fast_contacts (from `.symlinks/plugins/fast_contacts/ios`)
   - firebase_analytics (from `.symlinks/plugins/firebase_analytics/ios`)
   - firebase_app_check (from `.symlinks/plugins/firebase_app_check/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
@@ -368,6 +371,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/connectivity_plus/ios"
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
+  fast_contacts:
+    :path: ".symlinks/plugins/fast_contacts/ios"
   firebase_analytics:
     :path: ".symlinks/plugins/firebase_analytics/ios"
   firebase_app_check:
@@ -434,6 +439,7 @@ SPEC CHECKSUMS:
   camera_avfoundation: be3be85408cd4126f250386828e9b1dfa40ab436
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   device_info_plus: 335f3ce08d2e174b9fdc3db3db0f4e3b1f66bd89
+  fast_contacts: 85bd59ea48f7f26e9de6818da94171b29b006c3e
   Firebase: d99ac19b909cd2c548339c2241ecd0d1599ab02e
   firebase_analytics: 0e25ca1d4001ccedd40b4e5b74c0ec34e18f6425
   firebase_app_check: 03d91956c2f83d4a7ca65a88a14507cd041c085f
