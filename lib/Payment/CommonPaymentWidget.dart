@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/provider/menu_provider.dart';
 import 'package:cafeplatform/widget/store_map_page.dart';
+import 'package:cafeplatform/store_page.dart';
 import 'package:provider/provider.dart';
 
 class CommonPaymentWidget {
@@ -98,6 +99,7 @@ class CommonPaymentWidget {
     double? exchangeLat,
     double? exchangeLng,
     String? exchangePlaceName,
+    int? contextStoreId,
     bool asCard = true,
     bool skipImage = false,
   }) {
@@ -136,6 +138,35 @@ class CommonPaymentWidget {
               },
             ),
             const SizedBox(height: 12),
+          ],
+          if (exchangePlaceName != null && exchangePlaceName.isNotEmpty) ...[
+            GestureDetector(
+              onTap: () {
+                final storeId = contextStoreId ?? (menu.store_id > 0 ? menu.store_id : null);
+                if (storeId == null) return;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => StorePage(storeId: storeId, storeName: exchangePlaceName),
+                  ),
+                );
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    exchangePlaceName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF757575),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 16, color: Color(0xFF757575)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
           ],
           Text(
             menu.name ?? "",

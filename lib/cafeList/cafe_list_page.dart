@@ -410,12 +410,6 @@ class _CafeListState extends State<CafeList> {
                 return _RecommendMenuCard(
                   menu: m,
                   onTap: () => _onRecommendMenuItemTap(m),
-                  onStoreTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => StorePage(storeId: m.storeId, storeName: m.storeName),
-                    ),
-                  ),
                 );
               },
             ),
@@ -946,11 +940,10 @@ class _CafeDiscoveryStoreRow extends StatelessWidget {
 }
 
 class _RecommendMenuCard extends StatelessWidget {
-  const _RecommendMenuCard({required this.menu, required this.onTap, required this.onStoreTap});
+  const _RecommendMenuCard({required this.menu, required this.onTap});
 
   final RecommendMenu menu;
   final VoidCallback onTap;
-  final VoidCallback onStoreTap;
 
   static const Color _subtitleColor = Color(0xFF757575);
 
@@ -1014,22 +1007,11 @@ class _RecommendMenuCard extends StatelessWidget {
                       ),
               ),
               const SizedBox(height: 6),
-              GestureDetector(
-                onTap: onStoreTap,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        menu.storeName,
-                        style: const TextStyle(fontSize: 12, color: _subtitleColor, height: 1.2),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right, size: 14, color: _subtitleColor),
-                  ],
-                ),
+              Text(
+                menu.storeName,
+                style: const TextStyle(fontSize: 12, color: _subtitleColor, height: 1.2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               Text(
                 menu.menuName,

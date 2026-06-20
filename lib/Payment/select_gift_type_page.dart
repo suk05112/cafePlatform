@@ -175,6 +175,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                               exchangeLat: widget.exchangeLat,
                               exchangeLng: widget.exchangeLng,
                               exchangePlaceName: widget.exchangePlaceName,
+                              contextStoreId: widget.contextStoreId,
                               asCard: false,
                               skipImage: true,
                             ),
