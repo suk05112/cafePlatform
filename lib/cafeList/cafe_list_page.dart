@@ -39,6 +39,7 @@ class _CafeListState extends State<CafeList> {
 
   List<RecommendMenu> _recommendMenus = [];
   bool _recommendLoading = false;
+  bool _recommendTapping = false;
 
   @override
   void initState() {
@@ -419,6 +420,8 @@ class _CafeListState extends State<CafeList> {
   }
 
   Future<void> _onRecommendMenuItemTap(RecommendMenu item) async {
+    if (_recommendTapping) return;
+    _recommendTapping = true;
     final menuProvider = Provider.of<MenuProvider>(context, listen: false);
 
     await menuProvider.fetchMenuList(item.storeId);
@@ -434,13 +437,14 @@ class _CafeListState extends State<CafeList> {
     }
 
     if (picked == null) {
-      if (!mounted) return;
+      if (!mounted) { _recommendTapping = false; return; }
       Navigator.push(
         context,
         MaterialPageRoute<void>(
           builder: (_) => StorePage(storeId: item.storeId, storeName: item.storeName),
         ),
       );
+      _recommendTapping = false;
       return;
     }
 
@@ -469,6 +473,7 @@ class _CafeListState extends State<CafeList> {
         ),
       ),
     );
+    _recommendTapping = false;
   }
 
   Widget _buildSearchAndMapRow() {
@@ -549,10 +554,14 @@ class _CafeListState extends State<CafeList> {
         ),
       );
     }
+    // presigned URL은 쿼리스트링이 매번 달라 캐시 미스 발생
+    // path 부분만 key로 고정해서 위젯 재사용 → 재로드 방지
+    final urlPath = Uri.tryParse(cleanedUrl)?.path ?? cleanedUrl;
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Image.network(
         cleanedUrl,
+        key: ValueKey(urlPath),
         width: width,
         height: height,
         fit: BoxFit.cover,

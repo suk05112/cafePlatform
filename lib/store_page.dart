@@ -619,12 +619,16 @@ class StoreImageSlider extends StatefulWidget {
 
 class _StoreImageSliderState extends State<StoreImageSlider> {
   int _activeIndex = 0;
+  List<String>? _frozenUrls;
 
   List<String> get _urls {
+    if (_frozenUrls != null) return _frozenUrls!;
     if (widget.store == null || widget.store!.store_id < 0) return [];
-    return (widget.store!.store_photo_urls ?? [])
+    final urls = (widget.store!.store_photo_urls ?? [])
         .where((u) => u.isNotEmpty)
         .toList();
+    if (urls.isNotEmpty) _frozenUrls = urls;
+    return urls;
   }
 
   Widget _imageSlide(String url, int index) {
