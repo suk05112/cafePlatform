@@ -26,6 +26,9 @@ class Api {
       Duration(minutes: 5); // 토큰 캐시 유지 시간
   static bool _isGettingToken = false; // 토큰 가져오기 중 플래그
 
+  // User-Agent 캐싱 (플랫폼 채널 반복 호출 방지)
+  static String? _cachedUserAgent;
+
   Api._internal() {
     // User-Agent는 나중에 CustomLogInterceptor에서 동적으로 추가됨
     final options = BaseOptions(
@@ -34,8 +37,8 @@ class Api {
         'Content-Type': 'application/json; charset=UTF-8',
         if (F.appFlavor == Flavor.dev) 'X-Firebase-Project': 'dev',
       },
-      connectTimeout: Duration(seconds: 15),
-      receiveTimeout: Duration(seconds: 15),
+      connectTimeout: Duration(seconds: 10),
+      receiveTimeout: Duration(seconds: 10),
     );
     dio = Dio(options)..interceptors.add(CustomLogInterceptor());
     client = ApiClient(Dio(options)..interceptors.add(CustomLogInterceptor()));
@@ -47,8 +50,9 @@ class Api {
   // Flavor에 따른 BASE_URL 반환 (dev: /dev, prod: /prod)
   static String get BASE_URL => AppConfig.baseUrl;
 
-  /// User-Agent를 생성하는 함수
+  /// User-Agent를 생성하는 함수 (결과 캐싱)
   static Future<String> _getUserAgent() async {
+    if (_cachedUserAgent != null) return _cachedUserAgent!;
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final appName = packageInfo.appName;
@@ -75,10 +79,9 @@ class Api {
         osVersion = Platform.operatingSystemVersion;
       }
 
-      // User-Agent 형식: AppName/Version (Platform; OS Version; Device Model)
-      return '$appName/$appVersion ($platform; $osVersion; $deviceModel)';
+      _cachedUserAgent = '$appName/$appVersion ($platform; $osVersion; $deviceModel)';
+      return _cachedUserAgent!;
     } catch (e) {
-      // 에러 발생 시 기본값 반환
       print('User-Agent 생성 오류: $e');
       return 'Gifnut/1.0.0 (${Platform.operatingSystem})';
     }
@@ -210,9 +213,9 @@ class Api {
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       headers: headers,
-      connectTimeout: Duration(seconds: 15),
-      receiveTimeout: Duration(seconds: 15),
-      sendTimeout: Duration(seconds: 15),
+      connectTimeout: Duration(seconds: 10),
+      receiveTimeout: Duration(seconds: 10),
+      sendTimeout: Duration(seconds: 10),
     ))
       ..interceptors.add(CustomLogInterceptor());
 
@@ -274,9 +277,9 @@ class Api {
     Dio dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       headers: headers,
-      connectTimeout: Duration(seconds: 15),
-      receiveTimeout: Duration(seconds: 15),
-      sendTimeout: Duration(seconds: 15),
+      connectTimeout: Duration(seconds: 10),
+      receiveTimeout: Duration(seconds: 10),
+      sendTimeout: Duration(seconds: 10),
     ))
       ..interceptors.add(CustomLogInterceptor())
       ..interceptors.add(AuthInterceptor());
@@ -434,11 +437,11 @@ class AuthInterceptor extends Interceptor {
             "X-Firebase-AppCheck": appCheckToken,
         };
         Dio dio = Dio(BaseOptions(
-          baseUrl: requestOptions.baseUrl, // 원래 baseUrl 사용
+          baseUrl: requestOptions.baseUrl,
           headers: headers,
-          connectTimeout: Duration(seconds: 15),
-          receiveTimeout: Duration(seconds: 15),
-          sendTimeout: Duration(seconds: 15),
+          connectTimeout: Duration(seconds: 10),
+          receiveTimeout: Duration(seconds: 10),
+          sendTimeout: Duration(seconds: 10),
         ));
 
         print('[401 interceptor] 재요청');
