@@ -51,9 +51,7 @@ class _SplashScreenState extends State<SplashScreen> {
           await firebaseUser
               .getIdToken()
               .timeout(const Duration(seconds: 8));
-          await Api()
-              .setBaseClient(Api.BASE_URL, quickStart: true)
-              .timeout(const Duration(seconds: 14));
+          unawaited(Api().setBaseClient(Api.BASE_URL, quickStart: true));
 
           // pending_gifticon_id가 있는지 확인
           final prefs = await SharedPreferences.getInstance();
@@ -88,7 +86,8 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       }
 
-      // 로그인 안됨 - 홈화면으로 이동
+      // 로그인 안됨 - App Check 토큰 세팅은 백그라운드로, 즉시 홈화면으로 이동
+      unawaited(Api().setBaseClient(Api.BASE_URL, quickStart: true));
       if (mounted) {
         Navigator.pushReplacement(
           context,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cafeplatform/firebase_options_prod.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -22,20 +23,30 @@ Future<void> main() async {
     debugPrint('Firebase already initialized: $e');
   }
 
+  // Analytics GDT 백그라운드 업로드가 RunLoop를 블로킹하지 않도록
+  // 앱 시작 시점엔 비활성화하고, 이후 필요한 시점에 활성화할 것
   try {
-    // TODO: Play Store 배포 후 아래를 playIntegrity로 되돌릴 것
-    await FirebaseAppCheck.instance
-        .activate(
-          androidProvider: AndroidProvider.debug,
-          appleProvider: AppleProvider.appAttest,
-          webProvider: ReCaptchaV3Provider(
-              "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
-        )
-        .timeout(const Duration(seconds: 10));
-    debugPrint('✅ App Check activated');
+    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(false);
   } catch (e) {
-    debugPrint('❌ Firebase App Check activate 실패: $e');
+    debugPrint('Analytics 설정 오류: $e');
   }
+
+  // App Check activate는 runApp을 막지 않음 (dev와 동일하게 unawaited 처리)
+  unawaited(() async {
+    try {
+      await FirebaseAppCheck.instance
+          .activate(
+            androidProvider: AndroidProvider.debug, // TODO: Play Store 배포 후 playIntegrity로 변경
+            appleProvider: AppleProvider.deviceCheck, // 🚨 배포 전 AppleProvider.appAttest 로 변경 필수
+            webProvider: ReCaptchaV3Provider(
+                "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),
+          )
+          .timeout(const Duration(seconds: 10));
+      debugPrint('✅ App Check activated');
+    } catch (e) {
+      debugPrint('❌ Firebase App Check activate 실패: $e');
+    }
+  }());
 
   var kakaoNative = '275e555cdb8196634a6aef161abe3f84';
   var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';
