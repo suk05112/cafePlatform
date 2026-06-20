@@ -13,38 +13,10 @@ import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
 import 'package:cafeplatform/utils/store_distance.dart';
+import 'package:cafeplatform/api/API.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
-// Figma discovery (1690:5323) — 메뉴 추천 API 연동 전 플레이스홀더
-class _MenuRecPh {
-  const _MenuRecPh({
-    required this.menuName,
-    required this.storeName,
-    required this.priceLabel,
-  });
-  final String menuName;
-  final String storeName;
-  final String priceLabel;
-}
-
-const _kMenuRecPlaceholders = <_MenuRecPh>[
-  _MenuRecPh(
-    menuName: '아이스 아메리카노',
-    storeName: '오쏘몰',
-    priceLabel: '4,500원',
-  ),
-  _MenuRecPh(
-    menuName: '카페라떼',
-    storeName: '드롭탑',
-    priceLabel: '5,000원',
-  ),
-  _MenuRecPh(
-    menuName: '콜드브루',
-    storeName: '비엔나커피',
-    priceLabel: '4,800원',
-  ),
-];
 
 class CafeList extends StatefulWidget {
   const CafeList({super.key});
@@ -58,14 +30,15 @@ class _CafeListState extends State<CafeList> {
   static const Color _searchFill = Color(0xFFFAFAFA);
   static const Color _searchBorder = Color(0xFFEEEEEE);
   static const Color _hintColor = Color(0xFF9F9F9F);
-  static const Color _subtitleColor = Color(0xFF757575);
-
   String? _selectedRegionCode;
   bool _isRegionPickerOpen = false;
   final ScrollController _scrollController = ScrollController();
   double _refLat = kDefaultReferenceLatitude;
   double _refLng = kDefaultReferenceLongitude;
   bool _hasLocationPermission = false;
+
+  List<RecommendMenu> _recommendMenus = [];
+  bool _recommendLoading = false;
 
   @override
   void initState() {
@@ -88,100 +61,13 @@ class _CafeListState extends State<CafeList> {
         await storeProvider.fetchStoreList();
       }
       storeProvider.fetchAvailableRegions();
+      if (!_hasLocationPermission && mounted) {
+        _loadRecommendMenus();
+      }
     });
   }
 
-  bool _storeNameMatches(Store s, String wantRaw) {
-    final want = wantRaw.trim().toLowerCase();
-    final name = s.store_name.trim().toLowerCase();
-    if (want.isEmpty || name.isEmpty) return false;
-    return name == want || name.contains(want) || want.contains(name);
-  }
 
-  bool _menuNameMatches(Menu m, String wantRaw) {
-    final want = wantRaw.trim().toLowerCase();
-    final name = (m.name ?? '').trim().toLowerCase();
-    if (want.isEmpty || name.isEmpty) return false;
-    return name == want || name.contains(want) || want.contains(name);
-  }
-
-  /// 플레이스홀더 매장·메뉴명으로 목록 매칭 후 선물하기(결제) 화면으로 이동
-  Future<void> _onRecommendedMenuTap(_MenuRecPh item) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    final stores = storeProvider.listViewStores ?? [];
-
-    Store? matched;
-    for (final s in stores) {
-      if (_storeNameMatches(s, item.storeName)) {
-        matched = s;
-        break;
-      }
-    }
-
-    if (matched == null) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('현재 목록에서 해당 매장을 찾을 수 없습니다.')),
-      );
-      return;
-    }
-    final store = matched;
-
-    final menuProvider = Provider.of<MenuProvider>(context, listen: false);
-    await menuProvider.fetchMenuList(store.store_id);
-    if (!mounted) return;
-
-    final menus = menuProvider.menuCards ?? [];
-    Menu? picked;
-    for (final m in menus) {
-      if (_menuNameMatches(m, item.menuName)) {
-        picked = m;
-        break;
-      }
-    }
-
-    if (picked == null) {
-      if (menus.isEmpty) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('메뉴를 불러오지 못했습니다.')),
-        );
-        return;
-      }
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => StorePage(
-            storeId: store.store_id,
-            storeName: store.store_name,
-          ),
-        ),
-      );
-      return;
-    }
-
-    menuProvider.setSelectedMenu(picked);
-    final detail = await storeProvider.fetchDetailStore(store.store_id);
-    if (!mounted) return;
-
-    final placeName = detail.store_name.isNotEmpty
-        ? detail.store_name
-        : store.store_name;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => SelectGiftPage(
-          menu: picked!,
-          contextStoreId: store.store_id,
-          exchangeAddress: detail.store_address,
-          exchangeLat: detail.store_lat,
-          exchangeLng: detail.store_lng,
-          exchangePlaceName: placeName,
-        ),
-      ),
-    );
-  }
 
   void _onScroll() {
     // 스크롤 위치 확인
@@ -236,6 +122,38 @@ class _CafeListState extends State<CafeList> {
       _refLng = pos.longitude;
       _hasLocationPermission = true;
     });
+    _loadRecommendMenus();
+  }
+
+  Future<void> _loadRecommendMenus() async {
+    if (_recommendLoading) return;
+    setState(() => _recommendLoading = true);
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      final districtCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
+
+      RecommendMenuResponse resp;
+      if (_hasLocationPermission) {
+        resp = await Api().client.getRecommendMenus(
+          lat: _refLat,
+          lng: _refLng,
+          limit: 100,
+        );
+      } else if (districtCode != null && districtCode.isNotEmpty) {
+        resp = await Api().client.getRecommendMenus(
+          districtCode: districtCode,
+          limit: 100,
+        );
+      } else {
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _recommendMenus = resp.menuList);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _recommendLoading = false);
+    }
   }
 
   @override
@@ -422,94 +340,127 @@ class _CafeListState extends State<CafeList> {
   }
 
   Widget _buildMenuRecommendationSection() {
+    final display = _recommendMenus.take(10).toList();
+    final hasMore = _recommendMenus.length > 10;
+
+    if (!_recommendLoading && _recommendMenus.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text(
-            '이런 메뉴는 어떠세요?',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade900,
-              height: 1.2,
-            ),
+          child: Row(
+            children: [
+              Text(
+                '이런 메뉴는 어떠세요?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade900,
+                  height: 1.2,
+                ),
+              ),
+              const Spacer(),
+              if (hasMore)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => _RecommendMenuListPage(
+                          menus: _recommendMenus,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        '더보기',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade600),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 186,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _kMenuRecPlaceholders.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final m = _kMenuRecPlaceholders[index];
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _onRecommendedMenuTap(m),
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: 120,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            width: 120,
-                            height: 120,
-                            color: const Color(0xFFBDBDBD),
-                            child: Icon(
-                              Icons.local_cafe_outlined,
-                              size: 40,
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          m.storeName,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: _subtitleColor,
-                            height: 1.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          m.menuName,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1A1A1F),
-                            height: 1.35,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          m.priceLabel,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1F),
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+        if (_recommendLoading)
+          const SizedBox(
+            height: 160,
+            child: Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
+          )
+        else
+          SizedBox(
+            height: 186,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: display.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final m = display[index];
+                return _RecommendMenuCard(
+                  menu: m,
+                  onTap: () => _onRecommendMenuItemTap(m),
+                );
+              },
+            ),
           ),
-        ),
       ],
+    );
+  }
+
+  Future<void> _onRecommendMenuItemTap(RecommendMenu item) async {
+    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    final menuProvider = Provider.of<MenuProvider>(context, listen: false);
+
+    await menuProvider.fetchMenuList(item.storeId);
+    if (!mounted) return;
+
+    final menus = menuProvider.menuCards ?? [];
+    Menu? picked;
+    for (final m in menus) {
+      if (m.menu_id == item.menuId) {
+        picked = m;
+        break;
+      }
+    }
+
+    if (picked == null) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => StorePage(storeId: item.storeId, storeName: item.storeName),
+        ),
+      );
+      return;
+    }
+
+    menuProvider.setSelectedMenu(picked);
+    final detail = await storeProvider.fetchDetailStore(item.storeId);
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => SelectGiftPage(
+          menu: picked!,
+          contextStoreId: item.storeId,
+          exchangeAddress: detail.store_address,
+          exchangeLat: detail.store_lat,
+          exchangeLng: detail.store_lng,
+          exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : item.storeName,
+        ),
+      ),
     );
   }
 
@@ -983,6 +934,228 @@ class _CafeDiscoveryStoreRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RecommendMenuCard extends StatelessWidget {
+  const _RecommendMenuCard({required this.menu, required this.onTap});
+
+  final RecommendMenu menu;
+  final VoidCallback onTap;
+
+  static const Color _subtitleColor = Color(0xFF757575);
+
+  String _formatPrice(int price) => price
+      .toString()
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = menu.menuPhoto != null && menu.menuPhoto!.trim().isNotEmpty;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 120,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: hasImage
+                    ? Image.network(
+                        menu.menuPhoto!.trim(),
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (_, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            width: 120,
+                            height: 120,
+                            color: const Color(0xFFBDBDBD),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: ColorAssset.mainColor,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 120,
+                          height: 120,
+                          color: const Color(0xFFBDBDBD),
+                          child: Icon(Icons.local_cafe_outlined, size: 40,
+                              color: Colors.white.withValues(alpha: 0.85)),
+                        ),
+                      )
+                    : Container(
+                        width: 120,
+                        height: 120,
+                        color: const Color(0xFFBDBDBD),
+                        child: Icon(Icons.local_cafe_outlined, size: 40,
+                            color: Colors.white.withValues(alpha: 0.85)),
+                      ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                menu.storeName,
+                style: const TextStyle(fontSize: 12, color: _subtitleColor, height: 1.2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                menu.menuName,
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w500,
+                    color: Color(0xFF1A1A1F), height: 1.35),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '${_formatPrice(menu.price)}원',
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1F), height: 1.35),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendMenuListPage extends StatelessWidget {
+  const _RecommendMenuListPage({required this.menus});
+
+  final List<RecommendMenu> menus;
+
+  String _formatPrice(int price) => price
+      .toString()
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          '이런 메뉴는 어떠세요?',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black87),
+        ),
+        centerTitle: true,
+      ),
+      body: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 16,
+          childAspectRatio: 0.78,
+        ),
+        itemCount: menus.length,
+        itemBuilder: (context, index) {
+          final m = menus[index];
+          final hasImage = m.menuPhoto != null && m.menuPhoto!.trim().isNotEmpty;
+          return GestureDetector(
+            onTap: () async {
+              final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+              final menuProvider = Provider.of<MenuProvider>(context, listen: false);
+              await menuProvider.fetchMenuList(m.storeId);
+              if (!context.mounted) return;
+              final menus = menuProvider.menuCards ?? [];
+              Menu? picked;
+              for (final menu in menus) {
+                if (menu.menu_id == m.menuId) { picked = menu; break; }
+              }
+              if (picked == null) {
+                Navigator.push(context, MaterialPageRoute<void>(
+                  builder: (_) => StorePage(storeId: m.storeId, storeName: m.storeName),
+                ));
+                return;
+              }
+              menuProvider.setSelectedMenu(picked);
+              final detail = await storeProvider.fetchDetailStore(m.storeId);
+              if (!context.mounted) return;
+              Navigator.push(context, MaterialPageRoute<void>(
+                builder: (_) => SelectGiftPage(
+                  menu: picked!,
+                  contextStoreId: m.storeId,
+                  exchangeAddress: detail.store_address,
+                  exchangeLat: detail.store_lat,
+                  exchangeLng: detail.store_lng,
+                  exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : m.storeName,
+                ),
+              ));
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: hasImage
+                      ? Image.network(
+                          m.menuPhoto!.trim(),
+                          width: double.infinity,
+                          height: 150,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (_, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              height: 150,
+                              color: const Color(0xFFBDBDBD),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 22, height: 22,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: ColorAssset.mainColor),
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 150, color: const Color(0xFFBDBDBD),
+                            child: Icon(Icons.local_cafe_outlined, size: 40,
+                                color: Colors.white.withValues(alpha: 0.85)),
+                          ),
+                        )
+                      : Container(
+                          height: 150, color: const Color(0xFFBDBDBD),
+                          child: Icon(Icons.local_cafe_outlined, size: 40,
+                              color: Colors.white.withValues(alpha: 0.85)),
+                        ),
+                ),
+                const SizedBox(height: 6),
+                Text(m.storeName,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF757575), height: 1.2),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(m.menuName,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1F), height: 1.35),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text('${_formatPrice(m.price)}원',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1F), height: 1.35)),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
