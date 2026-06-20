@@ -13,6 +13,7 @@ import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
 import 'package:cafeplatform/utils/store_distance.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 // Figma discovery (1690:5323) — 메뉴 추천 API 연동 전 플레이스홀더
@@ -64,6 +65,7 @@ class _CafeListState extends State<CafeList> {
   final ScrollController _scrollController = ScrollController();
   double _refLat = kDefaultReferenceLatitude;
   double _refLng = kDefaultReferenceLongitude;
+  bool _hasLocationPermission = false;
 
   @override
   void initState() {
@@ -71,13 +73,7 @@ class _CafeListState extends State<CafeList> {
     _scrollController.addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      resolveDistanceReferencePoint().then((ref) {
-        if (!mounted) return;
-        setState(() {
-          _refLat = ref.$1;
-          _refLng = ref.$2;
-        });
-      });
+      _resolveLocation();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -213,6 +209,29 @@ class _CafeListState extends State<CafeList> {
     }
   }
 
+  Future<void> _resolveLocation() async {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (!enabled) return;
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) return;
+
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+      );
+      if (!mounted) return;
+      setState(() {
+        _refLat = pos.latitude;
+        _refLng = pos.longitude;
+        _hasLocationPermission = true;
+      });
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
@@ -337,6 +356,7 @@ class _CafeListState extends State<CafeList> {
                           store: store,
                           refLat: _refLat,
                           refLng: _refLng,
+                          hasLocationPermission: _hasLocationPermission,
                           buildImage: _buildStoreThumb,
                           onTap: () {
                             Navigator.push(
@@ -588,6 +608,7 @@ class _CafeListState extends State<CafeList> {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
+                  color: ColorAssset.mainColor,
                   value: loadingProgress.expectedTotalBytes != null
                       ? loadingProgress.cumulativeBytesLoaded /
                           loadingProgress.expectedTotalBytes!
@@ -799,6 +820,7 @@ class _CafeDiscoveryStoreRow extends StatelessWidget {
     required this.store,
     required this.refLat,
     required this.refLng,
+    required this.hasLocationPermission,
     required this.buildImage,
     required this.onTap,
   });
@@ -806,6 +828,7 @@ class _CafeDiscoveryStoreRow extends StatelessWidget {
   final Store store;
   final double refLat;
   final double refLng;
+  final bool hasLocationPermission;
   final Widget Function(String url, double w, double h) buildImage;
   final VoidCallback onTap;
 
@@ -837,12 +860,9 @@ class _CafeDiscoveryStoreRow extends StatelessWidget {
     final showOpenBadge =
         store.open_yn != null && store.open_yn!.toUpperCase() == 'Y';
 
-    final distanceLabel = storeDistanceLabel(
-      refLat,
-      refLng,
-      store.store_lat,
-      store.store_lng,
-    );
+    final distanceLabel = hasLocationPermission
+        ? storeDistanceLabel(refLat, refLng, store.store_lat, store.store_lng)
+        : null;
 
     return Material(
       color: Colors.white,
