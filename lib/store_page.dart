@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -12,9 +11,7 @@ import 'package:cafeplatform/Payment/select_gift_type_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/widget/store_map_page.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 /// Figma StorePage (1695:1372) — 타이포·색·메뉴 카드·구분 바
@@ -53,10 +50,10 @@ class _StorePageState extends State<StorePage> {
           (s) => s?.store_id == widget.storeId,
           orElse: () => StoreDummyRepository.stores[0]);
     } else {
-      futureStore = Provider.of<StoreProvider>(context, listen: false)
-          .fetchDetailStore(widget.storeId);
-      Provider.of<MenuProvider>(context, listen: false)
-          .fetchMenuList(widget.storeId);
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      final menuProvider = Provider.of<MenuProvider>(context, listen: false);
+      futureStore = storeProvider.fetchDetailStore(widget.storeId);
+      menuProvider.fetchMenuList(widget.storeId);
     }
   }
 
@@ -549,6 +546,86 @@ class _StorePageState extends State<StorePage> {
 }
 
 // 매장 이미지 슬라이더 위젯
+class _StoreImagePlaceholder extends StatelessWidget {
+  final double height;
+  const _StoreImagePlaceholder({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFE0CC), Color(0xFFFFC5A0), Color(0xFFFFAB7B)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // 배경 원형 장식
+          Positioned(
+            top: -30,
+            right: -20,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -40,
+            left: -30,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          // 중앙 아이콘 + 텍스트
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.local_cafe_rounded,
+                    size: 34,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  '매장 사진 준비 중',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class StoreImageSlider extends StatefulWidget {
   final Store? store;
 
@@ -559,258 +636,85 @@ class StoreImageSlider extends StatefulWidget {
 }
 
 class _StoreImageSliderState extends State<StoreImageSlider> {
-  bool isLoadingImages = true;
-  List<File> images = [];
-  int activeIndex = 0;
+  int _activeIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    // 기존 이미지 초기화
-    images = [];
-    isLoadingImages = true;
-    _initializeStoreData();
+  List<String> get _urls {
+    if (widget.store == null || widget.store!.store_id < 0) return [];
+    return (widget.store!.store_photo_urls ?? [])
+        .where((u) => u.isNotEmpty)
+        .toList();
   }
 
-  @override
-  void didUpdateWidget(StoreImageSlider oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 매장이 변경되면 이미지 다시 로드
-    if (oldWidget.store?.store_id != widget.store?.store_id) {
-      setState(() {
-        images = [];
-        isLoadingImages = true;
-      });
-      _initializeStoreData();
-    }
-  }
-
-  Future<void> _initializeStoreData() async {
-    final fetchedImages = await _loadImages();
-    if (mounted) {
-      setState(() {
-        images = fetchedImages;
-        isLoadingImages = false;
-      });
-    }
-  }
-
-  Future<List<File>> _loadImages() async {
-    print("_loadImages ${widget.store?.store_id}");
-    List<String> storePhotoUrls;
-    final storeId = widget.store?.store_id ?? 0;
-
-    if (widget.store != null && widget.store!.store_id < 0) {
-      // 더미 데이터인 경우에도 빈 리스트 반환 (기본 이미지 1장만 표시)
-      storePhotoUrls = [];
-    } else {
-      // 실제 매장 사진 URL이 있으면 사용, 없으면 빈 리스트
-      storePhotoUrls = widget.store?.store_photo_urls ?? [];
-      // store_photo_urls가 비어있거나 모든 URL이 유효하지 않은 경우 빈 리스트 유지
-      storePhotoUrls = storePhotoUrls.where((url) => url.isNotEmpty).toList();
-    }
-
-    print(":: $storePhotoUrls");
-
-    // 사진이 없으면 빈 리스트 반환 (build에서 기본 이미지 표시)
-    if (storePhotoUrls.isEmpty) {
-      return [];
-    }
-
-    List<File> images = [];
-    await Future.wait(storePhotoUrls.asMap().entries.map((e) async {
-      var idx = e.key;
-      var url = e.value;
-      try {
-        images.add(await getImageFileFromUrl(url, storeId, idx));
-      } catch (e) {
-        print("이미지 로드 실패: $url, 오류: $e");
-        // 이미지 로드 실패 시 해당 이미지는 제외
-      }
-    }));
-    return images;
-  }
-
-  Future<File> getImageFileFromUrl(
-      String imageUrl, int storeId, int idx) async {
-    final tempDir = await getTemporaryDirectory();
-
-    // 매장 ID와 인덱스를 포함한 고유한 파일명 생성 (타임스탬프 없이 고정 이름 사용)
-    final fileName = 'store_${storeId}_image_${idx}.png';
-    final tempFile = File('${tempDir.path}/$fileName');
-
-    // 기존 파일이 있으면 유효성 검사
-    if (await tempFile.exists()) {
-      try {
-        // 파일 크기가 0이 아니고, 읽을 수 있는지 확인
-        final fileSize = await tempFile.length();
-        if (fileSize > 0) {
-          // 이미지 파일인지 간단히 확인 (PNG 시그니처 체크)
-          final bytes = await tempFile.readAsBytes();
-          if (bytes.length >= 8 &&
-              bytes[0] == 0x89 &&
-              bytes[1] == 0x50 &&
-              bytes[2] == 0x4E &&
-              bytes[3] == 0x47) {
-            // 유효한 PNG 파일인 것 같음
-            return tempFile;
-          }
-        }
-        // 유효하지 않은 파일이면 삭제
-        print('손상된 이미지 파일 발견, 삭제 후 다시 다운로드: ${tempFile.path}');
-        await tempFile.delete();
-      } catch (e) {
-        // 파일 읽기 실패 시 삭제 후 다시 다운로드
-        print('이미지 파일 유효성 검사 실패, 삭제 후 다시 다운로드: $e');
-        try {
-          await tempFile.delete();
-        } catch (_) {
-          // 삭제 실패는 무시
-        }
-      }
-    }
-
-    // 파일이 없거나 손상된 경우 새로 다운로드
-    try {
-      final response = await http.get(
-        Uri.parse(imageUrl),
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final bytes = response.bodyBytes;
-        // 빈 바이트 배열이 아닌지 확인
-        if (bytes.isNotEmpty) {
-          await tempFile.writeAsBytes(bytes);
-          return tempFile;
-        } else {
-          throw Exception('빈 이미지 데이터');
-        }
-      } else {
-        throw Exception('HTTP ${response.statusCode}');
-      }
-    } catch (e) {
-      print('이미지 다운로드 실패: $imageUrl, 오류: $e');
-      rethrow;
-    }
-  }
-
-  Widget imageSlider(image, int index) {
-    try {
-      return Container(
-        width: double.infinity,
-        height: _StoreFigma.sliderHeight,
-        color: Colors.white,
-        child: Image.file(
-          File(image.path),
-          key: ValueKey('${widget.store?.store_id}_${image.path}_$index'),
+  Widget _imageSlide(String url, int index) {
+    return Image.network(
+      url,
+      key: ValueKey('${widget.store?.store_id}_$index'),
+      width: double.infinity,
+      height: _StoreFigma.sliderHeight,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Container(
           width: double.infinity,
           height: _StoreFigma.sliderHeight,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            print("이미지 로드 오류: $error, 파일: ${image.path}");
-            // 손상된 파일 삭제 시도 (비동기이지만 결과는 기다리지 않음)
-            try {
-              File(image.path).delete().then((_) {
-                print('손상된 이미지 파일 삭제 완료: ${image.path}');
-              }).catchError((e) {
-                print('파일 삭제 실패: $e');
-              });
-            } catch (e) {
-              print('파일 삭제 시도 중 오류: $e');
-            }
-
-            // AssetImage로 대체
-            return Image(
-              image: const AssetImage('assets/coffee.jpeg'),
-              width: double.infinity,
-              height: _StoreFigma.sliderHeight,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                // Asset 이미지도 실패하면 빈 컨테이너 반환
-                return Container(
-                  width: double.infinity,
-                  height: _StoreFigma.sliderHeight,
-                  color: _StoreFigma.sliderPlaceholder,
-                );
-              },
-            );
-          },
-        ),
-      );
-    } catch (e) {
-      print("이미지 슬라이더 오류: $e");
-      // 전체적으로 실패하면 빈 컨테이너 반환
-      return Container(
-        width: double.infinity,
-        height: _StoreFigma.sliderHeight,
-        color: _StoreFigma.sliderPlaceholder,
-      );
-    }
+          color: _StoreFigma.sliderPlaceholder,
+          child: const Center(
+            child: CircularProgressIndicator(color: ColorAssset.mainColor),
+          ),
+        );
+      },
+      errorBuilder: (_, __, ___) =>
+          _StoreImagePlaceholder(height: _StoreFigma.sliderHeight),
+    );
   }
 
-  Widget indicator(length) => Container(
-      margin: const EdgeInsets.only(bottom: 20.0),
-      alignment: Alignment.bottomCenter,
-      child: AnimatedSmoothIndicator(
-        activeIndex: activeIndex,
-        count: length,
-        effect: JumpingDotEffect(
+  Widget _indicator(int count) => Container(
+        margin: const EdgeInsets.only(bottom: 20.0),
+        alignment: Alignment.bottomCenter,
+        child: AnimatedSmoothIndicator(
+          activeIndex: _activeIndex,
+          count: count,
+          effect: JumpingDotEffect(
             dotHeight: 6,
             dotWidth: 6,
             activeDotColor: Colors.white,
-            dotColor: Colors.white.withValues(alpha: 0.6)),
-      ));
+            dotColor: Colors.white.withValues(alpha: 0.6),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
-    if (isLoadingImages) {
-      return Container(
+    final urls = _urls;
+
+    if (urls.isEmpty) {
+      return _StoreImagePlaceholder(height: _StoreFigma.sliderHeight);
+    }
+
+    if (urls.length == 1) {
+      return SizedBox(
         width: double.infinity,
         height: _StoreFigma.sliderHeight,
-        color: _StoreFigma.sliderPlaceholder,
-        child: const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
+        child: _imageSlide(urls[0], 0),
       );
-    } else if (images.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: _StoreFigma.sliderHeight,
-        color: _StoreFigma.sliderPlaceholder,
-        child: Image(
-          image: const AssetImage('assets/coffee.jpeg'),
-          width: double.infinity,
-          height: _StoreFigma.sliderHeight,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else if (images.length == 1) {
-      // 이미지가 한 장일 때는 스와이프 비활성화
-      return imageSlider(images[0], 0);
-    } else {
-      // 이미지가 여러 장일 때만 CarouselSlider 사용
-      return Stack(alignment: Alignment.bottomCenter, children: <Widget>[
+    }
+
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
         CarouselSlider.builder(
           options: CarouselOptions(
-            initialPage: 0,
+            height: _StoreFigma.sliderHeight,
             viewportFraction: 1,
-            enlargeCenterPage: true,
-            onPageChanged: (index, reason) => setState(() {
-              activeIndex = index;
-            }),
+            enlargeCenterPage: false,
+            onPageChanged: (index, _) =>
+                setState(() => _activeIndex = index),
           ),
-          itemCount: images.length,
-          itemBuilder: (context, index, realIndex) {
-            final path = images[index];
-            return imageSlider(path, index);
-          },
+          itemCount: urls.length,
+          itemBuilder: (_, index, __) => _imageSlide(urls[index], index),
         ),
-        Align(
-            alignment: Alignment.bottomCenter, child: indicator(images.length))
-      ]);
-    }
+        _indicator(urls.length),
+      ],
+    );
   }
 }

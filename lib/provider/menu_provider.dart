@@ -10,6 +10,10 @@ class MenuProvider extends ChangeNotifier {
   late List<Menu>? menuCards = [];
   bool isLoading = false;
 
+  // 메뉴 목록 메모리 캐시 (storeId → (menus, 캐시 시각))
+  final Map<int, ({List<Menu> menus, DateTime cachedAt})> _menuCache = {};
+  static const Duration _cacheTtl = Duration(hours: 1);
+
   void setSelectedMenu(Menu menu) {
     _selectedMenu = menu;
     notifyListeners();
@@ -47,13 +51,21 @@ class MenuProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchMenuList(storeId) async {
+  Future<void> fetchMenuList(int storeId) async {
+    final cached = _menuCache[storeId];
+    if (cached != null && DateTime.now().difference(cached.cachedAt) < _cacheTtl) {
+      menuCards = cached.menus;
+      notifyListeners();
+      return;
+    }
+
     isLoading = true;
     notifyListeners();
     try {
       print("menu_provider::fetchMenuList:: fetch 호출");
       var response = await Api().client.getMenuList(storeId);
-      var menuList = response.menuList;
+      var menuList = response.menuList ?? [];
+      _menuCache[storeId] = (menus: menuList, cachedAt: DateTime.now());
       setMenuCard(menuList);
     } catch (error) {
       print("menu_provider::fetchMenuList:: fetch 오류: $error");
