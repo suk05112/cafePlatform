@@ -606,6 +606,7 @@ class _TabPageState extends State<TabPage> {
               result.authorizationStatus == AuthorizationStatus.provisional;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('service_push_enabled', granted);
+          await prefs.setBool('marketing_push_enabled', granted);
           if (granted && mounted) {
             await _syncNotificationToServer();
           }
@@ -614,6 +615,7 @@ class _TabPageState extends State<TabPage> {
           Navigator.pop(ctx);
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('service_push_enabled', false);
+          await prefs.setBool('marketing_push_enabled', false);
         },
       ),
     );
@@ -629,13 +631,16 @@ class _TabPageState extends State<TabPage> {
       final fcmToken = prefs.getString('fcm_token');
       if (fcmToken == null || fcmToken.isEmpty) return;
 
+      final allowServicePush = prefs.getBool('service_push_enabled') ?? false;
+      final allowMarketingPush = prefs.getBool('marketing_push_enabled') ?? false;
+
       await Api().client.registerPushToken(
         user.user_id,
         PushTokenRequest(
           fcmToken: fcmToken,
           deviceType: Platform.isIOS ? 'ios' : 'android',
-          allowServicePush: true,
-          allowMarketingPush: prefs.getBool('marketing_push_enabled') ?? false,
+          allowServicePush: allowServicePush,
+          allowMarketingPush: allowMarketingPush,
         ),
       );
     } catch (_) {}
