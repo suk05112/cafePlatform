@@ -418,48 +418,29 @@ class _CafeListState extends State<CafeList> {
     );
   }
 
-  Future<void> _onRecommendMenuItemTap(RecommendMenu item) async {
+  void _onRecommendMenuItemTap(RecommendMenu item) {
     if (_recommendTapping) return;
     _recommendTapping = true;
 
-    try {
-      await Api().setBaseClient(Api.BASE_URL);
+    // RecommendMenu 데이터로 Menu 객체를 직접 생성해 즉시 이동
+    // 매장 주소/좌표는 SelectGiftPage 안에서 백그라운드 로드
+    final menu = Menu(
+      menu_id: item.menuId,
+      store_id: item.storeId,
+      name: item.menuName,
+      price: item.price,
+      menu_image_url: item.menuPhoto,
+      description: item.description,
+    );
 
-      // MenuProvider.fetchMenuList()는 notifyListeners()로 스택의 StorePage를
-      // rebuild시키므로 직접 API 호출
-      final menuResp = await Api().client.getMenuList(item.storeId);
-      if (!mounted) return;
-
-      Menu? picked;
-      for (final m in menuResp.menuList) {
-        if (m.menu_id == item.menuId) { picked = m; break; }
-      }
-
-      if (picked == null) {
-        Navigator.push(context, MaterialPageRoute<void>(
-          builder: (_) => StorePage(storeId: item.storeId, storeName: item.storeName),
-        ));
-        return;
-      }
-
-      final storeResp = await Api().client.getStoreDetailInfo(item.storeId);
-      if (!mounted) return;
-      final detail = storeResp.store;
-
-      Navigator.push(context, MaterialPageRoute<void>(
-        builder: (_) => SelectGiftPage(
-          menu: picked!,
-          contextStoreId: item.storeId,
-          exchangeAddress: detail.store_address,
-          exchangeLat: detail.store_lat,
-          exchangeLng: detail.store_lng,
-          exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : item.storeName,
-        ),
-      ));
-    } catch (_) {
-    } finally {
-      _recommendTapping = false;
-    }
+    Navigator.push(context, MaterialPageRoute<void>(
+      builder: (_) => SelectGiftPage(
+        menu: menu,
+        contextStoreId: item.storeId,
+        exchangePlaceName: item.storeName,
+        loadStoreId: item.storeId,
+      ),
+    )).then((_) => _recommendTapping = false);
   }
 
   Widget _buildSearchAndMapRow() {

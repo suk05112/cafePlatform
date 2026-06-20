@@ -62,9 +62,11 @@ class _StorePageState extends State<StorePage> {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
       final loaded = await storeProvider.fetchDetailStore(widget.storeId);
       if (!mounted) return;
-      setState(() => store = loaded);
+      setState(() {
+        store = loaded;
+        _storeLoading = false;
+      });
     } catch (_) {
-    } finally {
       if (mounted) setState(() => _storeLoading = false);
     }
   }
@@ -95,7 +97,7 @@ class _StorePageState extends State<StorePage> {
           children: [
             // 매장사진 (스와이프)
             StoreImageSlider(
-              key: ValueKey('store_image_slider_${storeData?.store_id ?? 0}'),
+              key: ValueKey('store_image_slider_${widget.storeId}'),
               store: storeData,
             ),
             // 매장명과 설명
