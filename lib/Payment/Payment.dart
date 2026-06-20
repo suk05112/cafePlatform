@@ -26,9 +26,10 @@ import 'package:tosspayments_widget_sdk_flutter/widgets/payment_method.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
-import 'package:cafeplatform/utils/number_formatter.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
 import 'package:uuid/uuid.dart';
+import 'package:fast_contacts/fast_contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// true: Figma(1683:764) 결제 UI · 토스 위젯 미사용 · PG 연동 전
 const bool _kUseFigmaPaymentUi = true;
@@ -609,23 +610,14 @@ if (_figmaPaymentLabel.isEmpty) {
     print('결제 수단: $paymentValue');
 
     if (widget.type == 2) {
-      if (receiver.trim().isEmpty) {
-        _showToast('받는 분의 이름을 입력해주세요.');
-        return;
-      }
       if (receiverPhoneNumber.trim().isEmpty) {
         _showToast('받는 분의 전화번호를 입력해주세요.');
         return;
       }
-      final phoneNumber =
+      final phoneDigits =
           receiverPhoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-      if (phoneNumber.length != 10 && phoneNumber.length != 11) {
-        _showToast('올바른 전화번호를 입력해주세요. (10-11자리)');
-        return;
-      }
-      final phonePattern = RegExp(r'^010-\d{4}-\d{4}$');
-      if (!phonePattern.hasMatch(receiverPhoneNumber)) {
-        _showToast('전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
+      if (!RegExp(r'^010\d{8}$').hasMatch(phoneDigits)) {
+        _showToast('올바른 전화번호를 입력해주세요. (010-XXXX-XXXX)');
         return;
       }
     }
@@ -917,112 +909,525 @@ class ReceiverInfo extends StatefulWidget {
 }
 
 class _ReceiverInfoState extends State<ReceiverInfo> {
-  final TextEditingController _receiverController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _messageController = TextEditingController();
-  String _receiver = "";
-  String _receiverPhoneNumber = "";
+  String? _name;
+  String? _phone;
 
-  @override
-  void dispose() {
-    _receiverController.dispose();
-    _phoneController.dispose();
-    _messageController.dispose();
-    super.dispose();
+  static String _digitsOnly(String phone) =>
+      phone.replaceAll(RegExp(r'[^\d]'), '');
+
+  static String _formatPhone(String digits) {
+    if (digits.length == 11) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7)}';
+    } else if (digits.length == 10) {
+      return '${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6)}';
+    }
+    return digits;
+  }
+
+  static bool _isValidPhone(String digits) =>
+      RegExp(r'^010\d{8}$').hasMatch(digits);
+
+  void _setRecipient(String name, String phone) {
+    setState(() {
+      _name = name;
+      _phone = phone;
+    });
+    widget.onInputChanged(name, phone);
+  }
+
+  void _clearRecipient() {
+    setState(() {
+      _name = null;
+      _phone = null;
+    });
+    widget.onInputChanged('', '');
+  }
+
+  Future<void> _pickFromContacts() async {
+    final status = await Permission.contacts.request();
+    debugPrint('[ReceiverInfo] contacts permission status: $status');
+    if (status.isGranted) {
+      final contacts = await FastContacts.getAllContacts(
+        fields: [ContactField.displayName, ContactField.phoneNumbers],
+      );
+      if (!mounted) return;
+      _showContactsPicker(contacts);
+      return;
+    }
+
+    if (!mounted) return;
+
+    if (status.isPermanentlyDenied) {
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '연락처 접근 권한 필요',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '연락처 가져오기를 사용하려면 설정에서 연락처 접근을 허용해주세요.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('취소',
+                            style: TextStyle(color: Colors.black54, fontSize: 15)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: ColorAssset.mainColor,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          openAppSettings();
+                        },
+                        child: const Text('설정으로 이동',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('연락처 접근 권한이 필요합니다')),
+      );
+    }
+  }
+
+  void _showContactsPicker(List<Contact> contacts) {
+    final searchController = TextEditingController();
+    List<Contact> filtered = List.from(contacts);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.85,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              builder: (_, scrollController) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '연락처 선택',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                    ),
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        controller: searchController,
+                        decoration: InputDecoration(
+                          hintText: '이름 또는 번호 검색',
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                          prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade400),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (q) {
+                          setSheetState(() {
+                            filtered = contacts.where((c) {
+                              final name = c.displayName.toLowerCase();
+                              final phone = c.phones
+                                  .map((p) => _digitsOnly(p.number))
+                                  .join();
+                              return name.contains(q.toLowerCase()) ||
+                                  phone.contains(q);
+                            }).toList();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? Center(
+                              child: Text(
+                                '연락처가 없습니다',
+                                style: TextStyle(color: Colors.grey.shade500),
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: scrollController,
+                              itemCount: filtered.length,
+                              itemBuilder: (_, i) {
+                                final c = filtered[i];
+                                final rawPhone = c.phones.isNotEmpty
+                                    ? c.phones.first.number
+                                    : '';
+                                final digits = _digitsOnly(rawPhone);
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 2),
+                                  leading: CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor:
+                                        ColorAssset.mainColor.withValues(alpha: 0.12),
+                                    child: Text(
+                                      c.displayName.isNotEmpty
+                                          ? c.displayName[0]
+                                          : '?',
+                                      style: TextStyle(
+                                        color: ColorAssset.mainColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    c.displayName,
+                                    style: const TextStyle(
+                                        fontSize: 15, fontWeight: FontWeight.w500),
+                                  ),
+                                  subtitle: rawPhone.isNotEmpty
+                                      ? Text(
+                                          rawPhone,
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey.shade500),
+                                        )
+                                      : null,
+                                  onTap: rawPhone.isEmpty
+                                      ? null
+                                      : () {
+                                          Navigator.pop(ctx);
+                                          _setRecipient(c.displayName, digits);
+                                        },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showPhoneInputDialog() {
+    final phoneController = TextEditingController();
+    String? errorText;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '번호로 추가',
+                      style: TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      autofocus: true,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11),
+                        _PhoneHyphenFormatter(),
+                      ],
+                      style: const TextStyle(fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: '010-0000-0000',
+                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        errorText: errorText,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                              color: ColorAssset.mainColor, width: 1.5),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(color: Colors.red),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(color: Colors.red, width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 14),
+                      ),
+                      onChanged: (_) {
+                        if (errorText != null) {
+                          setDialogState(() => errorText = null);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('취소',
+                                style: TextStyle(
+                                    color: Colors.black54, fontSize: 15)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: ColorAssset.mainColor,
+                              foregroundColor: Colors.black,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () {
+                              final digits =
+                                  _digitsOnly(phoneController.text.trim());
+                              if (!_isValidPhone(digits)) {
+                                setDialogState(() =>
+                                    errorText = '010으로 시작하는 11자리를 입력해주세요');
+                                return;
+                              }
+                              Navigator.pop(ctx);
+                              _setRecipient('', digits);
+                            },
+                            child: const Text('추가',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 15)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final borderStyle = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(7),
-      borderSide: const BorderSide(color: Color(0xFFE0E3E9)),
-    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('받는 분 정보',
-            style: PaymentUiTokens.sectionTitle),
+        const Text('받는 분', style: PaymentUiTokens.sectionTitle),
         const SizedBox(height: 12),
-        TextField(
-          controller: _receiverController,
-          style: const TextStyle(fontSize: 15),
-          decoration: InputDecoration(
-            labelText: "받는 분 이름 *",
-            labelStyle: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: PaymentUiTokens.labelMuted),
-            hintText: "받는 분의 이름을 입력해주세요",
-            border: borderStyle,
-            focusedBorder: borderStyle,
-            enabledBorder: borderStyle,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        if (_phone == null) ...[
+          _ReceiverButton(
+            icon: Icons.contacts_outlined,
+            label: '연락처 가져오기',
+            onTap: _pickFromContacts,
           ),
-          onChanged: (value) {
-            setState(() {
-              _receiver = value;
-            });
-            widget.onInputChanged(_receiver, _receiverPhoneNumber);
-          },
-        ),
-        const SizedBox(height: 7),
-        TextField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          style: const TextStyle(fontSize: 15),
-          inputFormatters: [
-            NumberFormatter(), // 하이픈 자동 삽입 (3-4-4 형식)
-            LengthLimitingTextInputFormatter(13), // 010-1234-5678 (최대 13자)
-          ],
-          decoration: InputDecoration(
-            labelText: "전화번호 *",
-            labelStyle: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: PaymentUiTokens.labelMuted),
-            hintText: "받을 분의 전화번호를 입력해주세요 (예: 010-1234-5678)",
-            border: borderStyle,
-            focusedBorder: borderStyle,
-            enabledBorder: borderStyle,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          const SizedBox(height: 8),
+          _ReceiverButton(
+            icon: Icons.dialpad_outlined,
+            label: '번호로 추가',
+            onTap: _showPhoneInputDialog,
           ),
-          onChanged: (value) {
-            setState(() {
-              _receiverPhoneNumber = value;
-            });
-            widget.onInputChanged(_receiver, _receiverPhoneNumber);
-          },
-        ),
-        const SizedBox(height: 7),
-        TextField(
-          controller: _messageController,
-          maxLines: 2,
-          style: const TextStyle(fontSize: 15),
-          decoration: InputDecoration(
-            labelText: "메시지 (생략가능)",
-            labelStyle: const TextStyle(
-                fontWeight: FontWeight.w400,
-                fontSize: 14,
-                color: PaymentUiTokens.labelMuted),
-            hintText: "메시지를 입력해주세요",
-            border: borderStyle,
-            focusedBorder: borderStyle,
-            enabledBorder: borderStyle,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor:
+                      ColorAssset.mainColor.withValues(alpha: 0.12),
+                  child: Icon(
+                    Icons.person_outline,
+                    size: 18,
+                    color: ColorAssset.mainColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_name != null && _name!.isNotEmpty)
+                        Text(
+                          _name!,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      Text(
+                        _formatPhone(_phone!),
+                        style: TextStyle(
+                            fontSize: 14, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _clearRecipient,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close,
+                        size: 14, color: Colors.grey.shade600),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
+        ],
+        const SizedBox(height: 10),
         const Text(
-          "기프티콘은 카카오톡(문자)으로 전달됩니다.",
-          style: TextStyle(
-            fontSize: 11,
-            color: PaymentUiTokens.captionGrey,
-          ),
+          '기프티콘은 카카오톡으로 전달됩니다.',
+          style: TextStyle(fontSize: 13, color: PaymentUiTokens.captionGrey),
         ),
       ],
+    );
+  }
+}
+
+class _ReceiverButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ReceiverButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: Colors.grey.shade600),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PhoneHyphenFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i == 3 || i == 7) buffer.write('-');
+      buffer.write(digits[i]);
+    }
+    final formatted = buffer.toString();
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
