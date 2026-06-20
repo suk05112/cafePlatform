@@ -419,7 +419,6 @@ class _CafeListState extends State<CafeList> {
   }
 
   Future<void> _onRecommendMenuItemTap(RecommendMenu item) async {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
     final menuProvider = Provider.of<MenuProvider>(context, listen: false);
 
     await menuProvider.fetchMenuList(item.storeId);
@@ -446,7 +445,15 @@ class _CafeListState extends State<CafeList> {
     }
 
     menuProvider.setSelectedMenu(picked);
-    final detail = await storeProvider.fetchDetailStore(item.storeId);
+
+    // storeProvider.fetchDetailStore() 는 notifyListeners()를 호출해
+    // 스택의 다른 StorePage들을 rebuild시키므로 직접 API 호출
+    Store? detail;
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+      final resp = await Api().client.getStoreDetailInfo(item.storeId);
+      detail = resp.store;
+    } catch (_) {}
     if (!mounted) return;
 
     Navigator.push(
@@ -455,10 +462,10 @@ class _CafeListState extends State<CafeList> {
         builder: (_) => SelectGiftPage(
           menu: picked!,
           contextStoreId: item.storeId,
-          exchangeAddress: detail.store_address,
-          exchangeLat: detail.store_lat,
-          exchangeLng: detail.store_lng,
-          exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : item.storeName,
+          exchangeAddress: detail?.store_address,
+          exchangeLat: detail?.store_lat,
+          exchangeLng: detail?.store_lng,
+          exchangePlaceName: (detail?.store_name.isNotEmpty == true) ? detail!.store_name : item.storeName,
         ),
       ),
     );
