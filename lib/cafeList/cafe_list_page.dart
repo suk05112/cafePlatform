@@ -219,17 +219,23 @@ class _CafeListState extends State<CafeList> {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) return;
 
+    Position? pos;
     try {
-      final pos = await Geolocator.getCurrentPosition(
+      pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 10),
       );
-      if (!mounted) return;
-      setState(() {
-        _refLat = pos.latitude;
-        _refLng = pos.longitude;
-        _hasLocationPermission = true;
-      });
-    } catch (_) {}
+    } catch (_) {
+      try {
+        pos = await Geolocator.getLastKnownPosition();
+      } catch (_) {}
+    }
+    if (pos == null || !mounted) return;
+    setState(() {
+      _refLat = pos!.latitude;
+      _refLng = pos.longitude;
+      _hasLocationPermission = true;
+    });
   }
 
   @override
