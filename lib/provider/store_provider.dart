@@ -319,15 +319,21 @@ class StoreProvider extends ChangeNotifier {
   //   return response.body.store;
   // }
 
-  Future<Store> fetchDetailStore(int storeId) async {
-    print("store_provider::getDetailStore:: fetch 호출");
+  // 매장 상세 메모리 캐시 (storeId → (store, 캐시 시각))
+  final Map<int, ({Store store, DateTime cachedAt})> _detailCache = {};
+  static const Duration _cacheTtl = Duration(hours: 1);
 
+  Future<Store> fetchDetailStore(int storeId) async {
+    final cached = _detailCache[storeId];
+    if (cached != null && DateTime.now().difference(cached.cachedAt) < _cacheTtl) {
+      _store = cached.store;
+      return cached.store;
+    }
+
+    print("store_provider::getDetailStore:: fetch 호출");
     var response = await Api().client.getStoreDetailInfo(storeId);
-    print(
-        "store_provider::getDetailStore:: response.store.store_address: ${response.store.store_address}");
-    print(
-        "store_provider::getDetailStore:: response.store 전체: ${response.store.toJson()}");
     _store = response.store;
+    _detailCache[storeId] = (store: response.store, cachedAt: DateTime.now());
     notifyListeners();
 
     return response.store;
