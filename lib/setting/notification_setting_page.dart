@@ -71,7 +71,7 @@ class _NotificationSettingPageState extends State<NotificationSettingPage> {
     await prefs.setBool('service_push_enabled', value);
     await prefs.setBool('marketing_push_enabled', marketingValue);
 
-    _updatePushTokenSettings(
+    await _updatePushTokenSettings(
       allowServicePush: value,
       allowMarketingPush: marketingValue,
     );
@@ -161,7 +161,7 @@ class _NotificationSettingPageState extends State<NotificationSettingPage> {
     await prefs.setBool('service_push_enabled', serviceValue);
 
     // 서버에 푸시 토큰 설정 업데이트
-    _updatePushTokenSettings(
+    await _updatePushTokenSettings(
       allowServicePush: serviceValue,
       allowMarketingPush: value,
     );
