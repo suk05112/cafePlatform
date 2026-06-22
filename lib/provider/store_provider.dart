@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/dummyData.dart';
 import 'package:cafeplatform/model/Store.dart';
+import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/model/region.dart';
 
 class StoreProvider extends ChangeNotifier {
@@ -318,6 +319,19 @@ class StoreProvider extends ChangeNotifier {
 
   //   return response.body.store;
   // }
+
+  // 추천 메뉴 캐시 (지역코드 또는 'loc:{lat},{lng}' 키 기준 1시간)
+  final Map<String, ({List<RecommendMenu> menus, DateTime cachedAt})> _recommendCache = {};
+
+  List<RecommendMenu>? getCachedRecommendMenus(String cacheKey) {
+    final cached = _recommendCache[cacheKey];
+    if (cached == null || DateTime.now().difference(cached.cachedAt) >= _listCacheTtl) return null;
+    return cached.menus;
+  }
+
+  void setRecommendMenuCache(String cacheKey, List<RecommendMenu> menus) {
+    _recommendCache[cacheKey] = (menus: menus, cachedAt: DateTime.now());
+  }
 
   // 매장 상세 메모리 캐시 (storeId → (store, 캐시 시각))
   final Map<int, ({Store store, DateTime cachedAt})> _detailCache = {};

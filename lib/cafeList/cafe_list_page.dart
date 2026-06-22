@@ -124,13 +124,28 @@ class _CafeListState extends State<CafeList> {
     _loadRecommendMenus();
   }
 
-  Future<void> _loadRecommendMenus() async {
+  Future<void> _loadRecommendMenus({bool forceRefresh = false}) async {
     if (_recommendLoading) return;
+    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    final districtCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
+
+    final cacheKey = _hasLocationPermission
+        ? 'loc:${_refLat.toStringAsFixed(4)},${_refLng.toStringAsFixed(4)}'
+        : (districtCode ?? '');
+
+    if (cacheKey.isEmpty) return;
+
+    if (!forceRefresh) {
+      final cached = storeProvider.getCachedRecommendMenus(cacheKey);
+      if (cached != null) {
+        setState(() => _recommendMenus = cached);
+        return;
+      }
+    }
+
     setState(() => _recommendLoading = true);
     try {
       await Api().setBaseClient(Api.BASE_URL);
-      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-      final districtCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
       RecommendMenuResponse resp;
       if (_hasLocationPermission) {
@@ -139,15 +154,14 @@ class _CafeListState extends State<CafeList> {
           lng: _refLng,
           limit: 100,
         );
-      } else if (districtCode != null && districtCode.isNotEmpty) {
+      } else {
         resp = await Api().client.getRecommendMenus(
           districtCode: districtCode,
           limit: 100,
         );
-      } else {
-        return;
       }
       if (!mounted) return;
+      storeProvider.setRecommendMenuCache(cacheKey, resp.menuList);
       setState(() => _recommendMenus = resp.menuList);
     } catch (_) {
     } finally {
@@ -392,12 +406,12 @@ class _CafeListState extends State<CafeList> {
         const SizedBox(height: 12),
         if (_recommendLoading)
           const SizedBox(
-            height: 160,
+            height: 210,
             child: Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
           )
         else
           SizedBox(
-            height: 186,
+            height: 210,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -696,8 +710,13 @@ class _CafeListState extends State<CafeList> {
       onTap: () async {
         if (_isRegionPickerOpen) return;
         _isRegionPickerOpen = true;
+        final prevRegionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
         await showStoreRegionPickerBottomSheet(context);
         _isRegionPickerOpen = false;
+        final newRegionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
+        if (newRegionCode != prevRegionCode && !_hasLocationPermission && mounted) {
+          _loadRecommendMenus(forceRefresh: true);
+        }
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(
