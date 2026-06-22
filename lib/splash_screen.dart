@@ -78,7 +78,7 @@ class _SplashScreenState extends State<SplashScreen> {
           settings.authorizationStatus == AuthorizationStatus.notDetermined;
 
       final locationStatus = await Permission.location.status;
-      final showLocationPrompt = locationStatus.isDenied;
+      final showLocationPrompt = locationStatus == PermissionStatus.denied;
 
       if (mounted) {
         Navigator.pushReplacement(
