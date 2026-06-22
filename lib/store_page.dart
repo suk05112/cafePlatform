@@ -61,6 +61,12 @@ class _StorePageState extends State<StorePage> {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
       final loaded = await storeProvider.fetchDetailStore(widget.storeId);
       if (!mounted) return;
+      // 슬라이더 표시 전 모든 이미지 캐시 완료 후 setState
+      final urls = (loaded?.store_photo_urls ?? []).where((u) => u.isNotEmpty);
+      await Future.wait(
+        urls.map((url) => precacheImage(NetworkImage(url), context).catchError((_) {})),
+      );
+      if (!mounted) return;
       setState(() {
         store = loaded;
         _storeLoading = false;
@@ -625,14 +631,6 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
     return urls;
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    for (final url in _urls) {
-      precacheImage(NetworkImage(url), context);
-    }
-  }
-
   Widget _imageSlide(String url, int index) {
     return Image.network(
       url,
@@ -640,10 +638,7 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
       width: double.infinity,
       height: _StoreFigma.sliderHeight,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return _StoreImagePlaceholder(height: _StoreFigma.sliderHeight);
-      },
+      gaplessPlayback: true,
       errorBuilder: (_, __, ___) =>
           _StoreImagePlaceholder(height: _StoreFigma.sliderHeight),
     );
