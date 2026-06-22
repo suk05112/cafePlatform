@@ -77,8 +77,9 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
 
       final response = await Api().client.linkGifticonToUser(request);
 
-      // 등록 성공 시 기프티콘 페이지로 이동
+      // 등록 성공 시 캐시 무효화 후 기프티콘 페이지로 이동
       if (mounted) {
+        Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
         Get.off(() => GifticonPage(gifticon_id: widget.gifticon_id));
       }
     } on DioException catch (error) {

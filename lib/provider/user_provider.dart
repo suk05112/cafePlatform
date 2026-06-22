@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/user.dart';
 
 class UserProvider with ChangeNotifier {
@@ -10,6 +11,26 @@ class UserProvider with ChangeNotifier {
   User? get user => _user;
   bool _isLoggedIn = false;
   bool get isLoggedIn => _isLoggedIn;
+
+  List<Gifticon>? _cachedGifticons;
+  DateTime? _gifticonCacheTime;
+
+  List<Gifticon>? get cachedGifticons => _cachedGifticons;
+
+  bool get isGifticonCacheValid {
+    if (_cachedGifticons == null || _gifticonCacheTime == null) return false;
+    return DateTime.now().difference(_gifticonCacheTime!).inHours < 1;
+  }
+
+  void setGifticonCache(List<Gifticon> gifticons) {
+    _cachedGifticons = gifticons;
+    _gifticonCacheTime = DateTime.now();
+  }
+
+  void invalidateGifticonCache() {
+    _cachedGifticons = null;
+    _gifticonCacheTime = null;
+  }
 
   // Constructor: Initialize UserProvider and load user from storage
   UserProvider() {
@@ -75,6 +96,8 @@ class UserProvider with ChangeNotifier {
       await _storage.delete(key: "user");
       _user = null;
       _isLoggedIn = false;
+      _cachedGifticons = null;
+      _gifticonCacheTime = null;
 
       // notifyListeners를 안전하게 호출
       // 이미 dispose된 위젯에서 호출될 수 있으므로 try-catch로 감싸기

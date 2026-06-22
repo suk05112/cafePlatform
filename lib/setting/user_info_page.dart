@@ -422,6 +422,44 @@ class _UserInfoPageState extends State<UserInfoPage> {
                             ),
                             onPressed: () async {
                               if (inputController.text == '회원탈퇴') {
+                                // 미사용 기프티콘 체크
+                                final userId = userProvider.user?.user_id;
+                                if (userId != null) {
+                                  try {
+                                    await Api().setBaseClient(Api.BASE_URL);
+                                    final response = await Api().client.getGifticonList(userId);
+                                    final hasUnused = response.gifticonList.any((g) =>
+                                        g.status == 'UNUSED' &&
+                                        (g.validity == null || !g.validity!.isBefore(DateTime.now())));
+                                    if (hasUnused && context.mounted) {
+                                      await showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          title: const Text(
+                                            '미사용 기프티콘 있음',
+                                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                          ),
+                                          content: const Text(
+                                            '미사용 된 기프티콘이 있습니다. 환불 혹은 사용 완료 후 탈퇴가 가능합니다. 환불 문의는 \'더보기>문의하기\' 로 남겨주세요',
+                                            style: TextStyle(fontSize: 14, height: 1.5),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(ctx).pop(),
+                                              child: const Text('확인'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                  } catch (_) {}
+                                }
+                                if (!context.mounted) return;
                                 Navigator.of(context).pop();
                                 await _handleWithdrawal(context);
                               } else {

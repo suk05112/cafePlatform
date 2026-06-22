@@ -583,6 +583,12 @@ class _GifticonPageState extends State<GifticonPage>
             ? null
             : () async {
                 await ShowQR(gifticon.gifticon_id, gifticon.store_id!);
+                if (mounted) {
+                  Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
+                  setState(() {
+                    futureGifticon = GifticonPage.fetchGifticon(widget.gifticon_id);
+                  });
+                }
               },
         child: Text(
           '사용하기',
