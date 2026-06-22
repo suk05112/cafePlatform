@@ -124,63 +124,30 @@ class _CafeListState extends State<CafeList> {
     _loadRecommendMenus();
   }
 
-  // 선택된 region_code로부터 실제 district_code를 찾아 반환
-  String? _getSelectedDistrictCode() {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    final regionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
-    if (regionCode == null) return null;
-    final region = storeProvider.availableRegions.firstWhere(
-      (r) => r.region_code == regionCode,
-      orElse: () => storeProvider.availableRegions.isNotEmpty
-          ? storeProvider.availableRegions.first
-          : Region(region_name: '', region_code: regionCode),
-    );
-    return region.districts?.isNotEmpty == true
-        ? region.districts!.first.district_code
-        : regionCode;
-  }
-
-  // 선택된 지역이 있으면 지역 기준, 없을 때만 위치 기준
-  Future<void> _loadRecommendMenus({bool forceRefresh = false}) async {
+  Future<void> _loadRecommendMenus() async {
     if (_recommendLoading) return;
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-
-    final districtCode = _getSelectedDistrictCode();
-    final useLocation = _hasLocationPermission && districtCode == null;
-
-    final cacheKey = useLocation
-        ? 'loc:${_refLat.toStringAsFixed(4)},${_refLng.toStringAsFixed(4)}'
-        : (districtCode ?? '');
-
-    if (cacheKey.isEmpty) return;
-
-    if (!forceRefresh) {
-      final cached = storeProvider.getCachedRecommendMenus(cacheKey);
-      if (cached != null) {
-        setState(() => _recommendMenus = cached);
-        return;
-      }
-    }
-
     setState(() => _recommendLoading = true);
     try {
       await Api().setBaseClient(Api.BASE_URL);
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      final districtCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
       RecommendMenuResponse resp;
-      if (useLocation) {
+      if (_hasLocationPermission) {
         resp = await Api().client.getRecommendMenus(
           lat: _refLat,
           lng: _refLng,
           limit: 100,
         );
-      } else {
+      } else if (districtCode != null && districtCode.isNotEmpty) {
         resp = await Api().client.getRecommendMenus(
           districtCode: districtCode,
           limit: 100,
         );
+      } else {
+        return;
       }
       if (!mounted) return;
-      storeProvider.setRecommendMenuCache(cacheKey, resp.menuList);
       setState(() => _recommendMenus = resp.menuList);
     } catch (_) {
     } finally {
@@ -425,12 +392,12 @@ class _CafeListState extends State<CafeList> {
         const SizedBox(height: 12),
         if (_recommendLoading)
           const SizedBox(
-            height: 210,
+            height: 160,
             child: Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
           )
         else
           SizedBox(
-            height: 210,
+            height: 186,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -729,13 +696,8 @@ class _CafeListState extends State<CafeList> {
       onTap: () async {
         if (_isRegionPickerOpen) return;
         _isRegionPickerOpen = true;
-        final prevRegionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
         await showStoreRegionPickerBottomSheet(context);
         _isRegionPickerOpen = false;
-        final newRegionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
-        if (newRegionCode != prevRegionCode && mounted) {
-          _loadRecommendMenus();
-        }
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(
