@@ -558,10 +558,14 @@ class _TabPageState extends State<TabPage> {
       builder: (ctx) => _LocationPermissionSheet(
         onAllow: () async {
           Navigator.pop(ctx);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('location_prompt_shown', true);
           await Permission.location.request();
         },
-        onLater: () {
+        onLater: () async {
           Navigator.pop(ctx);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('location_prompt_shown', true);
         },
       ),
     );
