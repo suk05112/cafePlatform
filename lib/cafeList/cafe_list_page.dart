@@ -40,6 +40,9 @@ class _CafeListState extends State<CafeList> {
   bool _recommendLoading = false;
   bool _recommendTapping = false;
 
+  // 지역 변경 감지용
+  String? _previousRegionCode;
+
   @override
   void initState() {
     super.initState();
@@ -60,9 +63,7 @@ class _CafeListState extends State<CafeList> {
         await storeProvider.fetchStoreList();
       }
       storeProvider.fetchAvailableRegions();
-      if (!_hasLocationPermission && mounted) {
-        _loadRecommendMenus();
-      }
+      // 메뉴 추천은 지역 확정 후 _buildDiscoveryRegionRow에서 트리거됨
     });
   }
 
@@ -121,32 +122,37 @@ class _CafeListState extends State<CafeList> {
       _refLng = pos.longitude;
       _hasLocationPermission = true;
     });
-    _loadRecommendMenus();
+    // 위치 해결 후 메뉴 추천 재호출 하지 않음 (지역 변경 시에만 호출)
+  }
+
+  // 현재 선택된 지역의 district_code 반환
+  String? _getSelectedDistrictCode() {
+    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    final regionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
+    if (regionCode == null) return null;
+    final regions = storeProvider.availableRegions;
+    if (regions.isEmpty) return null;
+    final region = regions.firstWhere(
+      (r) => r.region_code == regionCode,
+      orElse: () => regions.first,
+    );
+    return region.districts?.isNotEmpty == true
+        ? region.districts!.first.district_code
+        : regionCode;
   }
 
   Future<void> _loadRecommendMenus() async {
     if (_recommendLoading) return;
+    final districtCode = _getSelectedDistrictCode();
+    if (districtCode == null || districtCode.isEmpty) return;
+
     setState(() => _recommendLoading = true);
     try {
       await Api().setBaseClient(Api.BASE_URL);
-      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-      final districtCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
-
-      RecommendMenuResponse resp;
-      if (_hasLocationPermission) {
-        resp = await Api().client.getRecommendMenus(
-          lat: _refLat,
-          lng: _refLng,
-          limit: 100,
-        );
-      } else if (districtCode != null && districtCode.isNotEmpty) {
-        resp = await Api().client.getRecommendMenus(
-          districtCode: districtCode,
-          limit: 100,
-        );
-      } else {
-        return;
-      }
+      final resp = await Api().client.getRecommendMenus(
+        districtCode: districtCode,
+        limit: 100,
+      );
       if (!mounted) return;
       setState(() => _recommendMenus = resp.menuList);
     } catch (_) {
@@ -183,6 +189,14 @@ class _CafeListState extends State<CafeList> {
     final listViewStores = List<Store>.from(storeProvider.listViewStores ?? []);
     final selectedRegionCode =
         storeProvider.selectedRegionCode ?? _selectedRegionCode;
+
+    // 지역 변경 감지: 이전 지역과 다르면 메뉴 추천 재호출
+    if (selectedRegionCode != null && selectedRegionCode != _previousRegionCode) {
+      _previousRegionCode = selectedRegionCode;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadRecommendMenus();
+      });
+    }
 
     final filteredListViewStores =
         _filterStores(listViewStores, selectedRegionCode);
