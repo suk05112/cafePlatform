@@ -460,7 +460,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
           await Api().setBaseClient(Api.BASE_URL);
           await Api().client.deleteUserPushToken(userId, fcmToken);
         } catch (e) {
-          print('서버 FCM 토큰 삭제 오류: $e');
         }
       }
 
@@ -486,7 +485,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
         );
       });
     } catch (e) {
-      print('로그아웃 오류: $e');
     }
   }
 
@@ -547,10 +545,8 @@ class _UserInfoPageState extends State<UserInfoPage> {
             providerData.any((info) => info.providerId == 'apple.com');
 
         if (hasAppleProvider) {
-          print('애플 계정으로 가입된 사용자 확인됨');
           // 회원 탈퇴를 위해 Apple 로그인을 다시 요청하여 authorizationCode 받기 및 Firebase 재인증
           try {
-            print('애플 로그인 재요청 (authorizationCode 획득 및 재인증용)');
             final appleCredential = await SignInWithApple.getAppleIDCredential(
               scopes: [
                 AppleIDAuthorizationScopes.email,
@@ -558,7 +554,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
               ],
             );
             appleAuthorizationCode = appleCredential.authorizationCode;
-            print('애플 authorizationCode 획득 성공');
 
             // Firebase 재인증 (requires-recent-login 오류 방지)
             try {
@@ -568,13 +563,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
                 accessToken: appleCredential.authorizationCode,
               );
               await user.reauthenticateWithCredential(oauthCredential);
-              print('Firebase 재인증 완료');
             } catch (reAuthError) {
-              print('Firebase 재인증 실패: $reAuthError');
               // 재인증 실패해도 authorizationCode는 전달 가능 (서버에서 처리)
             }
           } catch (e) {
-            print('애플 로그인 재요청 실패 (authorizationCode 획득 실패): $e');
             // 애플 로그인 실패 시 null로 전달 (서버에서 처리 불가)
             appleAuthorizationCode = null;
             // 사용자에게 오류 메시지 표시
@@ -619,17 +611,12 @@ class _UserInfoPageState extends State<UserInfoPage> {
           await Api().setBaseClient(Api.BASE_URL);
           final deleteResponse =
               await Api().client.deleteUser(userId, appleAuthorizationCode);
-          print(
-              '서버 사용자 삭제 완료: ${deleteResponse.message}, user_id: ${deleteResponse.userId}, apple_revoked: ${deleteResponse.appleRevoked}');
         } on DioException catch (e) {
-          print('서버 사용자 삭제 오류: ${e.response?.statusCode} - ${e.message}');
           // 서버 삭제 실패해도 Firebase 삭제는 시도
         } catch (e) {
-          print('서버 사용자 삭제 오류: $e');
           // 서버 삭제 실패해도 Firebase 삭제는 시도
         }
       } else {
-        print('user_id가 없어 서버 삭제를 건너뜁니다.');
       }
 
       // Firebase 사용자 삭제
@@ -637,12 +624,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
         try {
           await user.delete();
           if (hasAppleProvider) {
-            print('Firebase 사용자 삭제 완료 (애플 계정과의 연결도 끊어짐)');
           } else {
-            print('Firebase 사용자 삭제 완료');
           }
         } on firebase_auth.FirebaseAuthException catch (e) {
-          print('파베 회원 탈퇴 처리 오류: ${e.code} - ${e.message}');
 
           // requires-recent-login 오류인 경우 특별 처리
           if (e.code == 'requires-recent-login') {
@@ -682,9 +666,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
           }
 
           // 다른 Firebase 오류인 경우에도 계속 진행 (서버 데이터는 이미 삭제됨)
-          print('Firebase 계정 삭제 실패했으나 서버 데이터는 삭제되었습니다.');
         } catch (e) {
-          print('파베 회원 탈퇴 처리 오류: $e');
           // 기타 오류인 경우에도 계속 진행
         }
       }
@@ -693,7 +675,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
       try {
         await firebase_auth.FirebaseAuth.instance.signOut();
       } catch (e) {
-        print('Firebase 로그아웃 오류: $e');
         // 로그아웃 실패해도 계속 진행
       }
 
@@ -702,7 +683,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('fcm_token');
       } catch (e) {
-        print('SharedPreferences 토큰 삭제 오류: $e');
         // 오류가 발생해도 계속 진행
       }
 
@@ -717,10 +697,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
       // UserProvider에서 사용자 정보 삭제 (캐싱된 userProvider 사용)
       try {
         await userProvider.clearUser();
-        print('UserProvider clearUser 완료');
       } catch (e, stackTrace) {
-        print('UserProvider clearUser 오류: $e');
-        print('스택 트레이스: $stackTrace');
         // 오류가 발생해도 계속 진행
       }
 
@@ -777,7 +754,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
             },
           );
         } catch (dialogError) {
-          print('탈퇴 완료 다이얼로그 표시 오류: $dialogError');
           // 다이얼로그 표시 실패 시에도 TabPage로 이동
           if (mounted && context.mounted) {
             Navigator.of(context).pushAndRemoveUntil(
@@ -800,8 +776,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
         });
       }
     } catch (e, stackTrace) {
-      print('회원 탈퇴 처리 오류: $e');
-      print('스택 트레이스: $stackTrace');
 
       // 로딩 다이얼로그 닫기
       if (mounted &&

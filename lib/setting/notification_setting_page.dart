@@ -176,7 +176,6 @@ class _NotificationSettingPageState extends State<NotificationSettingPage> {
       final user = userProvider.user;
 
       if (user == null) {
-        print('사용자 정보가 없어 푸시 토큰 설정 업데이트를 건너뜁니다.');
         return;
       }
 
@@ -194,9 +193,7 @@ class _NotificationSettingPageState extends State<NotificationSettingPage> {
             pushTokenUpdateRequest,
             fcmToken.isNotEmpty ? fcmToken : null,
           );
-      print('푸시 토큰 설정 업데이트 성공: userId=${user.user_id}');
     } catch (e) {
-      print('푸시 토큰 설정 업데이트 실패: $e');
     }
   }
 

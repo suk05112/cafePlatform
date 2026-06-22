@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
 import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 import 'package:cafeplatform/model/user.dart' as my_app;
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
@@ -87,7 +88,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void signOut() async {
-    print("User signed out.");
     //자동로그인 해제
   }
 
@@ -117,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         SnackBar(content: Text("이메일과 비밀번호를 입력해주세요.")),
       );
       return;
@@ -129,8 +129,6 @@ class _LoginPageState extends State<LoginPage> {
 
     final emailInput = _emailController.text.trim();
     final emailWithDomain = emailInput + "@gifnut.com";
-    print("로그인 시도 $emailWithDomain ${_passwordController.text}");
-
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: emailWithDomain,
@@ -191,7 +189,7 @@ class _LoginPageState extends State<LoginPage> {
               }
             }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
                 content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
               ),
@@ -217,11 +215,11 @@ class _LoginPageState extends State<LoginPage> {
             errorMessage = "서버에 연결할 수 없습니다. 네트워크를 확인해주세요.";
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(content: Text(errorMessage)),
           );
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(content: Text("로그인 정보를 가져오는 중 오류가 발생했습니다.")),
           );
         }
@@ -237,13 +235,12 @@ class _LoginPageState extends State<LoginPage> {
       } else if (e.code == 'invalid-credential') {
         errorMessage = "아이디 또는 비밀번호가 잘못되었습니다.";
       }
-      print("로그인 실패 ${e.code}");
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         SnackBar(content: Text(errorMessage)),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showUniqueSnackBar(
           SnackBar(content: Text("로그인 중 오류가 발생했습니다.")),
         );
       }
@@ -571,7 +568,7 @@ class _LoginPageState extends State<LoginPage> {
     } else if (error is Exception) {
       errorMessage = error.toString();
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showUniqueSnackBar(
       SnackBar(content: Text(errorMessage)),
     );
   }
@@ -589,15 +586,10 @@ class _LoginPageState extends State<LoginPage> {
 // 메일이 같아도 최초한번은 번호인증 하도록
       bool needPhoneAuth;
       try {
-        print("회원가입 여부 확인 중: email=$email, provider=$provider");
         final isRegistered =
             await loginService.isRegisteredUser(email, provider);
-        print("회원가입 여부 확인 결과: isRegistered=$isRegistered");
         needPhoneAuth = !isRegistered;
-        print("needPhoneAuth: $needPhoneAuth");
       } on DioException catch (e) {
-        print(
-            "isRegisteredUser API 호출 실패: ${e.message}, type: ${e.type}, statusCode: ${e.response?.statusCode}");
         // isRegisteredUser API 호출 실패 시 alert 표시하고 중단
         String errorMessage = '네트워크 오류가 발생했습니다.';
         if (e.type == DioExceptionType.connectionTimeout ||
@@ -635,7 +627,6 @@ class _LoginPageState extends State<LoginPage> {
         return; // 에러 발생 시 함수 종료
       }
 
-      print("needPhoneAuth $needPhoneAuth");
       if (needPhoneAuth) {
         // 폰 인증 페이지로 이동 (로딩은 계속 표시)
         // 프로그레스바는 _loading이 true일 때 자동으로 표시됨
@@ -676,7 +667,7 @@ class _LoginPageState extends State<LoginPage> {
                 setState(() {
                   _loading = false;
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showUniqueSnackBar(
                   SnackBar(
                     content: Text(authError.message),
                     backgroundColor: Colors.red,
@@ -688,7 +679,6 @@ class _LoginPageState extends State<LoginPage> {
 
         if (userCredential == null) {
           // phoneAuth 실패 시 로딩 해제하고 종료
-          print("❌ phoneAuth가 null을 반환했습니다.");
           if (mounted) {
             setState(() {
               _loading = false;
@@ -698,12 +688,11 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         if (userCredential.user == null) {
-          print("❌ userCredential.user가 null입니다.");
           if (mounted) {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               const SnackBar(
                 content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
                 backgroundColor: Colors.red,
@@ -713,8 +702,6 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
 
-        print("✅ phoneAuth 성공 - userCredential: ${userCredential.user?.uid}");
-        print("updateDisplayName");
         // 이름은 TermsAgreementPage 또는 PhoneAuthPage에서 입력받은 이름을 사용
         final userName = finalPhoneAuthResult.name ?? name;
         await userCredential.user?.updateDisplayName(userName);
@@ -735,14 +722,11 @@ class _LoginPageState extends State<LoginPage> {
             provider: provider,
           );
 
-          print("간편로그인 registerUser.toJson(): ${registerUser.toJson()}");
           final registerResponse =
               await Api().client.registerUser(registerUser);
-          print("간편로그인 회원가입 API 호출 후 response $registerResponse");
 
           // 회원가입 성공 후 위젯이 여전히 mounted인지 확인
           if (!mounted) {
-            print("⚠️ Warning: 회원가입 후 위젯이 dispose되었습니다.");
             return;
           }
 
@@ -753,7 +737,6 @@ class _LoginPageState extends State<LoginPage> {
                 _convertProviderToServerFormat(credential.providerId);
             var loginResponse =
                 await Api().client.loginUser(email, serverProvider);
-            print("회원가입 후 로그인 api 호출후 response $loginResponse");
 
             if (loginResponse.user_id != null) {
               // userCredential과 uid 확인 (phoneAuth로 이미 연결된 credential 사용)
@@ -767,12 +750,9 @@ class _LoginPageState extends State<LoginPage> {
                 uid: uid ?? "",
               );
 
-              print(
-                  "회원가입 후 로그인 성공 - 사용자 정보: user_id=${user.user_id}, name=${user.name}, email=${user.email}, uid=${user.uid}");
 
               // 위젯이 여전히 mounted인지 다시 확인
               if (!mounted) {
-                print("⚠️ Warning: 로그인 후 위젯이 dispose되었습니다.");
                 return;
               }
 
@@ -781,7 +761,6 @@ class _LoginPageState extends State<LoginPage> {
               // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
               _registerPushToken(loginResponse.user_id ?? -1)
                   .catchError((error) {
-                print('푸시 토큰 등록 실패 (로그인은 계속 진행): $error');
               });
 
               // 로그인 성공 시 처리
@@ -804,7 +783,6 @@ class _LoginPageState extends State<LoginPage> {
               return; // 회원가입 및 로그인 완료, 함수 종료
             }
           } catch (loginError) {
-            print("회원가입 후 로그인 API 호출 실패: $loginError");
             // 로그인 실패해도 계속 진행 (서버에서 회원가입은 완료되었으므로)
           }
         } on DioException catch (e) {
@@ -864,10 +842,7 @@ class _LoginPageState extends State<LoginPage> {
         }
       } else {
         // 기존 사용자: SNS credential로 직접 로그인 (재로그인 불필요)
-        print("기존 사용자 SNS 로그인 처리 시작");
-        print("SNS credential로 로그인 시도: provider=${credential.providerId}");
         userCredential = await _auth.signInWithCredential(credential);
-        print("SNS 로그인 완료: uid=${userCredential.user?.uid}");
       }
 
       if (userCredential.user == null) {
@@ -875,7 +850,7 @@ class _LoginPageState extends State<LoginPage> {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             const SnackBar(
               content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
               backgroundColor: Colors.red,
@@ -885,7 +860,6 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      print("displayname: ${userCredential.user?.displayName ?? "none"}");
       await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
       try {
@@ -893,14 +867,13 @@ class _LoginPageState extends State<LoginPage> {
         final serverProvider =
             _convertProviderToServerFormat(credential.providerId);
         var response = await Api().client.loginUser(email, serverProvider);
-        print("로그인 api 호출후 response $response");
 
         if (response.user_id == null) {
           if (mounted) {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
                 content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
                 backgroundColor: Colors.red,
@@ -912,16 +885,12 @@ class _LoginPageState extends State<LoginPage> {
 
         // 비동기 작업 후 위젯이 dispose되었는지 확인
         if (!mounted) {
-          print("⚠️ Warning: Widget이 dispose되었습니다. 로그인 처리 중단.");
           return;
         }
 
         // userCredential과 uid 확인
         final uid = userCredential.user?.uid;
         if (uid == null || uid.isEmpty) {
-          print("⚠️ Warning: userCredential.user?.uid is null or empty");
-          print("userCredential: $userCredential");
-          print("userCredential.user: ${userCredential.user}");
         }
 
         final user = my_app.User(
@@ -932,12 +901,9 @@ class _LoginPageState extends State<LoginPage> {
           uid: uid ?? "",
         );
 
-        print(
-            "로그인 성공 - 사용자 정보: user_id=${user.user_id}, name=${user.name}, email=${user.email}, uid=${user.uid}");
 
         // context가 유효한지 확인 후 UserProvider 업데이트
         if (!mounted) {
-          print("⚠️ Warning: Widget이 dispose되었습니다. UserProvider 업데이트를 건너뜁니다.");
           return;
         }
 
@@ -945,7 +911,6 @@ class _LoginPageState extends State<LoginPage> {
 
         // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
         _registerPushToken(response.user_id ?? -1).catchError((error) {
-          print('푸시 토큰 등록 실패 (로그인은 계속 진행): $error');
         });
 
         // 로그인 성공 시 처리
@@ -1006,16 +971,14 @@ class _LoginPageState extends State<LoginPage> {
             },
           );
         }
-      } catch (e, stackTrace) {
-        print("로그인 처리 중 오류: $e");
-        print("스택 트레이스: $stackTrace");
+      } catch (e) {
         if (mounted) {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
-              content: Text('로그인 처리 중 오류가 발생했습니다: ${e.toString()}'),
+              content: Text('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -1048,15 +1011,12 @@ class _LoginPageState extends State<LoginPage> {
       bool needPhoneAuth;
       if (email != null) {
         // email이 있으면 신규 유저로 간주 (회원가입 필요)
-        print("애플 로그인: email이 있으므로 신규 유저로 간주 (회원가입 필요)");
         needPhoneAuth = true;
       } else {
         // email이 null이면 기존 유저로 간주 (로그인)
-        print("애플 로그인: email이 null이므로 기존 유저로 간주 (로그인)");
         needPhoneAuth = false;
       }
 
-      print("needPhoneAuth $needPhoneAuth");
       if (needPhoneAuth) {
         // 폰 인증 페이지로 이동 (로딩은 계속 표시)
         // 프로그레스바는 _loading이 true일 때 자동으로 표시됨
@@ -1093,7 +1053,7 @@ class _LoginPageState extends State<LoginPage> {
                 setState(() {
                   _loading = false;
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showUniqueSnackBar(
                   SnackBar(
                     content: Text(authError.message),
                     backgroundColor: Colors.red,
@@ -1105,7 +1065,6 @@ class _LoginPageState extends State<LoginPage> {
 
         if (userCredential == null) {
           // phoneAuth 실패 시 로딩 해제하고 종료
-          print("❌ phoneAuth가 null을 반환했습니다.");
           if (mounted) {
             setState(() {
               _loading = false;
@@ -1115,12 +1074,11 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         if (userCredential.user == null) {
-          print("❌ userCredential.user가 null입니다.");
           if (mounted) {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               const SnackBar(
                 content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
                 backgroundColor: Colors.red,
@@ -1130,8 +1088,6 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
 
-        print("✅ phoneAuth 성공 - userCredential: ${userCredential.user?.uid}");
-        print("updateDisplayName");
         // 이름은 TermsAgreementPage 또는 PhoneAuthPage에서 입력받은 이름을 사용
         final userName = finalPhoneAuthResult.name ?? name ?? "사용자";
         await userCredential.user?.updateDisplayName(userName);
@@ -1151,13 +1107,11 @@ class _LoginPageState extends State<LoginPage> {
           provider: provider,
         );
 
-        print("애플 간편로그인 registerUser.toJson(): ${registerUser.toJson()}");
 
         // 회원가입 API 호출만 try-catch로 감싸기
         try {
           final registerResponse =
               await Api().client.registerUser(registerUser);
-          print("애플 간편로그인 회원가입 API 호출 후 response $registerResponse");
         } on DioException catch (e) {
           String errorMessage = '회원가입 중 오류가 발생했습니다.';
           if (e.type == DioExceptionType.connectionTimeout ||
@@ -1222,7 +1176,6 @@ class _LoginPageState extends State<LoginPage> {
 
         // 회원가입 성공 후 위젯이 여전히 mounted인지 확인
         if (!mounted) {
-          print("⚠️ Warning: 회원가입 후 위젯이 dispose되었습니다.");
           return;
         }
 
@@ -1230,7 +1183,6 @@ class _LoginPageState extends State<LoginPage> {
         try {
           var loginResponse =
               await Api().client.loginUser(emailForCheck, provider);
-          print("회원가입 후 로그인 api 호출후 response $loginResponse");
 
           if (loginResponse.user_id != null) {
             // userCredential과 uid 확인 (phoneAuth로 이미 연결된 credential 사용)
@@ -1244,12 +1196,9 @@ class _LoginPageState extends State<LoginPage> {
               uid: uid ?? "",
             );
 
-            print(
-                "회원가입 후 로그인 성공 - 사용자 정보: user_id=${user.user_id}, name=${user.name}, email=${user.email}, uid=${user.uid}");
 
             // 위젯이 여전히 mounted인지 다시 확인
             if (!mounted) {
-              print("⚠️ Warning: 로그인 후 위젯이 dispose되었습니다.");
               return;
             }
 
@@ -1257,7 +1206,6 @@ class _LoginPageState extends State<LoginPage> {
 
             // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
             _registerPushToken(loginResponse.user_id ?? -1).catchError((error) {
-              print('푸시 토큰 등록 실패 (로그인은 계속 진행): $error');
             });
 
             // 로그인 성공 시 처리
@@ -1296,16 +1244,12 @@ class _LoginPageState extends State<LoginPage> {
             return; // 회원가입 및 로그인 완료, 함수 종료
           }
         } catch (loginError) {
-          print("회원가입 후 로그인 API 호출 실패: $loginError");
           // 로그인 실패해도 계속 진행 (서버에서 회원가입은 완료되었으므로)
           // 오류 다이얼로그를 표시하지 않고 계속 진행
         }
       } else {
         // 기존 사용자: SNS credential로 직접 로그인 (재로그인 불필요)
-        print("기존 사용자 SNS 로그인 처리 시작");
-        print("SNS credential로 로그인 시도: provider=${credential.providerId}");
         userCredential = await _auth.signInWithCredential(credential);
-        print("SNS 로그인 완료: uid=${userCredential.user?.uid}");
       }
 
       if (userCredential.user == null) {
@@ -1313,7 +1257,7 @@ class _LoginPageState extends State<LoginPage> {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             const SnackBar(
               content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
               backgroundColor: Colors.red,
@@ -1323,19 +1267,17 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      print("displayname: ${userCredential.user?.displayName ?? "none"}");
       await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
       try {
         var response = await Api().client.loginUser(emailForCheck, provider);
-        print("로그인 api 호출후 response $response");
 
         if (response.user_id == null) {
           if (mounted) {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
                 content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
                 backgroundColor: Colors.red,
@@ -1347,16 +1289,12 @@ class _LoginPageState extends State<LoginPage> {
 
         // 비동기 작업 후 위젯이 dispose되었는지 확인
         if (!mounted) {
-          print("⚠️ Warning: Widget이 dispose되었습니다. 로그인 처리 중단.");
           return;
         }
 
         // userCredential과 uid 확인
         final uid = userCredential.user?.uid;
         if (uid == null || uid.isEmpty) {
-          print("⚠️ Warning: userCredential.user?.uid is null or empty");
-          print("userCredential: $userCredential");
-          print("userCredential.user: ${userCredential.user}");
         }
 
         final user = my_app.User(
@@ -1367,12 +1305,9 @@ class _LoginPageState extends State<LoginPage> {
           uid: uid ?? "",
         );
 
-        print(
-            "로그인 성공 - 사용자 정보: user_id=${user.user_id}, name=${user.name}, email=${user.email}, uid=${user.uid}");
 
         // context가 유효한지 확인 후 UserProvider 업데이트
         if (!mounted) {
-          print("⚠️ Warning: Widget이 dispose되었습니다. UserProvider 업데이트를 건너뜁니다.");
           return;
         }
 
@@ -1380,7 +1315,6 @@ class _LoginPageState extends State<LoginPage> {
 
         // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
         _registerPushToken(response.user_id ?? -1).catchError((error) {
-          print('푸시 토큰 등록 실패 (로그인은 계속 진행): $error');
         });
 
         // 로그인 성공 시 처리
@@ -1457,16 +1391,14 @@ class _LoginPageState extends State<LoginPage> {
             },
           );
         }
-      } catch (e, stackTrace) {
-        print("로그인 처리 중 오류: $e");
-        print("스택 트레이스: $stackTrace");
+      } catch (e) {
         if (mounted) {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
-              content: Text('로그인 처리 중 오류가 발생했습니다: ${e.toString()}'),
+              content: Text('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -1487,20 +1419,16 @@ class _LoginPageState extends State<LoginPage> {
 
       // SharedPreferences에 토큰이 없으면 Firebase Messaging에서 직접 가져오기
       if (fcmToken == null || fcmToken.isEmpty) {
-        print('SharedPreferences에 FCM 토큰이 없어 Firebase Messaging에서 직접 가져옵니다.');
         try {
           fcmToken = await fetchFcmTokenRespectingIosApns();
           if (fcmToken != null) {
             await prefs.setString('fcm_token', fcmToken);
-            print('FCM 토큰을 Firebase Messaging에서 가져와 저장했습니다: $fcmToken');
           }
         } catch (e) {
-          print('Firebase Messaging에서 토큰 가져오기 실패: $e');
         }
       }
 
       if (fcmToken == null || fcmToken.isEmpty) {
-        print('FCM 토큰을 가져올 수 없어 푸시 토큰 등록을 건너뜁니다.');
         return;
       }
 
@@ -1517,9 +1445,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       await Api().client.registerPushToken(userId, pushTokenRequest);
-      print('푸시 토큰 등록 성공: userId=$userId');
     } catch (e) {
-      print('푸시 토큰 등록 실패: $e');
     }
   }
 

@@ -21,7 +21,6 @@ class _OrderListPageState extends State<OrderListPage>
 
   @override
   void initState() {
-    print("init state 호출");
     super.initState();
     _loadOrderList();
   }
@@ -33,7 +32,6 @@ class _OrderListPageState extends State<OrderListPage>
     if (userProvider.user != null) {
       await orderProvider.fetchOrderList(userProvider.user!.user_id);
     } else {
-      print("order_list:: 로그인되지 않은 사용자");
       orderProvider.setOrderCard([]);
     }
   }
@@ -73,7 +71,6 @@ class _OrderListPageState extends State<OrderListPage>
                 order.status.toLowerCase() == 'refunded')
             .toList();
 
-        print('orderList length: ${orderList.length}');
         if (orderList.isEmpty) {
           return Center(
             child: Padding(
@@ -122,7 +119,6 @@ class _OrderListPageState extends State<OrderListPage>
   Widget order(Order order) {
     return GestureDetector(
       onTap: () {
-        print("item 선택됨");
         Navigator.push(
           context,
           MaterialPageRoute(

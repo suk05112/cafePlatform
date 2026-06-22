@@ -87,11 +87,9 @@ class _PaymentWidgetExamplePageState extends State<PaymentWidgetExamplePage> {
                       orderId: '7x9iD03RznxZxiKVjZ8db',
                       orderName: '토스 티셔츠 외 2건'));
               if (paymentResult.success != null) {
-                print("결제 성공");
                 // 결제 성공 처리
               } else if (paymentResult.fail != null) {
                 // 결제 실패 처리
-                print("결제 실패");
               }
             },
             child: const Text('결제하기')),
@@ -99,8 +97,6 @@ class _PaymentWidgetExamplePageState extends State<PaymentWidgetExamplePage> {
             onPressed: () async {
               final selectedPaymentMethod =
                   await _paymentMethodWidgetControl?.getSelectedPaymentMethod();
-              print(
-                  '${selectedPaymentMethod?.method} ${selectedPaymentMethod?.easyPay?.provider ?? ''}');
             },
             child: const Text('선택한 결제수단 출력')),
         const SizedBox(height: 20),
@@ -118,13 +114,11 @@ class _PaymentWidgetExamplePageState extends State<PaymentWidgetExamplePage> {
             onPressed: () async {
               final agreementStatus =
                   await _agreementWidgetControl?.getAgreementStatus();
-              print('${agreementStatus?.agreedRequiredTerms}');
             },
             child: const Text('약관 동의 상태 출력')),
         ElevatedButton(
             onPressed: () async {
               await _paymentMethodWidgetControl?.updateAmount(amount: 300);
-              print('결제 금액이 300원으로 변경되었습니다.');
             },
             child: const Text('결제 금액 변경'))
       ]))

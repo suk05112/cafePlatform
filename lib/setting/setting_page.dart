@@ -577,22 +577,17 @@ class _SettingPageState extends State<SettingPage> {
           if (lastUpdateTime.year == now.year &&
               lastUpdateTime.month == now.month &&
               lastUpdateTime.day == now.day) {
-            print('사업자 정보 캐시 사용 (마지막 업데이트: $lastUpdateTime)');
             final jsonMap = jsonDecode(cachedJson) as Map<String, dynamic>;
             return BusinessInfoResponse.fromJson(jsonMap);
           } else {
-            print('캐시 만료됨 (마지막 업데이트: $lastUpdateTime, 현재: $now)');
           }
         } catch (e) {
-          print('캐시 파싱 오류: $e, API 호출로 재시도');
         }
       }
 
       // 캐시가 없거나 오래되었으면 API 호출
-      print('사업자 정보 API 호출');
       await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getBusinessInfo();
-      print('사업자 정보 조회 성공: ${response.toJson()}');
 
       // 캐시에 저장 (JSON으로 직렬화)
       final now = DateTime.now();
@@ -602,19 +597,16 @@ class _SettingPageState extends State<SettingPage> {
 
       return response;
     } catch (error) {
-      print('사업자 정보 조회 오류: $error');
 
       // 에러 발생 시 캐시된 데이터가 있으면 사용
       try {
         final prefs = await SharedPreferences.getInstance();
         final cachedJson = prefs.getString('business_info_cache');
         if (cachedJson != null && cachedJson.isNotEmpty) {
-          print('에러 발생, 캐시된 사업자 정보 사용');
           final jsonMap = jsonDecode(cachedJson) as Map<String, dynamic>;
           return BusinessInfoResponse.fromJson(jsonMap);
         }
       } catch (e) {
-        print('캐시 조회 오류: $e');
       }
 
       // 캐시도 없으면 기본값 반환

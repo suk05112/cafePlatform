@@ -1,4 +1,5 @@
 // import 'package:bootpay/bootpay.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 // import 'package:bootpay/model/payload.dart';
 // import 'package:bootpay/model/user.dart' as bt;
 // import 'package:bootpay/model/extra.dart' as bt_ex;
@@ -95,7 +96,6 @@ class _PaymentState extends State<Payment> {
   @override
   void initState() {
     super.initState();
-    print("Payment initState ${widget.menu.name} ${widget.menu.store_id}");
 
     if (_kUseFigmaPaymentUi) {
       _isLoadingWidgets = false;
@@ -111,7 +111,6 @@ class _PaymentState extends State<Payment> {
             try {
               _renderPaymentWidgets();
             } catch (e) {
-              print("PaymentWidget 초기화 오류: $e");
               if (mounted) {
                 setState(() {
                   _isLoadingWidgets = false;
@@ -146,8 +145,6 @@ class _PaymentState extends State<Payment> {
           _checkWidgetsReady();
         }
       }).catchError((error, stackTrace) {
-        print("결제수단 위젯 렌더링 오류: $error");
-        print("스택 트레이스: $stackTrace");
         if (mounted) {
           setState(() {
             _isLoadingWidgets = false;
@@ -165,8 +162,6 @@ class _PaymentState extends State<Payment> {
           _checkWidgetsReady();
         }
       }).catchError((error, stackTrace) {
-        print("약관 위젯 렌더링 오류: $error");
-        print("스택 트레이스: $stackTrace");
         if (mounted) {
           setState(() {
             _isLoadingWidgets = false;
@@ -174,8 +169,6 @@ class _PaymentState extends State<Payment> {
         }
       });
     } catch (e, stackTrace) {
-      print("_renderPaymentWidgets 오류: $e");
-      print("스택 트레이스: $stackTrace");
       if (mounted) {
         setState(() {
           _isLoadingWidgets = false;
@@ -191,7 +184,6 @@ class _PaymentState extends State<Payment> {
       _paymentMethodWidgetControl = null;
       _agreementWidgetControl = null;
     } catch (e) {
-      print("PaymentWidget 정리 중 오류: $e");
     }
     super.dispose();
   }
@@ -596,7 +588,6 @@ if (_figmaPaymentLabel.isEmpty) {
         return;
       }
 
-      print('선택된 결제수단: ${selectedPaymentMethod.method}');
       final method = selectedPaymentMethod.method?.toLowerCase() ?? '';
       if (method == 'card') {
         paymentValue = '카드';
@@ -607,7 +598,6 @@ if (_figmaPaymentLabel.isEmpty) {
         paymentValue = selectedPaymentMethod.method ?? '기타';
       }
     }
-    print('결제 수단: $paymentValue');
 
     if (widget.type == 2) {
       if (receiverPhoneNumber.trim().isEmpty) {
@@ -638,8 +628,6 @@ if (_figmaPaymentLabel.isEmpty) {
         : (widget.contextStoreId ?? 0);
     if (storeId <= 0) {
       _showToast('유효하지 않은 메뉴 정보입니다. 다시 선택해주세요.');
-      print(
-          'ERROR: Invalid store_id: $storeId (menu_id: ${widget.menu.menu_id})');
       return;
     }
 
@@ -659,7 +647,6 @@ if (_figmaPaymentLabel.isEmpty) {
       idempotencyKey: _idempotencyKey,
     );
 
-    print('결제 URL 요청 - user_id: ${user.user_id}, store_id: $storeId, pgcode: $pgcode');
 
     setState(() => _isSubmitting = true);
     try {
@@ -667,7 +654,6 @@ if (_figmaPaymentLabel.isEmpty) {
       final PaymentUrlResponse paymentUrlResponse =
           await Api().client.getPaymentUrl(user.user_id, request);
 
-      print('결제 URL 수신 - order_id: ${paymentUrlResponse.orderId}, mobile_url: ${paymentUrlResponse.mobileUrl}');
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);
@@ -720,7 +706,6 @@ if (_figmaPaymentLabel.isEmpty) {
         _showToast(msg != null && msg.isNotEmpty ? msg : '결제에 실패했습니다. 다시 시도해주세요.');
       }
     } on DioException catch (e) {
-      print('결제 URL 요청 실패: $e');
       if (mounted) setState(() => _isSubmitting = false);
 
       if (e.response?.statusCode == 500) {
@@ -729,7 +714,6 @@ if (_figmaPaymentLabel.isEmpty) {
             errorMessage.contains('store_id') ||
             errorMessage.contains('Cannot add or update a child row')) {
           _showToast('유효하지 않은 가게 정보입니다. 메뉴를 다시 선택해주세요.');
-          print('ERROR: Foreign key constraint failed for store_id: $storeId');
           return;
         }
       }
@@ -737,7 +721,6 @@ if (_figmaPaymentLabel.isEmpty) {
       // 네트워크 오류 시 동일 UUID 재사용 (서버 중복 차단)
       _showToast('결제 요청에 실패했습니다. 다시 시도해주세요.');
     } catch (e) {
-      print('결제 오류: $e');
       if (mounted) setState(() => _isSubmitting = false);
       _showToast('결제 중 오류가 발생했습니다.');
     }
@@ -776,10 +759,8 @@ if (_figmaPaymentLabel.isEmpty) {
     await KakaoShareHelper.shareGifticon(
       gifticon,
       onSuccess: () {
-        print('카카오톡 공유 완료');
       },
       onError: (error) {
-        print('카카오톡 공유 실패: $error');
       },
     );
   }
@@ -1022,7 +1003,7 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         const SnackBar(content: Text('연락처 접근 권한이 필요합니다')),
       );
     }

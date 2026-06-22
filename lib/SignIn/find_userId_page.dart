@@ -75,8 +75,6 @@ class _FindUserIDPageState extends State<FindUserIDPage> {
                             skipRegistrationCheck: true,
                             successCallback: (phoneAuthResult) {
                               if (phoneAuthResult != null) {
-                                print(
-                                    "전화번호 인증 성공: ${phoneAuthResult.phoneNumber}");
                                 setState(() {
                                   verifiedPhoneNumber =
                                       phoneAuthResult.phoneNumber;
@@ -84,7 +82,6 @@ class _FindUserIDPageState extends State<FindUserIDPage> {
                                   _isLoading = false;
                                 });
                               } else {
-                                print("전화번호 인증 실패");
                               }
                             },
                           ),

@@ -28,7 +28,6 @@ class _OrderDetailPageState extends State<OrderDetailPage>
 
   @override
   void initState() {
-    print("init state 호출");
     super.initState();
   }
 
@@ -36,10 +35,8 @@ class _OrderDetailPageState extends State<OrderDetailPage>
     try {
       await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getOrderDetail(widget.orderId);
-      print('주문 상세 조회 성공: ${response.order_detail.toJson()}');
       return response.order_detail;
     } catch (error) {
-      print('주문 상세 조회 오류: $error');
       rethrow;
     }
   }
@@ -478,16 +475,13 @@ class _OrderDetailPageState extends State<OrderDetailPage>
       await KakaoShareHelper.shareGifticon(
         gifticon,
         onSuccess: () {
-          print('카카오톡 공유 완료');
           _showToast('카카오톡으로 선물을 전달했습니다.');
         },
         onError: (error) {
-          print('카카오톡 공유 실패: $error');
           _showToast('카카오톡 공유에 실패했습니다.');
         },
       );
     } catch (error) {
-      print('카카오톡 공유 오류: $error');
       _showToast('카카오톡 공유 중 오류가 발생했습니다.');
     }
   }
@@ -737,7 +731,6 @@ class _OrderDetailPageState extends State<OrderDetailPage>
         _showRefundFailureDialog(errorMessage);
       }
     } catch (e) {
-      print("환불 오류: $e");
       if (mounted) {
         _showRefundFailureDialog("예기치 않은 오류가 발생했습니다.");
       }

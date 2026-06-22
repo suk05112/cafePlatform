@@ -22,7 +22,6 @@ class _MenuPageState extends State<MenuPage>
 
   @override
   void initState() {
-    print("_MenuPageState init state 호출");
     super.initState();
     if (widget.storeId < 0) {
       // setState(() {
@@ -36,7 +35,6 @@ class _MenuPageState extends State<MenuPage>
 
   @override
   Widget build(BuildContext context) {
-    print("_MenuPageState build 호출 ${widget.storeId}");
     if (widget.storeId < 0) {
       // storeId가 0보다 작으면 더미 데이터
       final menuList = MenuDummyRepository.menus;
@@ -72,7 +70,6 @@ class _MenuPageState extends State<MenuPage>
       onTap: () async {
         if (menu.store_id <= 0 && widget.storeId > 0) {
           menu.store_id = widget.storeId;
-          print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
         }
         Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
 
@@ -147,7 +144,6 @@ class _MenuPageState extends State<MenuPage>
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        print('메뉴 이미지 로드 오류: $error');
                         try {
                           return Image.asset(
                             'assets/menu.png',

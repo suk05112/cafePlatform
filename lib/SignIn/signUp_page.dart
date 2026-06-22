@@ -338,12 +338,10 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       try {
         linkResult = await fbUser.linkWithCredential(emailCredential);
         linkedUser = linkResult.user;
-        print("이메일 credential 연결 성공");
       } on FirebaseAuthException catch (linkError) {
         // 이미 이메일이 링크되어 있거나 다른 오류인 경우
         if (linkError.code == 'provider-already-linked') {
           // 이미 이메일이 링크되어 있는 경우, 기존 사용자 사용
-          print("이미 이메일이 링크되어 있음 - 기존 계정 사용");
           linkedUser = fbUser;
         } else {
           // 다른 오류인 경우 재throw
@@ -368,22 +366,16 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             provider: "email",
           );
 
-          print(
-              "회원가입할 정보 name: ${name!}, email: $email, phone_number: $phoneNumber, uid: ${linkedUser.uid}");
-          print("registerUser.toJson(): ${registerUser.toJson()}");
           final registerResponse =
               await Api().client.registerUser(registerUser);
-          print("회원가입 API 호출 후 response $registerResponse");
 
           // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 회원가입은 계속 진행)
           // 회원가입 API 호출 후 바로 등록 (로그아웃 전)
           _registerPushToken(registerResponse.userId).catchError((error) {
-            print('푸시 토큰 등록 실패 (회원가입은 계속 진행): $error');
           });
 
           // 이메일 회원가입 성공 후 Firebase 로그아웃 (사용자가 다시 로그인하도록)
           await FirebaseAuth.instance.signOut();
-          print('회원가입 성공 후 Firebase 로그아웃 완료');
 
           if (mounted) {
             setState(() {
@@ -467,7 +459,6 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
         } catch (e) {
           // 서버 회원가입 실패 시 Firebase 계정 롤백
           try { await linkedUser!.delete(); } catch (_) {}
-          print("회원가입 API 오류: $e");
           if (mounted) {
             setState(() {
               _loading = false;
@@ -521,7 +512,6 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
         default:
           errorMessage = "알 수 없는 오류가 발생했습니다: ${e.code}";
       }
-      print('errorMessage: $errorMessage');
 
       CommonDialog.show(
           context: context,
@@ -530,7 +520,6 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
           buttonText: "확인",
           onPressed: () {});
     } catch (e) {
-      print("예기치 않은 오류: $e");
       if (mounted) {
         setState(() {
           _loading = false;
@@ -592,20 +581,16 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
 
       // SharedPreferences에 토큰이 없으면 Firebase Messaging에서 직접 가져오기
       if (fcmToken == null || fcmToken.isEmpty) {
-        print('SharedPreferences에 FCM 토큰이 없어 Firebase Messaging에서 직접 가져옵니다.');
         try {
           fcmToken = await fetchFcmTokenRespectingIosApns();
           if (fcmToken != null) {
             await prefs.setString('fcm_token', fcmToken);
-            print('FCM 토큰을 Firebase Messaging에서 가져와 저장했습니다: $fcmToken');
           }
         } catch (e) {
-          print('Firebase Messaging에서 토큰 가져오기 실패: $e');
         }
       }
 
       if (fcmToken == null || fcmToken.isEmpty) {
-        print('FCM 토큰을 가져올 수 없어 푸시 토큰 등록을 건너뜁니다.');
         return;
       }
 
@@ -623,9 +608,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
 
       await Api().setBaseClient(Api.BASE_URL);
       await Api().client.registerPushToken(userId, pushTokenRequest);
-      print('푸시 토큰 등록 성공: userId=$userId');
     } catch (e) {
-      print('푸시 토큰 등록 실패: $e');
     }
   }
 }
@@ -690,7 +673,6 @@ class _IDVerificationWidgetState extends State<IDVerificationWidget> {
                   widget.onEmailChanged(text); // 부모에게 이메일 값 전달
                 },
                 validator: (value) {
-                  print("id validator 호출");
                   if (value == null || value.isEmpty) {
                     return "이메일을 입력해주세요.";
                   }

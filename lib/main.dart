@@ -48,11 +48,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
   }
-  print('백그라운드 메시지 수신: ${message.messageId}');
-  print('메시지 데이터: ${message.data}');
   if (message.notification != null) {
-    print('알림 제목: ${message.notification?.title}');
-    print('알림 내용: ${message.notification?.body}');
   }
 }
 
@@ -137,9 +133,7 @@ Future<void> _initialize() async {
       return true;
     };
 
-    print("✅ Firebase Crashlytics 초기화 완료");
   } catch (e) {
-    print("❌ Firebase Crashlytics 에러 핸들러 설정 오류: $e");
   }
 
   // setBaseClient는 스플래시·로그인에서 호출 (여기서 await 하면 App Check·토큰과 겹쳐 수십 초 대기 유발)
@@ -147,19 +141,12 @@ Future<void> _initialize() async {
   // FCM·네이버맵은 백그라운드에서 진행 (스플래시/첫 화면을 막지 않음)
   unawaited(_initializeFCM());
   unawaited(_initNaverMapSdk());
-  getPermission();
 }
 
 void handleDeepLink(Uri uri) async {
-  print('Deep link received: $uri');
-  print('  - scheme: ${uri.scheme}');
-  print('  - host: ${uri.host}');
-  print('  - path: ${uri.path}');
-  print('  - queryParameters: ${uri.queryParameters}');
 
   // gifnut://payment/result 또는 gifnut://payment/cancel — PayletterWebViewPage가 직접 처리
   if (uri.scheme == 'gifnut' && uri.host == 'payment') {
-    print('페이레터 결제 딥링크 — PayletterWebViewPage에서 처리: $uri');
     return;
   }
 
@@ -167,7 +154,6 @@ void handleDeepLink(Uri uri) async {
   // kakaoc...://oauth 또는 kakao...://oauth 형식의 URL은 카카오 로그인 OAuth 콜백
   if (uri.host == 'oauth' &&
       (uri.scheme.startsWith('kakaoc') || uri.scheme.startsWith('kakao'))) {
-    print('카카오 OAuth 콜백 URL - 무시 (카카오 SDK가 처리): $uri');
     return;
   }
 
@@ -179,7 +165,6 @@ void handleDeepLink(Uri uri) async {
     int retryCount = 0;
     const maxRetries = 30;
     while (Get.context == null && retryCount < maxRetries) {
-      print("Waiting for Flutter context... (${retryCount + 1}/$maxRetries)");
       await Future.delayed(const Duration(milliseconds: 100));
       retryCount++;
     }
@@ -194,7 +179,6 @@ void handleDeepLink(Uri uri) async {
   if (isKakaoLink || isGifnutLink) {
     // 기프티콘 선물받기 처리
     final gifticonId = uri.queryParameters['gifticon_id'];
-    print('기프티콘 선물받기 - gifticon_id: $gifticonId (카카오 링크: $isKakaoLink)');
 
     if (gifticonId != null && gifticonId.isNotEmpty) {
       final gifticonIdInt = int.tryParse(gifticonId);
@@ -202,7 +186,6 @@ void handleDeepLink(Uri uri) async {
         // context가 준비될 때까지 추가 대기 (필요시)
         var context = Get.context;
         if (context == null) {
-          print("Context가 여전히 없음: 추가 대기 중...");
           await Future.delayed(const Duration(milliseconds: 500));
           context = Get.context;
         }
@@ -218,21 +201,18 @@ void handleDeepLink(Uri uri) async {
             // 로그인 상태 확인 (재확인)
             if (userProvider.isLoggedIn && userProvider.user != null) {
               // 로그인 되어있으면 기프티콘 등록 페이지로 이동
-              print("로그인 상태 확인됨: 기프티콘 등록 페이지로 이동");
               // 약간의 지연을 추가하여 Flutter가 완전히 준비되도록 함
               await Future.delayed(const Duration(milliseconds: 300));
               Get.offAll(
                   () => RegisterGifticonPage(gifticon_id: gifticonIdInt));
             } else {
               // 로그인 안되어있으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-              print("비로그인 상태: 딥링크 정보 저장 후 로그인 페이지로 이동");
               final prefs = await SharedPreferences.getInstance();
               await prefs.setInt('pending_gifticon_id', gifticonIdInt);
               await Future.delayed(const Duration(milliseconds: 300));
               Get.offAll(() => LoginPage());
             }
           } catch (e) {
-            print("Provider 접근 오류: $e");
             // 오류 발생 시 딥링크 정보 저장 후 로그인 페이지로 이동
             final prefs = await SharedPreferences.getInstance();
             await prefs.setInt('pending_gifticon_id', gifticonIdInt);
@@ -241,7 +221,6 @@ void handleDeepLink(Uri uri) async {
           }
         } else {
           // context가 여전히 없으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-          print("Context를 가져올 수 없음: 딥링크 정보 저장 후 로그인 페이지로 이동");
           final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('pending_gifticon_id', gifticonIdInt);
           await Future.delayed(const Duration(milliseconds: 300));
@@ -251,7 +230,6 @@ void handleDeepLink(Uri uri) async {
       }
     } else {
       // gifticon_id가 없으면 매장 리스트 페이지로 이동
-      print("gifticon_id가 없음: 매장 리스트 페이지로 이동");
       await Future.delayed(const Duration(milliseconds: 300));
       Get.offAll(() => TabPage(initialIndex: 0));
       return;
@@ -262,13 +240,11 @@ void handleDeepLink(Uri uri) async {
   if (uri.scheme == 'gifnut' && uri.host == 'share') {
     final type = uri.queryParameters['type'];
     final id = uri.queryParameters['id'];
-    print('공유 링크 - type: $type, id: $id');
 
     if (type == 'store' && id != null) {
       final storeId = int.tryParse(id);
       if (storeId != null) {
         // 매장 상세 페이지로 이동
-        print("매장 상세 페이지로 이동: store_id=$storeId");
         // TODO: StorePage로 이동하는 로직 추가 필요
         // Get.offAll(() => StorePage(storeId: storeId, storeName: ''));
         return;
@@ -280,19 +256,16 @@ void handleDeepLink(Uri uri) async {
   // 카카오 OAuth 콜백 등은 이미 위에서 처리했으므로 여기서는 추가 처리 불필요
   final query = uri.queryParameters['query'];
   if (query != null && query == 'one') {
-    print("기존 로직: query=one");
     Get.offAll(() => CafeList());
     // TODO: '/friends' 라우트가 등록되어 있지 않으므로 주석 처리
     // Get.toNamed('/friends'); // 친구 목록 페이지로 이동
   } else if (query != null && query == 'two') {
-    print("기존 로직: query=two");
     // TODO: '/main' 라우트가 등록되어 있지 않으므로 주석 처리
     // Get.offAllNamed('/main'); // 메인 페이지로 이동
     Get.offAll(() => SplashScreen()); // SplashScreen으로 이동
   } else {
     // 알 수 없는 딥링크인 경우만 처리 (카카오 OAuth는 이미 필터링됨)
     // 현재 로그인 중인 경우에는 네비게이션하지 않음
-    print("알 수 없는 딥링크 형식 - 무시: $uri");
     // Get.offAll(() => LoginPage()); // 주석 처리 - 로그인 플로우 방해 방지
   }
 }
@@ -302,14 +275,12 @@ Future<void> handleDeepLinks() async {
   // 앱이 처음 실행될 때 딥링크 처리
   try {
     final initialLink = await getInitialLink();
-    print('Initial deep link: $initialLink');
     if (initialLink != null) {
       final uri = Uri.parse(initialLink);
       handleDeepLink(uri); // 딥링크 처리 함수 호출
     }
   } on PlatformException {
     // 예외 처리 (특히 앱이 백그라운드에서 실행될 때 발생할 수 있음)
-    print("Error getting initial deep link");
   }
 
   // 딥링크를 수신하기 위한 리스너 설정
@@ -334,60 +305,42 @@ Future<void> _initializeFCM() async {
 
     // 포그라운드 메시지 핸들러
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('포그라운드 메시지 수신!');
-      print('메시지 데이터: ${message.data}');
 
       if (message.notification != null) {
-        print('알림 제목: ${message.notification?.title}');
-        print('알림 내용: ${message.notification?.body}');
       }
     });
 
     // 앱이 종료된 상태에서 알림을 탭했을 때 처리
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('알림 탭으로 앱 열림');
-      print('메시지 데이터: ${message.data}');
       if (message.notification != null) {
-        print('알림 제목: ${message.notification?.title}');
-        print('알림 내용: ${message.notification?.body}');
       }
     });
 
     // 앱이 종료된 상태에서 알림을 탭하여 앱이 시작된 경우 처리
     RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
-      print('초기 메시지로 앱 시작');
-      print('메시지 데이터: ${initialMessage.data}');
       if (initialMessage.notification != null) {
-        print('알림 제목: ${initialMessage.notification?.title}');
-        print('알림 내용: ${initialMessage.notification?.body}');
       }
     }
 
     // FCM 토큰 (iOS는 APNs 준비 후 요청 — 미준비 시 getToken 장시간 대기 방지)
     final token = await fetchFcmTokenRespectingIosApns();
     if (token == null) {
-      print('FCM getToken 실패/타임아웃 — onTokenRefresh로 나중에 받을 수 있음');
     }
 
     if (token != null) {
-      print('FCM 토큰: $token');
 
       // SharedPreferences에 저장
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('fcm_token', token);
-      print('FCM 토큰 저장 완료');
     } else {
-      print('FCM 토큰을 가져올 수 없습니다.');
     }
 
     // 토큰 갱신 리스너
     messaging.onTokenRefresh.listen((newToken) {
-      print('FCM 토큰 갱신: $newToken');
       _saveFCMToken(newToken);
     });
   } catch (e) {
-    print('FCM 초기화 오류: $e');
   }
 }
 
@@ -395,29 +348,10 @@ Future<void> _saveFCMToken(String token) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('fcm_token', token);
-    print('FCM 토큰 저장 완료: $token');
   } catch (e) {
-    print('FCM 토큰 저장 오류: $e');
   }
 }
 
-getPermission() async {
-  print("위치권한 요청");
-
-  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    return Future.error('Location services are disabled.');
-  }
-
-  var requestStatus = await Permission.location.request();
-  var status = await Permission.location.status;
-  // var status = await Permission.locationWhenInUse.status;
-  if (status.isGranted) {
-    print('허락됨');
-  } else if (status.isDenied) {
-    print('거절됨');
-  }
-}
 
 /// 첫 프레임에서 곧바로 [MyApp]을 그린 뒤, 무거운 초기화는 백그라운드에서 수행한다.
 /// (스플래시/런치스크린에서 멈춤 — [Medium](https://medium.com/@chetan.akarte/flutter-app-freezes-on-the-splash-screen-in-release-mode-e15a6045a189))
@@ -495,7 +429,6 @@ class _MyAppState extends State<MyApp> {
     // 앱이 처음 실행될 때 딥링크 처리
     try {
       final initialLink = await getInitialLink();
-      print('Initial deep link: $initialLink');
       if (initialLink != null) {
         final uri = Uri.parse(initialLink);
         // WidgetsBinding.instance.addPostFrameCallback을 사용하여 context가 준비된 후 처리
@@ -504,14 +437,12 @@ class _MyAppState extends State<MyApp> {
         });
       }
     } on PlatformException {
-      print("Error getting initial deep link");
     }
 
     // 앱이 실행 중일 때 딥링크를 수신하기 위한 리스너 설정
     _linkSubscription = linkStream.listen(
       (String? link) {
         if (link != null) {
-          print('Deep link received while app is running: $link');
           final uri = Uri.parse(link);
           // context가 준비된 후 처리
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -520,7 +451,6 @@ class _MyAppState extends State<MyApp> {
         }
       },
       onError: (err) {
-        print('Deep link error: $err');
       },
     ) as StreamSubscription<String?>?;
   }
@@ -590,8 +520,9 @@ class MyWidget extends StatelessWidget {
 class TabPage extends StatefulWidget {
   final int initialIndex;
   final bool showNotificationPrompt;
+  final bool showLocationPrompt;
 
-  const TabPage({super.key, this.initialIndex = 0, this.showNotificationPrompt = false});
+  const TabPage({super.key, this.initialIndex = 0, this.showNotificationPrompt = false, this.showLocationPrompt = false});
 
   @override
   _TabPageState createState() => _TabPageState();
@@ -604,11 +535,40 @@ class _TabPageState extends State<TabPage> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    if (widget.showNotificationPrompt) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showNotificationPermissionSheet();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (widget.showLocationPrompt) {
+        await _showLocationPermissionSheet();
+      }
+      if (widget.showNotificationPrompt && mounted) {
+        await _showNotificationPermissionSheet();
+      }
+    });
+  }
+
+  Future<void> _showLocationPermissionSheet() async {
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _LocationPermissionSheet(
+        onAllow: () async {
+          Navigator.pop(ctx);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('location_prompt_shown', true);
+          await Permission.location.request();
+        },
+        onLater: () async {
+          Navigator.pop(ctx);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('location_prompt_shown', true);
+        },
+      ),
+    );
   }
 
   Future<void> _showNotificationPermissionSheet() async {
@@ -715,6 +675,94 @@ class _TabPageState extends State<TabPage> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+}
+
+class _LocationPermissionSheet extends StatelessWidget {
+  final VoidCallback onAllow;
+  final VoidCallback onLater;
+
+  const _LocationPermissionSheet({
+    required this.onAllow,
+    required this.onLater,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '내 주변 매장을 찾아드릴게요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '현재 위치를 기반으로\n가까운 매장을 바로 확인할 수 있어요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onLater,
+                  child: const Text(
+                    '다음에 하기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onAllow,
+                  child: const Text(
+                    '위치 허용',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

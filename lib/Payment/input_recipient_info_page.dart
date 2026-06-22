@@ -7,6 +7,7 @@ import 'package:cafeplatform/Payment/success_payment_page.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/Payment/CommonPaymentWidget.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 
 class Recipient {
   final String name;
@@ -59,7 +60,7 @@ class _InputRecipientInfoPageState extends State<InputRecipientInfoPage> {
     final status = await Permission.contacts.request();
     if (!status.isGranted) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showUniqueSnackBar(
           const SnackBar(content: Text('연락처 접근 권한이 필요합니다')),
         );
       }
@@ -237,7 +238,7 @@ class _InputRecipientInfoPageState extends State<InputRecipientInfoPage> {
               onPressed: () {
                 final phone = phoneController.text.trim();
                 if (!_isValidPhone(phone)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(context).showUniqueSnackBar(
                     const SnackBar(
                       content: Text('올바른 전화번호를 입력해주세요 (10-11자리)'),
                     ),
@@ -275,13 +276,13 @@ class _InputRecipientInfoPageState extends State<InputRecipientInfoPage> {
 
   void _onNext() {
     if (_recipient == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         const SnackBar(content: Text('받을 분을 추가해주세요')),
       );
       return;
     }
     if (!_isValidPhone(_recipient!.phone)) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         const SnackBar(content: Text('올바른 전화번호를 확인해주세요')),
       );
       return;

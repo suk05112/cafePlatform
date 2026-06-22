@@ -33,7 +33,6 @@ class MenuProvider extends ChangeNotifier {
     this.menuCards = menuCards;
     if (this.menuCards == null) {
       // || this.menuCards!.isEmpty) {
-      print("여기 탐");
       this.menuCards = [
         // Menu(
         //   menu_id: -1,
@@ -46,7 +45,6 @@ class MenuProvider extends ChangeNotifier {
         // )
       ];
     } else {
-      print("여기 안탐");
     }
     notifyListeners();
   }
@@ -62,13 +60,11 @@ class MenuProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      print("menu_provider::fetchMenuList:: fetch 호출");
       var response = await Api().client.getMenuList(storeId);
       var menuList = response.menuList ?? [];
       _menuCache[storeId] = (menus: menuList, cachedAt: DateTime.now());
       setMenuCard(menuList);
     } catch (error) {
-      print("menu_provider::fetchMenuList:: fetch 오류: $error");
       setMenuCard(null);
     } finally {
       isLoading = false;
@@ -88,10 +84,8 @@ class MenuProvider extends ChangeNotifier {
   // }
 
   Future<Store> getDetailStore(int storeId) async {
-    print("store_provider::getDetailStore:: fetch 호출");
 
     var response = await Api().client.getStoreDetailInfo(storeId);
-    print("provider store2 ${response.store.store_photo_urls}");
     // notifyListeners();
 
     return response.store;

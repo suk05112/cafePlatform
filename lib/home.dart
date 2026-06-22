@@ -119,7 +119,6 @@ class _cntState extends State<cntState> {
           // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
           setState(() {
             _cnt++;
-            print("$_cnt");
           });
         },
       ),
@@ -193,7 +192,6 @@ class _categoryState extends State<categoryState> {
       onTap: () {
         Navigator.push(
             context, MaterialPageRoute(builder: (context) => MyPage()));
-        print("Container clicked");
       },
       child: Container(
         // height: 300,
@@ -277,7 +275,6 @@ class _RecommendedGifticonState extends State<RecommendedGifticon> {
       onTap: () {
         Navigator.push(
             context, MaterialPageRoute(builder: (context) => GifticonInfo()));
-        print("Container clicked");
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

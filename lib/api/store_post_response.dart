@@ -47,7 +47,6 @@ class StoreCardList {
   StoreCardList({required this.storeList});
 
   factory StoreCardList.fromJson(Map<String, dynamic> json) {
-    print("su>>1");
     var storeJson = json['storeList'] as List?; // List?로 nullable 처리
     return StoreCardList(
       storeList: storeJson != null

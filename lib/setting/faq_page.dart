@@ -4,6 +4,7 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 
 class FAQPage extends StatefulWidget {
   const FAQPage({super.key});
@@ -93,7 +94,7 @@ class _FAQPageState extends State<FAQPage> {
       ..addJavaScriptChannel(
         'Toaster',
         onMessageReceived: (JavaScriptMessage message) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(content: Text(message.message)),
           );
         },

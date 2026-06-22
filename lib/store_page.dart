@@ -21,7 +21,6 @@ class _StoreFigma {
   static const Color textBody = Color(0xFF3B3B42);
   static const Color menuTitle = Color(0xFF17171C);
   static const Color divider = Color(0xFFE3E3ED);
-  static const Color sliderPlaceholder = Color(0xFFE0E3ED);
   static const Color menuImagePlaceholder = Color(0xFFE5E8ED);
   static const Color sectionBar = Color(0xFFF5F6FA);
   static const double horizontalInset = 16;
@@ -62,6 +61,12 @@ class _StorePageState extends State<StorePage> {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
       final loaded = await storeProvider.fetchDetailStore(widget.storeId);
       if (!mounted) return;
+      // 슬라이더 표시 전 모든 이미지 캐시 완료 후 setState
+      final urls = (loaded?.store_photo_urls ?? []).where((u) => u.isNotEmpty);
+      await Future.wait(
+        urls.map((url) => precacheImage(NetworkImage(url), context).catchError((_) {})),
+      );
+      if (!mounted) return;
       setState(() {
         store = loaded;
         _storeLoading = false;
@@ -85,9 +90,6 @@ class _StorePageState extends State<StorePage> {
   Widget _buildStoreContent(Store? storeData) {
     // 디버깅: storeData 확인
     if (storeData != null) {
-      print("_buildStoreContent - store_address: ${storeData.store_address}");
-      print(
-          "_buildStoreContent - store_lat: ${storeData.store_lat}, store_lng: ${storeData.store_lng}");
     }
     return Container(
       color: Colors.white,
@@ -297,8 +299,6 @@ class _StorePageState extends State<StorePage> {
       return Consumer<MenuProvider>(
         builder: (context, menuProvider, child) {
           List<Menu> menuList = menuProvider.menuCards ?? [];
-          print("실 데이터 menuList.isNotEmpty: ${menuList.isNotEmpty}"
-              "${menuList.length}");
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -349,7 +349,6 @@ class _StorePageState extends State<StorePage> {
         ),
       );
     }
-    print("_buildMenuGrid: ${menuList.isNotEmpty}" "${menuList[0]}");
 
     return ListView.builder(
       shrinkWrap: true,
@@ -379,7 +378,6 @@ class _StorePageState extends State<StorePage> {
         onTap: () {
           if (menu.store_id <= 0 && widget.storeId > 0) {
             menu.store_id = widget.storeId;
-            print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
           }
           Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
 
@@ -640,17 +638,7 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
       width: double.infinity,
       height: _StoreFigma.sliderHeight,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return Container(
-          width: double.infinity,
-          height: _StoreFigma.sliderHeight,
-          color: _StoreFigma.sliderPlaceholder,
-          child: const Center(
-            child: CircularProgressIndicator(color: ColorAssset.mainColor),
-          ),
-        );
-      },
+      gaplessPlayback: true,
       errorBuilder: (_, __, ___) =>
           _StoreImagePlaceholder(height: _StoreFigma.sliderHeight),
     );

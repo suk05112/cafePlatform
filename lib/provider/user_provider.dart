@@ -30,7 +30,6 @@ class UserProvider with ChangeNotifier {
 
   /// Save the user to secure storage (private method)
   Future<void> _saveUserToStorage(User user) async {
-    print("${user.name}, ${user.email}, ${user.phone_number}");
     try {
       final userJson = jsonEncode({
         'user_id': user.user_id,
@@ -41,9 +40,7 @@ class UserProvider with ChangeNotifier {
       });
       await _storage.write(key: "user", value: userJson);
       _isLoggedIn = true;
-      print("User saved to secure storage.");
     } catch (e) {
-      print("Failed to save user to storage: $e");
     }
   }
 
@@ -61,17 +58,13 @@ class UserProvider with ChangeNotifier {
           uid: userMap['uid'] ?? '',
         );
         notifyListeners();
-        print("User loaded from secure storage.");
-        print("${_user?.name}, ${_user?.email}, ${_user?.phone_number}");
         _isLoggedIn = true;
 
         return _user;
       } else {
-        print("No user data found in secure storage.");
         return null;
       }
     } catch (e) {
-      print("Failed to load user from storage: $e");
       return null;
     }
   }
@@ -88,18 +81,14 @@ class UserProvider with ChangeNotifier {
       try {
         notifyListeners();
       } catch (e) {
-        print("notifyListeners 오류 (무시 가능): $e");
       }
-      print("User data cleared from storage.");
     } catch (e) {
-      print("Failed to clear user data: $e");
       // 오류가 발생해도 상태는 업데이트
       _user = null;
       _isLoggedIn = false;
       try {
         notifyListeners();
       } catch (notifyError) {
-        print("notifyListeners 오류 (무시 가능): $notifyError");
       }
     }
   }

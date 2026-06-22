@@ -66,8 +66,6 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
       // 전화번호에서 하이픈 제거 (API는 숫자만 받을 수 있음)
       final phoneNumber = user.phone_number;
 
-      print(
-          '기프티콘 등록 시도: gifticon_id=${widget.gifticon_id}, user_id=${user.user_id}, phone=$phoneNumber');
 
       // API 호출
       await Api().setBaseClient(Api.BASE_URL);
@@ -78,14 +76,12 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
       );
 
       final response = await Api().client.linkGifticonToUser(request);
-      print('기프티콘 등록 성공: ${response.message}');
 
       // 등록 성공 시 기프티콘 페이지로 이동
       if (mounted) {
         Get.off(() => GifticonPage(gifticon_id: widget.gifticon_id));
       }
     } on DioException catch (error) {
-      print('기프티콘 등록 오류: $error');
       String errorMessage = '기프티콘 등록 중 오류가 발생했습니다.';
 
       // 서버 에러 메시지 확인
@@ -116,7 +112,6 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
         _isLoading = false;
       });
     } catch (error) {
-      print('기프티콘 등록 오류: $error');
       setState(() {
         _errorMessage = '기프티콘 등록 중 오류가 발생했습니다.';
         _isLoading = false;

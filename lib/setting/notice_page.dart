@@ -46,7 +46,6 @@ class _NoticePageState extends State<NoticePage> {
         _hasError = true;
         _errorMessage = '공지사항을 불러올 수 없습니다.\n${e.toString()}';
       });
-      print('공지사항 로드 오류: $e');
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 
 /// API [StoreProvider.availableRegions]를 불러온 뒤 바텀시트로 지역 목록을 보여 줍니다.
 Future<void> showStoreRegionPickerBottomSheet(BuildContext context) async {
@@ -10,7 +11,7 @@ Future<void> showStoreRegionPickerBottomSheet(BuildContext context) async {
 
   final availableRegions = storeProvider.availableRegions;
   if (availableRegions.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showUniqueSnackBar(
       const SnackBar(content: Text('지역 목록을 불러오지 못했습니다.')),
     );
     return;
@@ -96,7 +97,7 @@ Future<void> showStoreRegionPickerBottomSheet(BuildContext context) async {
                           );
                         } catch (_) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(context).showUniqueSnackBar(
                               const SnackBar(
                                 content: Text('해당 지역 매장을 불러오지 못했습니다.'),
                               ),

@@ -12,7 +12,6 @@ class AppConfig {
   static String get baseUrl {
     final prefix = F.appFlavor == Flavor.dev ? '/dev' : '/prod';
     final url = '$baseDomain$prefix';
-    print("AppConfig:: flavor=${F.appFlavor?.name}, baseUrl=$url");
     return url;
   }
 }
