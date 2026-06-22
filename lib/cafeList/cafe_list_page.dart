@@ -411,7 +411,7 @@ class _CafeListState extends State<CafeList> {
           )
         else
           SizedBox(
-            height: 186,
+            height: 210,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
