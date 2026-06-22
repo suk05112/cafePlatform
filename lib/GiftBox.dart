@@ -220,6 +220,13 @@ class _GifticonRow extends StatelessWidget {
     return url.startsWith('http://') || url.startsWith('https://');
   }
 
+  Widget _imagePlaceholder() => Container(
+        width: 72,
+        height: 72,
+        color: Colors.grey[100],
+        child: Icon(Icons.local_cafe_outlined, color: Colors.grey[300], size: 28),
+      );
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -239,36 +246,24 @@ class _GifticonRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (_hasImage) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    gifticon.menu_url!.trim(),
-                    width: 72,
-                    height: 72,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: _hasImage
+                    ? Image.network(
+                        gifticon.menu_url!.trim(),
                         width: 72,
                         height: 72,
-                        color: Colors.grey[100],
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-              ],
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return _imagePlaceholder();
+                        },
+                        errorBuilder: (context, error, stackTrace) =>
+                            _imagePlaceholder(),
+                      )
+                    : _imagePlaceholder(),
+              ),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

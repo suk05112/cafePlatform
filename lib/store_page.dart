@@ -21,7 +21,6 @@ class _StoreFigma {
   static const Color textBody = Color(0xFF3B3B42);
   static const Color menuTitle = Color(0xFF17171C);
   static const Color divider = Color(0xFFE3E3ED);
-  static const Color sliderPlaceholder = Color(0xFFE0E3ED);
   static const Color menuImagePlaceholder = Color(0xFFE5E8ED);
   static const Color sectionBar = Color(0xFFF5F6FA);
   static const double horizontalInset = 16;
@@ -626,6 +625,14 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
     return urls;
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    for (final url in _urls) {
+      precacheImage(NetworkImage(url), context);
+    }
+  }
+
   Widget _imageSlide(String url, int index) {
     return Image.network(
       url,
@@ -635,14 +642,7 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
       fit: BoxFit.cover,
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
-        return Container(
-          width: double.infinity,
-          height: _StoreFigma.sliderHeight,
-          color: _StoreFigma.sliderPlaceholder,
-          child: const Center(
-            child: CircularProgressIndicator(color: ColorAssset.mainColor),
-          ),
-        );
+        return _StoreImagePlaceholder(height: _StoreFigma.sliderHeight);
       },
       errorBuilder: (_, __, ___) =>
           _StoreImagePlaceholder(height: _StoreFigma.sliderHeight),
