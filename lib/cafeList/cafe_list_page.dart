@@ -353,7 +353,6 @@ class _CafeListState extends State<CafeList> {
 
   Widget _buildMenuRecommendationSection() {
     final display = _recommendMenus.take(10).toList();
-    final hasMore = _recommendMenus.length > 10;
 
     if (!_recommendLoading && _recommendMenus.isEmpty) return const SizedBox.shrink();
 
@@ -374,7 +373,7 @@ class _CafeListState extends State<CafeList> {
                 ),
               ),
               const Spacer(),
-              if (hasMore)
+              if (!_recommendLoading)
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
