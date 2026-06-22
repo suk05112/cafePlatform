@@ -62,7 +62,6 @@ class _SplashScreenState extends State<SplashScreen> {
             return;
           }
         } catch (e) {
-          print("Firebase Auth 세션 만료: $e");
           await fb.FirebaseAuth.instance.signOut();
           await userProvider.clearUser();
         }
@@ -89,7 +88,6 @@ class _SplashScreenState extends State<SplashScreen> {
         );
       }
     } catch (e) {
-      print("자동 로그인 확인 오류: $e");
       if (mounted) {
         Navigator.pushReplacement(
           context,

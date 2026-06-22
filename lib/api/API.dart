@@ -45,7 +45,6 @@ class Api {
   }
 
   static const String STAGING_URL = "https://www.502company.com/dev";
-  static const String STAGING_URL_V2 = "http://18.221.2.135";
 
   // Flavor에 따른 BASE_URL 반환 (dev: /dev, prod: /prod)
   static String get BASE_URL => AppConfig.baseUrl;
@@ -82,7 +81,6 @@ class Api {
       _cachedUserAgent = '$appName/$appVersion ($platform; $osVersion; $deviceModel)';
       return _cachedUserAgent!;
     } catch (e) {
-      print('User-Agent 생성 오류: $e');
       return 'Gifnut/1.0.0 (${Platform.operatingSystem})';
     }
   }
@@ -144,7 +142,6 @@ class Api {
           }
         }
       } on TimeoutException catch (_) {
-        print('⚠️ Firebase App Check getToken 타임아웃');
         if (_cachedAppCheckToken != null) {
           return _cachedAppCheckToken;
         }
@@ -155,7 +152,6 @@ class Api {
         // "Too many attempts" 에러인 경우 일정 시간 대기 후 재시도
         if (errorMessage.contains('too many attempts') ||
             errorMessage.contains('too_many_attempts')) {
-          print('⚠️ App Check Token: Too many attempts, 5초 대기 후 재시도...');
           await Future.delayed(const Duration(seconds: 5));
 
           // 두 번째 시도
@@ -181,20 +177,16 @@ class Api {
               }
             }
           } catch (e2) {
-            print('⚠️ Firebase App Check Token 가져오기 실패 (재시도 후): $e2');
             // 재시도 후에도 실패하면 캐시된 토큰이 있으면 사용
             if (_cachedAppCheckToken != null) {
-              print('⚠️ 캐시된 App Check Token 사용');
               return _cachedAppCheckToken;
             }
             return null;
           }
         } else {
           // 다른 에러인 경우
-          print('⚠️ Firebase App Check Token 가져오기 실패: $e');
           // 캐시된 토큰이 있으면 사용
           if (_cachedAppCheckToken != null) {
-            print('⚠️ 캐시된 App Check Token 사용');
             return _cachedAppCheckToken;
           }
           return null;
@@ -255,7 +247,6 @@ class Api {
   /// 화면 전환이 수십 초 걸리는 것을 줄입니다. 로그인 성공 후 등에는 생략(기본 false).
   Future<ApiClient> setBaseClient(String baseUrl, {bool quickStart = false}) async {
     final user = FirebaseAuth.instance.currentUser;
-    print('[setBaseClient] currentUser: ${user?.uid ?? 'NULL'}');
 
     final tokens = await Future.wait<String?>([
       _idTokenForSetBase(user, quickStart),
@@ -263,7 +254,6 @@ class Api {
     ]);
     final idToken = tokens[0];
     final appCheckToken = tokens[1];
-    print('[setBaseClient] idToken: ${idToken != null ? '✅ 있음' : '❌ NULL'}, appCheckToken: ${appCheckToken != null ? '✅ 있음' : '❌ NULL'}');
 
     final baseHeaders = await _getHeaders();
 
@@ -296,7 +286,6 @@ class Api {
 
   void setAccessToken(String? accessToken) {
     setBaseClient(BASE_URL);
-    // setBaseClient(STAGING_URL_V2, accessToken);
   }
 }
 
@@ -309,25 +298,16 @@ class CustomLogInterceptor extends Interceptor {
       final userAgent = await Api._getUserAgent();
       options.headers['User-Agent'] = userAgent;
     }
-    print("base url ${options.baseUrl}");
-    print('REQUEST[${options.method}] => PATH: ${options.path}');
     super.onRequest(options, handler);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print(response);
-    print(
-      'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}',
-    );
     super.onResponse(response, handler);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    print(
-      'ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}, message[${err.response?.statusMessage}], [${err.response?.toString()}]',
-    );
     super.onError(err, handler);
   }
 }
@@ -364,8 +344,6 @@ class AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    print(['dio error interceptor']);
-    print('❌ Error: ${err.type} [${err.type}]: ${err.message}');
 
     switch (err.type) {
       case DioExceptionType.connectionTimeout:
@@ -395,9 +373,7 @@ class AuthInterceptor extends Interceptor {
     }
 
     if (err.response?.statusCode == 401) {
-      print('[401 interceptor] at ${err.requestOptions.path}');
 
-      print('path : ${err.requestOptions.path}');
       if (err.requestOptions.path == 'auth/refresh') {
         handler.next(err);
         return;
@@ -415,10 +391,8 @@ class AuthInterceptor extends Interceptor {
 
       // refresh access token
       try {
-        print('[401 interceptor] call auth/refresh start');
         // HttpResponse<AuthRefreshResponse> authRefreshResponse = await Api().client.postAuthRefresh(AuthRefreshPost(refresh_token: refreshToken!));
 
-        print('[401 interceptor] call auth/refresh success');
 
         // request 재요청
         final user = FirebaseAuth.instance.currentUser;
@@ -444,7 +418,6 @@ class AuthInterceptor extends Interceptor {
           sendTimeout: Duration(seconds: 10),
         ));
 
-        print('[401 interceptor] 재요청');
 
         handler.resolve(await dio.request(
           requestOptions.path,
@@ -457,12 +430,11 @@ class AuthInterceptor extends Interceptor {
 
 /*
         if (authRefreshResponse.response.statusCode == 200) {
-          print('[401 interceptor] call auth/refresh statuscode 200');
 
           String accessToken = authRefreshResponse.data.access_token;
           String refreshToken = authRefreshResponse.data.refresh_token;
 
-          Api().setBaseClient(Api.STAGING_URL_V2, accessToken);
+          Api().setBaseClient(AppConfig.baseUrl, accessToken);
           await LoplatSecureStorage.write(
               LoplatSecureStorage.keyRefreshToken, refreshToken);
           await LoplatSecureStorage.write(
@@ -471,14 +443,13 @@ class AuthInterceptor extends Interceptor {
           // request 재요청
           RequestOptions requestOptions = err.requestOptions;
           Dio dio = Dio(BaseOptions(
-            baseUrl: Api.STAGING_URL_V2,
+            baseUrl: AppConfig.baseUrl,
             headers: {
               'Authorization': 'Bearer $accessToken',
               'Content-Type': 'application/json; charset=UTF-8',
             },
           ));
 
-          print('[401 interceptor] 재요청');
 
           handler.resolve(await dio.request(
             requestOptions.path,
@@ -489,13 +460,10 @@ class AuthInterceptor extends Interceptor {
             queryParameters: requestOptions.queryParameters,
           ));
         } else {
-          print(err);
           handler.next(err);
         }
         */
       } on DioException catch (e) {
-        print('auth interceptor error');
-        print(e);
         handler.next(err);
       }
     }

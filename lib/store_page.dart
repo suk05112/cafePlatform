@@ -85,9 +85,6 @@ class _StorePageState extends State<StorePage> {
   Widget _buildStoreContent(Store? storeData) {
     // 디버깅: storeData 확인
     if (storeData != null) {
-      print("_buildStoreContent - store_address: ${storeData.store_address}");
-      print(
-          "_buildStoreContent - store_lat: ${storeData.store_lat}, store_lng: ${storeData.store_lng}");
     }
     return Container(
       color: Colors.white,
@@ -297,8 +294,6 @@ class _StorePageState extends State<StorePage> {
       return Consumer<MenuProvider>(
         builder: (context, menuProvider, child) {
           List<Menu> menuList = menuProvider.menuCards ?? [];
-          print("실 데이터 menuList.isNotEmpty: ${menuList.isNotEmpty}"
-              "${menuList.length}");
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -349,7 +344,6 @@ class _StorePageState extends State<StorePage> {
         ),
       );
     }
-    print("_buildMenuGrid: ${menuList.isNotEmpty}" "${menuList[0]}");
 
     return ListView.builder(
       shrinkWrap: true,
@@ -379,7 +373,6 @@ class _StorePageState extends State<StorePage> {
         onTap: () {
           if (menu.store_id <= 0 && widget.storeId > 0) {
             menu.store_id = widget.storeId;
-            print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
           }
           Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
 

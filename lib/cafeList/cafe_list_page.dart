@@ -57,7 +57,6 @@ class _CafeListState extends State<CafeList> {
         await storeProvider.fetchListViewStoresByDistrict("01",
             cursor: null, limit: 10);
       } catch (error) {
-        print("초기 매장 로드 오류: $error");
         await storeProvider.fetchStoreList();
       }
       storeProvider.fetchAvailableRegions();
@@ -171,7 +170,6 @@ class _CafeListState extends State<CafeList> {
         await storeProvider.fetchListViewStoresByDistrict("01",
             cursor: null, limit: 10);
       } catch (error) {
-        print("매장 로드 오류: $error");
         await storeProvider.fetchStoreList();
       }
       storeProvider.fetchAvailableRegions();
@@ -585,7 +583,6 @@ class _CafeListState extends State<CafeList> {
 
       // 테스트용 로그 기록
       await FirebaseCrashlytics.instance.log("크래시 로깅 테스트 시작");
-      print("✅ Crashlytics 테스트 설정 완료");
 
       // 테스트 에러 기록 (크래시 없이)
       await FirebaseCrashlytics.instance.recordError(
@@ -595,13 +592,11 @@ class _CafeListState extends State<CafeList> {
         fatal: false,
       );
 
-      print("✅ 테스트 에러가 Crashlytics에 기록되었습니다. Firebase 콘솔에서 확인하세요.");
 
       // 실제 크래시를 발생시키려면 아래 주석 해제 (앱이 종료됩니다)
       // await Future.delayed(const Duration(seconds: 2));
       // FirebaseCrashlytics.instance.crash();
     } catch (error, stackTrace) {
-      print("❌ Crashlytics 테스트 오류: $error");
       await FirebaseCrashlytics.instance.recordError(
         error,
         stackTrace,
@@ -621,17 +616,15 @@ class _CafeListState extends State<CafeList> {
       // 테스트용 로그 기록
       await FirebaseCrashlytics.instance.log("크래시 로깅 테스트 시작");
 
-      print("크래시 로깅 테스트 준비 완료");
 
       // 실제 크래시를 테스트하려면 아래 주석을 해제하세요
       // 주의: 이 코드는 앱을 강제로 크래시시킵니다
       // FirebaseCrashlytics.instance.crash();
 
-      // 또는 null assertion으로 크래시 발생 (자동으로 Crashlytics에 기록됨)
+      // null assertion으로 예외 발생 → Crashlytics 자동 기록
       String? testString;
-      print(testString!); // 이 코드는 NullPointerException을 발생시켜 크래시를 만듭니다
+      testString!; // ignore: unnecessary_null_check_on_non_nullable_value
     } catch (error, stackTrace) {
-      print("crashtest error: $error");
       // 에러 발생 시 Crashlytics에 기록
       try {
         await FirebaseCrashlytics.instance.recordError(
@@ -640,9 +633,7 @@ class _CafeListState extends State<CafeList> {
           reason: 'crashtest 함수 실행 중 에러 발생',
           fatal: false,
         );
-        print("에러가 Crashlytics에 기록되었습니다");
       } catch (crashlyticsError) {
-        print("Crashlytics에 에러 기록 실패: $crashlyticsError");
       }
     }
   }

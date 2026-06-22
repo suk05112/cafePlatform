@@ -434,7 +434,6 @@ class _SearchPageState extends State<SearchPage> {
         }
       }
     } catch (e) {
-      print('검색 API 오류: $e');
       if (mounted) {
         setState(() {
           storeCards = [];
@@ -481,7 +480,6 @@ class _SearchPageState extends State<SearchPage> {
         }
       }
     } catch (e) {
-      print('추가 검색 API 오류: $e');
       if (mounted) {
         setState(() {
           _isLoadingMore = false;

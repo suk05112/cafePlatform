@@ -47,7 +47,6 @@ class Order {
       try {
         return DateTime.parse(dateTime);
       } catch (e) {
-        print('Order::_dateTimeFromJson:: 파싱 오류: $dateTime, $e');
         return DateTime.now();
       }
     } else if (dateTime is int) {

@@ -36,7 +36,7 @@ Future<void> main() async {
     try {
       await FirebaseAppCheck.instance
           .activate(
-            androidProvider: AndroidProvider.debug, // TODO: Play Store 배포 후 playIntegrity로 변경
+            androidProvider: AndroidProvider.playIntegrity,
             appleProvider: AppleProvider.appAttest,
             webProvider: ReCaptchaV3Provider(
                 "6LdLERosAAAAAAeSlEdm2nlXQy2JAwl2ySmIfh3Q"),

@@ -32,10 +32,8 @@ class KakaoShareHelper {
           Uri uri =
               await ShareClient.instance.shareDefault(template: defaultFeed);
           await ShareClient.instance.launchKakaoTalk(uri);
-          print('카카오톡 공유 완료');
           onSuccess?.call();
         } catch (error) {
-          print('카카오톡 공유 실패 $error');
           onError?.call('카카오톡 공유에 실패했습니다: $error');
         }
       } else {
@@ -44,15 +42,12 @@ class KakaoShareHelper {
           Uri shareUrl = await WebSharerClient.instance
               .makeDefaultUrl(template: defaultFeed);
           await launchBrowserTab(shareUrl, popupOpen: true);
-          print('카카오톡 미설치 - 웹 공유 URL: $shareUrl');
           onSuccess?.call();
         } catch (error) {
-          print('카카오톡 웹 공유 실패 $error');
           onError?.call('카카오톡 공유에 실패했습니다: $error');
         }
       }
     } catch (error) {
-      print('카카오톡 공유 오류: $error');
       onError?.call('카카오톡 공유 중 오류가 발생했습니다: $error');
     }
   }
@@ -69,25 +64,19 @@ class KakaoShareHelper {
           );
       if (response.url.isNotEmpty) {
         profileImageUri = Uri.parse(response.url);
-        print('로고 presigned URL API 호출 성공: ${response.url}');
       }
     } on DioException catch (e) {
       // DioException 타입별로 구체적인 오류 메시지 출력
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        print('로고 presigned URL API 호출 실패 (타임아웃): ${e.type}');
       } else if (e.type == DioExceptionType.badResponse) {
-        print('로고 presigned URL API 호출 실패 (서버 오류): ${e.response?.statusCode}');
       } else if (e.type == DioExceptionType.connectionError) {
-        print('로고 presigned URL API 호출 실패 (연결 오류): ${e.message}');
       } else {
-        print('로고 presigned URL API 호출 실패: ${e.type} - ${e.message}');
       }
       // 실패 시 null로 설정 (카카오톡 기본 프로필 이미지 사용)
       profileImageUri = null;
     } catch (e) {
-      print('로고 presigned URL API 호출 실패 (예외): $e');
       // 실패 시 null로 설정 (카카오톡 기본 프로필 이미지 사용)
       profileImageUri = null;
     }

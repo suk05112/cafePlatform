@@ -100,8 +100,6 @@ class S3PresignedUrlHelper {
 
       return 'https://$bucketName.s3.$region.amazonaws.com$canonicalUri?$queryString';
     } catch (e, stackTrace) {
-      print('S3 presigned URL 생성 실패: $e');
-      print('스택 트레이스: $stackTrace');
       rethrow;
     }
   }

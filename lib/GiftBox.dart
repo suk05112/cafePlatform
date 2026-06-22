@@ -66,7 +66,6 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
         _isLoading = false;
       });
     } catch (error) {
-      print("Error fetching gifticons: $error");
       setState(() => _isLoading = false);
     }
   }
@@ -257,7 +256,6 @@ class _GifticonRow extends StatelessWidget {
                       );
                     },
                     errorBuilder: (context, error, stackTrace) {
-                      print('GiftBox image error: $error');
                       return Container(
                         width: 72,
                         height: 72,
