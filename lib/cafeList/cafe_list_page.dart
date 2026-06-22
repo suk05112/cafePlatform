@@ -124,12 +124,14 @@ class _CafeListState extends State<CafeList> {
     _loadRecommendMenus();
   }
 
-  Future<void> _loadRecommendMenus({bool forceRefresh = false}) async {
+  // 지역 변경으로 호출된 경우 위치 권한이 있어도 지역 코드 기반으로 호출
+  Future<void> _loadRecommendMenus({bool forceRefresh = false, bool regionOverride = false}) async {
     if (_recommendLoading) return;
     final storeProvider = Provider.of<StoreProvider>(context, listen: false);
     final districtCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
-    final cacheKey = _hasLocationPermission
+    final useLocation = _hasLocationPermission && !regionOverride;
+    final cacheKey = useLocation
         ? 'loc:${_refLat.toStringAsFixed(4)},${_refLng.toStringAsFixed(4)}'
         : (districtCode ?? '');
 
@@ -148,7 +150,7 @@ class _CafeListState extends State<CafeList> {
       await Api().setBaseClient(Api.BASE_URL);
 
       RecommendMenuResponse resp;
-      if (_hasLocationPermission) {
+      if (useLocation) {
         resp = await Api().client.getRecommendMenus(
           lat: _refLat,
           lng: _refLng,
@@ -715,7 +717,7 @@ class _CafeListState extends State<CafeList> {
         _isRegionPickerOpen = false;
         final newRegionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
         if (newRegionCode != prevRegionCode && mounted) {
-          _loadRecommendMenus(forceRefresh: true);
+          _loadRecommendMenus(forceRefresh: true, regionOverride: true);
         }
       },
       borderRadius: BorderRadius.circular(8),
