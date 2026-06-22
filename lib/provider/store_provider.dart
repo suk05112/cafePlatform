@@ -18,6 +18,10 @@ class StoreProvider extends ChangeNotifier {
   bool _listViewIsLoadingMore = false;
   String? _listViewCurrentDistrictCode;
 
+  // 리스트 뷰 캐시 (지역 코드 기준 1시간)
+  final Map<String, ({List<Store> stores, String? nextCursor, bool hasMore, DateTime cachedAt})> _listViewCache = {};
+  static const Duration _listCacheTtl = Duration(hours: 1);
+
   // 지도 뷰용 상태
   List<Store>? _mapViewStores = [];
   String? _mapViewNextCursor;
@@ -141,6 +145,22 @@ class StoreProvider extends ChangeNotifier {
       {String? cursor, int limit = 20, bool append = false}) async {
     if (_listViewIsLoadingMore) return;
 
+    // 첫 페이지이고 캐시가 유효하면 API 생략
+    if (!append && cursor == null) {
+      final cached = _listViewCache[districtCode];
+      if (cached != null && DateTime.now().difference(cached.cachedAt) < _listCacheTtl) {
+        _listViewCurrentDistrictCode = districtCode;
+        _listViewStores = cached.stores;
+        _listViewNextCursor = cached.nextCursor;
+        _listViewHasMore = cached.hasMore;
+        _listViewIsLoading = false;
+        _listViewIsLoadingMore = false;
+        storeCards = cached.stores;
+        notifyListeners();
+        return;
+      }
+    }
+
     try {
       _listViewCurrentDistrictCode = districtCode;
       if (!append) {
@@ -168,7 +188,8 @@ class StoreProvider extends ChangeNotifier {
         _listViewHasMore = hasNext;
         _listViewIsLoading = false;
         _listViewIsLoadingMore = false;
-        this.storeCards = storeList;
+        storeCards = storeList;
+        _listViewCache[districtCode] = (stores: storeList, nextCursor: nextCursor, hasMore: hasNext, cachedAt: DateTime.now());
         notifyListeners();
       }
     } catch (error) {

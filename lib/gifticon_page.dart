@@ -180,7 +180,7 @@ class _GifticonPageState extends State<GifticonPage>
                                   SizedBox(height: 12),
                                   selectedTabIndex == 0
                                       ? gifticonInfo(gifticon)
-                                      : getDetailInfo(),
+                                      : getDetailInfo(gifticon.store_name),
                                   SizedBox(height: 24),
                                 ],
                               ),
@@ -583,6 +583,12 @@ class _GifticonPageState extends State<GifticonPage>
             ? null
             : () async {
                 await ShowQR(gifticon.gifticon_id, gifticon.store_id!);
+                if (mounted) {
+                  Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
+                  setState(() {
+                    futureGifticon = GifticonPage.fetchGifticon(widget.gifticon_id);
+                  });
+                }
               },
         child: Text(
           '사용하기',
@@ -723,9 +729,9 @@ class _GifticonPageState extends State<GifticonPage>
     );
   }
 
-  Widget getDetailInfo() {
+  Widget getDetailInfo(String storeName) {
     return Column(
-      children: [Product_notice_information(), Cancellation_refund_policy()],
+      children: [Product_notice_information(storeName), Cancellation_refund_policy()],
     );
   }
 
@@ -765,7 +771,7 @@ class _GifticonPageState extends State<GifticonPage>
     // return await DefaultAssetBundle.of(ctx).loadString('assets/2016_GDP.txt');
   }
 
-  Widget Product_notice_information() {
+  Widget Product_notice_information(String storeName) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
@@ -823,7 +829,7 @@ class _GifticonPageState extends State<GifticonPage>
               children: <Widget>[
                 Column(children: [
                   rowWidget('발행자', '502 컴퍼니'),
-                  rowWidget('교환권 공급자', '카페 이름'),
+                  rowWidget('교환권 공급자', storeName),
                   rowWidget('유효기간', '발급일 포함 365일'),
                   // rowWidget('환불조건 및 방법', contents),
                 ])

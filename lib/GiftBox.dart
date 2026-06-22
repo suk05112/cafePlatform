@@ -38,17 +38,40 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> fetchGifticons() async {
-    User? user =
-        await Provider.of<UserProvider>(context, listen: false).fetchUser();
+  Future<void> fetchGifticons({bool forceRefresh = false}) async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    User? user = await userProvider.fetchUser();
     if (user == null) return;
     setState(() {
       _currentUserName = user.name;
     });
+
+    // 캐시가 유효하고 강제 새로고침이 아니면 캐시 사용
+    if (!forceRefresh && userProvider.isGifticonCacheValid) {
+      final gifticonList = userProvider.cachedGifticons!;
+      setState(() {
+        usedGifticons = gifticonList
+            .where((g) =>
+                g.status == 'USED' ||
+                g.status == 'EXPIRED' ||
+                g.status == 'CANCELED' ||
+                (g.validity != null && g.validity!.isBefore(DateTime.now())))
+            .toList();
+        unusedGifticons = gifticonList
+            .where((g) =>
+                g.status == 'UNUSED' &&
+                (g.validity == null || !g.validity!.isBefore(DateTime.now())))
+            .toList();
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
       await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getGifticonList(user.user_id);
       var gifticonList = response.gifticonList;
+      userProvider.setGifticonCache(gifticonList);
 
       setState(() {
         usedGifticons = gifticonList
