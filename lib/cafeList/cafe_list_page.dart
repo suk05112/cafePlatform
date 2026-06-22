@@ -124,13 +124,30 @@ class _CafeListState extends State<CafeList> {
     _loadRecommendMenus();
   }
 
+  // 선택된 region_code로부터 실제 district_code를 찾아 반환
+  String? _getSelectedDistrictCode() {
+    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    final regionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
+    if (regionCode == null) return null;
+    final region = storeProvider.availableRegions.firstWhere(
+      (r) => r.region_code == regionCode,
+      orElse: () => storeProvider.availableRegions.isNotEmpty
+          ? storeProvider.availableRegions.first
+          : Region(region_name: '', region_code: regionCode),
+    );
+    return region.districts?.isNotEmpty == true
+        ? region.districts!.first.district_code
+        : regionCode;
+  }
+
   // 지역 변경으로 호출된 경우 위치 권한이 있어도 지역 코드 기반으로 호출
   Future<void> _loadRecommendMenus({bool forceRefresh = false, bool regionOverride = false}) async {
     if (_recommendLoading) return;
     final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    final districtCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
     final useLocation = _hasLocationPermission && !regionOverride;
+    final districtCode = useLocation ? null : _getSelectedDistrictCode();
+
     final cacheKey = useLocation
         ? 'loc:${_refLat.toStringAsFixed(4)},${_refLng.toStringAsFixed(4)}'
         : (districtCode ?? '');
