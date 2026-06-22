@@ -9,6 +9,7 @@ import 'package:cafeplatform/SignIn/login_service.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:dio/dio.dart';
 import 'dart:async';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 
 class PhoneAuthResult {
   final PhoneAuthCredential credential;
@@ -174,7 +175,7 @@ class _PhoneNumberVerificationWidgetState
           // 이미 가입된 계정
           if (mounted) {
             await _auth.signOut();
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
                 content: Text('이미 가입된 전화번호입니다.'),
                 duration: Duration(seconds: 2),
@@ -231,7 +232,7 @@ class _PhoneNumberVerificationWidgetState
       }
       try { await _auth.currentUser?.delete(); } catch (_) {}
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showUniqueSnackBar(
           SnackBar(
             content: Text(errorMessage),
             duration: Duration(seconds: 3),
@@ -320,7 +321,7 @@ class _PhoneNumberVerificationWidgetState
                             // 전화번호 형식 검증 (3-4-4 형식: 010-1234-5678)
                             final phonePattern = RegExp(r'^010-\d{4}-\d{4}$');
                             if (!phonePattern.hasMatch(phoneNumber)) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(context).showUniqueSnackBar(
                                 SnackBar(
                                   content: Text(
                                       '전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)'),
@@ -601,7 +602,7 @@ class _PhoneNumberVerificationWidgetState
                           if (_formKey.currentState?.validate() ?? false) {
                             if (widget.isSocialLogin &&
                                 (name == null || name!.isEmpty)) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(context).showUniqueSnackBar(
                                 SnackBar(content: Text("이름을 입력해주세요.")),
                               );
                               return;
@@ -725,7 +726,7 @@ class _PhoneNumberVerificationWidgetState
             isTouched = false;
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
               content: Text(errorMessage),
               duration: Duration(seconds: 3),
@@ -741,7 +742,7 @@ class _PhoneNumberVerificationWidgetState
             _verificationId = verificationId;
           });
           // 토스트 메시지 표시
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
               content: Text('인증번호가 전송되었습니다.'),
               duration: Duration(seconds: 2),

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 
 class PrivacyPolicyPage extends StatefulWidget {
   const PrivacyPolicyPage({super.key});
@@ -65,7 +66,7 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
       ..addJavaScriptChannel(
         'Toaster',
         onMessageReceived: (JavaScriptMessage message) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(content: Text(message.message)),
           );
         },

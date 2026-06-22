@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
 import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 import 'package:cafeplatform/model/user.dart' as my_app;
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
@@ -116,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         SnackBar(content: Text("이메일과 비밀번호를 입력해주세요.")),
       );
       return;
@@ -188,7 +189,7 @@ class _LoginPageState extends State<LoginPage> {
               }
             }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
                 content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
               ),
@@ -214,11 +215,11 @@ class _LoginPageState extends State<LoginPage> {
             errorMessage = "서버에 연결할 수 없습니다. 네트워크를 확인해주세요.";
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(content: Text(errorMessage)),
           );
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(content: Text("로그인 정보를 가져오는 중 오류가 발생했습니다.")),
           );
         }
@@ -234,12 +235,12 @@ class _LoginPageState extends State<LoginPage> {
       } else if (e.code == 'invalid-credential') {
         errorMessage = "아이디 또는 비밀번호가 잘못되었습니다.";
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         SnackBar(content: Text(errorMessage)),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showUniqueSnackBar(
           SnackBar(content: Text("로그인 중 오류가 발생했습니다.")),
         );
       }
@@ -567,7 +568,7 @@ class _LoginPageState extends State<LoginPage> {
     } else if (error is Exception) {
       errorMessage = error.toString();
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showUniqueSnackBar(
       SnackBar(content: Text(errorMessage)),
     );
   }
@@ -666,7 +667,7 @@ class _LoginPageState extends State<LoginPage> {
                 setState(() {
                   _loading = false;
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showUniqueSnackBar(
                   SnackBar(
                     content: Text(authError.message),
                     backgroundColor: Colors.red,
@@ -691,7 +692,7 @@ class _LoginPageState extends State<LoginPage> {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               const SnackBar(
                 content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
                 backgroundColor: Colors.red,
@@ -849,7 +850,7 @@ class _LoginPageState extends State<LoginPage> {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             const SnackBar(
               content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
               backgroundColor: Colors.red,
@@ -872,7 +873,7 @@ class _LoginPageState extends State<LoginPage> {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
                 content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
                 backgroundColor: Colors.red,
@@ -970,14 +971,14 @@ class _LoginPageState extends State<LoginPage> {
             },
           );
         }
-      } catch (e, stackTrace) {
+      } catch (e) {
         if (mounted) {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
-              content: Text('로그인 처리 중 오류가 발생했습니다: ${e.toString()}'),
+              content: Text('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -1052,7 +1053,7 @@ class _LoginPageState extends State<LoginPage> {
                 setState(() {
                   _loading = false;
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showUniqueSnackBar(
                   SnackBar(
                     content: Text(authError.message),
                     backgroundColor: Colors.red,
@@ -1077,7 +1078,7 @@ class _LoginPageState extends State<LoginPage> {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               const SnackBar(
                 content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
                 backgroundColor: Colors.red,
@@ -1256,7 +1257,7 @@ class _LoginPageState extends State<LoginPage> {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             const SnackBar(
               content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
               backgroundColor: Colors.red,
@@ -1276,7 +1277,7 @@ class _LoginPageState extends State<LoginPage> {
             setState(() {
               _loading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
                 content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
                 backgroundColor: Colors.red,
@@ -1390,14 +1391,14 @@ class _LoginPageState extends State<LoginPage> {
             },
           );
         }
-      } catch (e, stackTrace) {
+      } catch (e) {
         if (mounted) {
           setState(() {
             _loading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
-              content: Text('로그인 처리 중 오류가 발생했습니다: ${e.toString()}'),
+              content: Text('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),

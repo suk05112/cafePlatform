@@ -1,4 +1,5 @@
 // import 'package:bootpay/bootpay.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 // import 'package:bootpay/model/payload.dart';
 // import 'package:bootpay/model/user.dart' as bt;
 // import 'package:bootpay/model/extra.dart' as bt_ex;
@@ -1002,7 +1003,7 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
         const SnackBar(content: Text('연락처 접근 권한이 필요합니다')),
       );
     }

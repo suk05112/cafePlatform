@@ -141,7 +141,6 @@ Future<void> _initialize() async {
   // FCM·네이버맵은 백그라운드에서 진행 (스플래시/첫 화면을 막지 않음)
   unawaited(_initializeFCM());
   unawaited(_initNaverMapSdk());
-  getPermission();
 }
 
 void handleDeepLink(Uri uri) async {
@@ -353,20 +352,6 @@ Future<void> _saveFCMToken(String token) async {
   }
 }
 
-getPermission() async {
-
-  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    return Future.error('Location services are disabled.');
-  }
-
-  var requestStatus = await Permission.location.request();
-  var status = await Permission.location.status;
-  // var status = await Permission.locationWhenInUse.status;
-  if (status.isGranted) {
-  } else if (status.isDenied) {
-  }
-}
 
 /// 첫 프레임에서 곧바로 [MyApp]을 그린 뒤, 무거운 초기화는 백그라운드에서 수행한다.
 /// (스플래시/런치스크린에서 멈춤 — [Medium](https://medium.com/@chetan.akarte/flutter-app-freezes-on-the-splash-screen-in-release-mode-e15a6045a189))
@@ -535,8 +520,9 @@ class MyWidget extends StatelessWidget {
 class TabPage extends StatefulWidget {
   final int initialIndex;
   final bool showNotificationPrompt;
+  final bool showLocationPrompt;
 
-  const TabPage({super.key, this.initialIndex = 0, this.showNotificationPrompt = false});
+  const TabPage({super.key, this.initialIndex = 0, this.showNotificationPrompt = false, this.showLocationPrompt = false});
 
   @override
   _TabPageState createState() => _TabPageState();
@@ -549,11 +535,36 @@ class _TabPageState extends State<TabPage> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    if (widget.showNotificationPrompt) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showNotificationPermissionSheet();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (widget.showLocationPrompt) {
+        await _showLocationPermissionSheet();
+      }
+      if (widget.showNotificationPrompt && mounted) {
+        await _showNotificationPermissionSheet();
+      }
+    });
+  }
+
+  Future<void> _showLocationPermissionSheet() async {
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _LocationPermissionSheet(
+        onAllow: () async {
+          Navigator.pop(ctx);
+          await Permission.location.request();
+        },
+        onLater: () {
+          Navigator.pop(ctx);
+        },
+      ),
+    );
   }
 
   Future<void> _showNotificationPermissionSheet() async {
@@ -660,6 +671,94 @@ class _TabPageState extends State<TabPage> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+}
+
+class _LocationPermissionSheet extends StatelessWidget {
+  final VoidCallback onAllow;
+  final VoidCallback onLater;
+
+  const _LocationPermissionSheet({
+    required this.onAllow,
+    required this.onLater,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '내 주변 매장을 찾아드릴게요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '현재 위치를 기반으로\n가까운 매장을 바로 확인할 수 있어요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onLater,
+                  child: const Text(
+                    '다음에 하기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onAllow,
+                  child: const Text(
+                    '위치 허용',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -11,6 +11,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/Payment/register_gifticon_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -73,8 +74,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
       // 알림 권한 미결정 여부 확인 후 TabPage로 이동
       final settings = await FirebaseMessaging.instance.getNotificationSettings();
-      final showPrompt =
+      final showNotificationPrompt =
           settings.authorizationStatus == AuthorizationStatus.notDetermined;
+
+      final locationStatus = await Permission.location.status;
+      final showLocationPrompt = locationStatus.isDenied;
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -82,7 +86,8 @@ class _SplashScreenState extends State<SplashScreen> {
           MaterialPageRoute(
             builder: (_) => TabPage(
               initialIndex: 0,
-              showNotificationPrompt: showPrompt,
+              showNotificationPrompt: showNotificationPrompt,
+              showLocationPrompt: showLocationPrompt,
             ),
           ),
         );

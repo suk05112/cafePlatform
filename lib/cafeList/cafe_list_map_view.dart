@@ -7,6 +7,7 @@ import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 
 class CafeListMapView extends StatefulWidget {
   const CafeListMapView({super.key});
@@ -866,7 +867,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
                   if (validStores.isEmpty) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showUniqueSnackBar(
                         const SnackBar(
                           content: Text('주변에 매장이 없습니다.'),
                           duration: Duration(seconds: 2),
@@ -895,7 +896,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showUniqueSnackBar(
                       const SnackBar(
                         content: Text('검색 중 오류가 발생했습니다.'),
                         duration: Duration(seconds: 2),
@@ -983,7 +984,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               .toList();
 
           if (validStores.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               const SnackBar(
                 content: Text('주변에 매장이 없습니다.'),
                 duration: Duration(seconds: 2),
@@ -1036,7 +1037,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               Provider.of<StoreProvider>(context, listen: false);
           storeProvider.setMapViewStores(validStores);
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
               content: Text('지도 중심 위치 주변 매장 ${validStores.length}개를 찾았습니다.'),
               duration: const Duration(seconds: 2),
