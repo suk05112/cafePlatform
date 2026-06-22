@@ -96,6 +96,32 @@ Future<void> _initialize() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  if (!kDebugMode) {
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                '일시적인 오류가 발생했습니다.',
+                style: TextStyle(fontSize: 16, color: Colors.black87),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '잠시 후 다시 시도해 주세요.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    };
+  }
+
   try {
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
 

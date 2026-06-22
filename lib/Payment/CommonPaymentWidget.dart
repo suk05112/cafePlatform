@@ -305,6 +305,12 @@ class _InputInfoWidgetState extends State<InputInfoWidget> {
   TextEditingController inputController = TextEditingController();
 
   @override
+  void dispose() {
+    inputController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
         crossAxisAlignment: CrossAxisAlignment.start,

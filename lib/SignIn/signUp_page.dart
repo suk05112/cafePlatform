@@ -27,9 +27,6 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
-  TextEditingController idController = TextEditingController();
-  TextEditingController pwController = TextEditingController();
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -76,6 +73,13 @@ class BasicInfoFormWidget extends StatefulWidget {
 class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
   TextEditingController idController = TextEditingController();
   TextEditingController pwController = TextEditingController();
+
+  @override
+  void dispose() {
+    idController.dispose();
+    pwController.dispose();
+    super.dispose();
+  }
 
   final loginService = LoginService();
   final formKey = GlobalKey<FormState>();
@@ -640,6 +644,13 @@ class _IDVerificationWidgetState extends State<IDVerificationWidget> {
   TextEditingController idController = TextEditingController();
   // final _formKey = GlobalKey<FormState>();
   var hasRecipe = false;
+
+  @override
+  void dispose() {
+    idController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Form(

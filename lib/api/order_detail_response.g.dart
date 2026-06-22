@@ -19,7 +19,7 @@ OrderDetailGifticon _$OrderDetailGifticonFromJson(Map<String, dynamic> json) =>
           OrderDetailGifticon._dateTimeFromJson(json['validity'] as String?),
       menu_id: json['menu_id'] as int?,
       menu_name: json['menu_name'] as String?,
-      menu_price: json['menu_price'] as int?,
+      menu_price: (json['menu_price'] as num?)?.toInt(),
       menu_url: json['menu_url'] as String?,
       created_at:
           OrderDetailGifticon._dateTimeFromJson(json['created_at'] as String?),
@@ -54,7 +54,7 @@ OrderDetailResponse _$OrderDetailResponseFromJson(Map<String, dynamic> json) =>
       store_name: json['store_name'] as String?,
       store_address: json['store_address'] as String?,
       store_telephone: json['store_telephone'] as String?,
-      amount: json['amount'] as int?,
+      amount: (json['amount'] as num?)?.toInt(),
       status: json['status'] as String?,
       payment: json['payment'] as String?,
       payment_key: json['payment_key'] as String?,
