@@ -714,7 +714,7 @@ class _CafeListState extends State<CafeList> {
         await showStoreRegionPickerBottomSheet(context);
         _isRegionPickerOpen = false;
         final newRegionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
-        if (newRegionCode != prevRegionCode && !_hasLocationPermission && mounted) {
+        if (newRegionCode != prevRegionCode && mounted) {
           _loadRecommendMenus(forceRefresh: true);
         }
       },
