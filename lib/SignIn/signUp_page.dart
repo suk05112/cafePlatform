@@ -595,9 +595,9 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       }
 
       final deviceType = Platform.isIOS ? 'ios' : 'android';
-      final allowServicePush = prefs.getBool('service_push_enabled') ?? true;
+      final allowServicePush = prefs.getBool('service_push_enabled') ?? false;
       final allowMarketingPush =
-          prefs.getBool('marketing_push_enabled') ?? true;
+          prefs.getBool('marketing_push_enabled') ?? false;
 
       final pushTokenRequest = PushTokenRequest(
         fcmToken: fcmToken,

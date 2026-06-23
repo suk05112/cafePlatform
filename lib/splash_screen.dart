@@ -7,11 +7,9 @@ import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/Payment/register_gifticon_page.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -72,26 +70,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
       if (!mounted) return;
 
-      // 알림 권한 미결정 여부 확인 후 TabPage로 이동
-      final settings = await FirebaseMessaging.instance.getNotificationSettings();
-      final showNotificationPrompt =
-          settings.authorizationStatus == AuthorizationStatus.notDetermined;
-
-      final locationStatus = await Permission.location.status;
-      final prefs = await SharedPreferences.getInstance();
-      final locationPromptShown = prefs.getBool('location_prompt_shown') ?? false;
-      final showLocationPrompt =
-          locationStatus == PermissionStatus.denied && !locationPromptShown;
-
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => TabPage(
-              initialIndex: 0,
-              showNotificationPrompt: showNotificationPrompt,
-              showLocationPrompt: showLocationPrompt,
-            ),
+            builder: (_) => const TabPage(initialIndex: 0),
           ),
         );
       }

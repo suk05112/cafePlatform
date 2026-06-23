@@ -7,7 +7,8 @@ import 'package:cafeplatform/setting/terms_page.dart';
 enum TermsType {
   service('SERVICE'),
   privacy('PRIVACY'),
-  marketing('MARKETING');
+  marketing('MARKETING'),
+  location('LOCATION');
 
   const TermsType(this.termType);
   final String termType;
@@ -33,6 +34,7 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
   bool agreePrivacy = false;
   bool agreeMarketing = false;
   bool agreeAge = false;
+  bool agreeLocation = false;
 
   bool get _canProceed => agreeService && agreePrivacy && agreeAge;
 
@@ -44,6 +46,7 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
       agreePrivacy = checked;
       agreeMarketing = checked;
       agreeAge = checked;
+      agreeLocation = checked;
     });
   }
 
@@ -53,7 +56,7 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
   }) {
     setState(() {
       update(!value);
-      agreeAll = agreeService && agreePrivacy && agreeMarketing && agreeAge;
+      agreeAll = agreeService && agreePrivacy && agreeMarketing && agreeAge && agreeLocation;
     });
   }
 
@@ -77,6 +80,8 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
         return '개인정보 수집 및 이용동의';
       case TermsType.marketing:
         return 'E-mail 및 SMS 광고성 정보 수신동의';
+      case TermsType.location:
+        return '위치서비스 이용약관';
     }
   }
 
@@ -172,6 +177,17 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
                       height: 1.3,
                     ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                _AgreementTile(
+                  label: '위치서비스 이용약관',
+                  requiredLabel: '(선택)',
+                  value: agreeLocation,
+                  onChanged: (_) => _toggleItem(
+                    value: agreeLocation,
+                    update: (checked) => agreeLocation = checked,
+                  ),
+                  onLinkTap: () => _openTermsSite(TermsType.location),
                 ),
                 const SizedBox(height: 24),
                 Spacer(),

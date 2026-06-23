@@ -323,17 +323,14 @@ Future<void> _initializeFCM() async {
       }
     }
 
-    // FCM 토큰 (iOS는 APNs 준비 후 요청 — 미준비 시 getToken 장시간 대기 방지)
-    final token = await fetchFcmTokenRespectingIosApns();
-    if (token == null) {
-    }
-
-    if (token != null) {
-
-      // SharedPreferences에 저장
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('fcm_token', token);
-    } else {
+    // FCM 토큰: 권한이 이미 결정된 경우에만 요청 (notDetermined면 홈에서 권한 요청 후 토큰 갱신)
+    final settings = await messaging.getNotificationSettings();
+    if (settings.authorizationStatus != AuthorizationStatus.notDetermined) {
+      final token = await fetchFcmTokenRespectingIosApns();
+      if (token != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('fcm_token', token);
+      }
     }
 
     // 토큰 갱신 리스너
@@ -517,10 +514,8 @@ class MyWidget extends StatelessWidget {
 // 동적으로 화면을 변화하므로 StatefulWdiget 사용
 class TabPage extends StatefulWidget {
   final int initialIndex;
-  final bool showNotificationPrompt;
-  final bool showLocationPrompt;
 
-  const TabPage({super.key, this.initialIndex = 0, this.showNotificationPrompt = false, this.showLocationPrompt = false});
+  const TabPage({super.key, this.initialIndex = 0});
 
   @override
   _TabPageState createState() => _TabPageState();
@@ -534,40 +529,75 @@ class _TabPageState extends State<TabPage> {
     super.initState();
     _selectedIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (widget.showLocationPrompt) {
-        await _showLocationPermissionSheet();
-      }
-      if (widget.showNotificationPrompt && mounted) {
-        await _showNotificationPermissionSheet();
-      }
+      await _requestPermissionsAndShowPrompts();
     });
   }
 
-  Future<void> _showLocationPermissionSheet() async {
+  Future<void> _requestPermissionsAndShowPrompts() async {
     if (!mounted) return;
-    await showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => _LocationPermissionSheet(
-        onAllow: () async {
-          Navigator.pop(ctx);
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('location_prompt_shown', true);
-          await Permission.location.request();
-        },
-        onLater: () async {
-          Navigator.pop(ctx);
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('location_prompt_shown', true);
-        },
-      ),
-    );
+
+    // 1. 알림 시스템 권한 요청 (1회) + 결과를 service_push_enabled로 저장
+    final notificationSettings = await FirebaseMessaging.instance.getNotificationSettings();
+    if (notificationSettings.authorizationStatus == AuthorizationStatus.notDetermined) {
+      final result = await FirebaseMessaging.instance.requestPermission(
+        alert: true, badge: true, sound: true,
+      );
+      final granted =
+          result.authorizationStatus == AuthorizationStatus.authorized ||
+          result.authorizationStatus == AuthorizationStatus.provisional;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('service_push_enabled', granted);
+      if (granted) {
+        final token = await fetchFcmTokenRespectingIosApns();
+        if (token != null) {
+          await prefs.setString('fcm_token', token);
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    // 2. 위치 시스템 권한 요청 (1회)
+    final locationStatus = await Permission.location.status;
+    if (locationStatus == PermissionStatus.denied) {
+      await Permission.location.request();
+    }
+
+    if (!mounted) return;
+
+    // 3. 이벤트·할인 바텀시트 (1회)
+    final prefs = await SharedPreferences.getInstance();
+    final notificationPromptShown = prefs.getBool('notification_prompt_shown') ?? false;
+    if (!notificationPromptShown && mounted) {
+      await _showNotificationPermissionSheet();
+    }
   }
+
+  // Future<void> _showLocationPermissionSheet() async {
+  //   if (!mounted) return;
+  //   await showModalBottomSheet(
+  //     context: context,
+  //     isDismissible: false,
+  //     enableDrag: false,
+  //     backgroundColor: Colors.white,
+  //     shape: const RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  //     ),
+  //     builder: (ctx) => _LocationPermissionSheet(
+  //       onAllow: () async {
+  //         Navigator.pop(ctx);
+  //         final prefs = await SharedPreferences.getInstance();
+  //         await prefs.setBool('location_prompt_shown', true);
+  //         await Permission.location.request();
+  //       },
+  //       onLater: () async {
+  //         Navigator.pop(ctx);
+  //         final prefs = await SharedPreferences.getInstance();
+  //         await prefs.setBool('location_prompt_shown', true);
+  //       },
+  //     ),
+  //   );
+  // }
 
   Future<void> _showNotificationPermissionSheet() async {
     if (!mounted) return;
@@ -582,23 +612,15 @@ class _TabPageState extends State<TabPage> {
       builder: (ctx) => _NotificationPermissionSheet(
         onAllow: () async {
           Navigator.pop(ctx);
-          final result = await FirebaseMessaging.instance.requestPermission(
-            alert: true, badge: true, sound: true,
-          );
-          final granted =
-              result.authorizationStatus == AuthorizationStatus.authorized ||
-              result.authorizationStatus == AuthorizationStatus.provisional;
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('service_push_enabled', granted);
-          await prefs.setBool('marketing_push_enabled', granted);
-          if (granted && mounted) {
-            await _syncNotificationToServer();
-          }
+          await prefs.setBool('notification_prompt_shown', true);
+          await prefs.setBool('marketing_push_enabled', true);
+          if (mounted) await _syncNotificationToServer();
         },
         onLater: () async {
           Navigator.pop(ctx);
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('service_push_enabled', false);
+          await prefs.setBool('notification_prompt_shown', true);
           await prefs.setBool('marketing_push_enabled', false);
         },
       ),
@@ -615,7 +637,13 @@ class _TabPageState extends State<TabPage> {
       final fcmToken = prefs.getString('fcm_token');
       if (fcmToken == null || fcmToken.isEmpty) return;
 
-      final allowServicePush = prefs.getBool('service_push_enabled') ?? false;
+      // 서비스 푸시: 시스템 알림 권한 실제 상태 기준
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      final allowServicePush =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+      await prefs.setBool('service_push_enabled', allowServicePush);
+
       final allowMarketingPush = prefs.getBool('marketing_push_enabled') ?? false;
 
       await Api().client.registerPushToken(
@@ -679,93 +707,93 @@ class _TabPageState extends State<TabPage> {
   }
 }
 
-class _LocationPermissionSheet extends StatelessWidget {
-  final VoidCallback onAllow;
-  final VoidCallback onLater;
-
-  const _LocationPermissionSheet({
-    required this.onAllow,
-    required this.onLater,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            '내 주변 매장을 찾아드릴게요',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '현재 위치를 기반으로\n가까운 매장을 바로 확인할 수 있어요.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    side: BorderSide(color: Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                  ),
-                  onPressed: onLater,
-                  child: const Text(
-                    '다음에 하기',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.black54,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                  ),
-                  onPressed: onAllow,
-                  child: const Text(
-                    '위치 허용',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
+// class _LocationPermissionSheet extends StatelessWidget {
+//   final VoidCallback onAllow;
+//   final VoidCallback onLater;
+//
+//   const _LocationPermissionSheet({
+//     required this.onAllow,
+//     required this.onLater,
+//   });
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Padding(
+//       padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+//       child: Column(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           const Text(
+//             '내 주변 매장을 찾아드릴게요',
+//             textAlign: TextAlign.center,
+//             style: TextStyle(
+//               fontSize: 20,
+//               fontWeight: FontWeight.bold,
+//               color: Colors.black,
+//             ),
+//           ),
+//           const SizedBox(height: 10),
+//           Text(
+//             '현재 위치를 기반으로\n가까운 매장을 바로 확인할 수 있어요.',
+//             textAlign: TextAlign.center,
+//             style: TextStyle(
+//               fontSize: 14,
+//               color: Colors.grey.shade600,
+//               height: 1.6,
+//             ),
+//           ),
+//           const SizedBox(height: 28),
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: OutlinedButton(
+//                   style: OutlinedButton.styleFrom(
+//                     padding: const EdgeInsets.symmetric(vertical: 15),
+//                     side: BorderSide(color: Colors.grey.shade300),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(50),
+//                     ),
+//                   ),
+//                   onPressed: onLater,
+//                   child: const Text(
+//                     '다음에 하기',
+//                     style: TextStyle(
+//                       fontSize: 15,
+//                       color: Colors.black54,
+//                       fontWeight: FontWeight.w500,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//               const SizedBox(width: 10),
+//               Expanded(
+//                 child: ElevatedButton(
+//                   style: ElevatedButton.styleFrom(
+//                     padding: const EdgeInsets.symmetric(vertical: 15),
+//                     backgroundColor: Colors.black,
+//                     foregroundColor: Colors.white,
+//                     elevation: 0,
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(50),
+//                     ),
+//                   ),
+//                   onPressed: onAllow,
+//                   child: const Text(
+//                     '위치 허용',
+//                     style: TextStyle(
+//                       fontSize: 15,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 class _NotificationPermissionSheet extends StatelessWidget {
   final VoidCallback onAllow;
@@ -784,7 +812,7 @@ class _NotificationPermissionSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            '주문 완료 소식을 받아보세요',
+            '이벤트·할인 소식을 받아보세요',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 20,
@@ -794,7 +822,7 @@ class _NotificationPermissionSheet extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '선물 도착, 주문 완료 등\n중요한 알림을 놓치지 마세요.',
+            '최신 이벤트, 할인 정보를 놓치지 마세요.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
