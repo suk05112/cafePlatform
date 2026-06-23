@@ -274,8 +274,6 @@ class Api {
       ..interceptors.add(CustomLogInterceptor())
       ..interceptors.add(AuthInterceptor());
 
-    dio.options.headers.forEach((k, v) => print('  $k: $v'));
-
     // CashPlaceClient 는 Abstract class 이기 때문에
     // baseUrl 변경은 생성 시에만 설정이 가능하다.
     //client = CashPlaceClient(dio, baseUrl: baseUrl);
