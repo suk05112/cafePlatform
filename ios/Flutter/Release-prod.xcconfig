@@ -1,5 +1,6 @@
 #include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release-prod.xcconfig"
 #include "Generated.xcconfig"
-#include "Debug.xcconfig"
+#include "Release.xcconfig"
 FLUTTER_BUILD_MODE=release
 FLUTTER_TARGET=lib/main_prod.dart
+KAKAO_SCHEME=kakao275e555cdb8196634a6aef161abe3f84

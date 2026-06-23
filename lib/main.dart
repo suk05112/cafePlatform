@@ -408,9 +408,7 @@ class _MyAppState extends State<MyApp> {
       // ✅ 앱 실행 중 / 백그라운드 복귀
       _linkSubscription = _appLinks.uriLinkStream.listen(
         (Uri uri) {
-          // Flutter가 준비될 때까지 대기
           WidgetsBinding.instance.addPostFrameCallback((_) async {
-            // 첫 프레임이 렌더링된 후 약간의 지연을 추가
             await Future.delayed(const Duration(milliseconds: 300));
             handleDeepLink(uri);
           });
