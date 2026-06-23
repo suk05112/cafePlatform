@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:dio/dio.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:get/get.dart';
+import 'package:cafeplatform/SignIn/login_page.dart';
 
 class UserInfoPage extends StatefulWidget {
   const UserInfoPage({super.key});
@@ -769,15 +771,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(successContext).pop();
-                      // 다이얼로그 닫은 후 TabPage로 이동
-                      if (mounted && context.mounted) {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const TabPage(initialIndex: 0)),
-                          (route) => false,
-                        );
-                      }
+                      Get.offAll(() => LoginPage());
                     },
                     child: const Text(
                       '확인',
@@ -792,26 +786,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
             },
           );
         } catch (dialogError) {
-          // 다이얼로그 표시 실패 시에도 TabPage로 이동
-          if (mounted && context.mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (context) => const TabPage(initialIndex: 0)),
-              (route) => false,
-            );
-          }
+          Get.offAll(() => LoginPage());
         }
       } else {
-        // mounted가 false인 경우 직접 이동
-        Future.microtask(() {
-          if (mounted && context.mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (context) => const TabPage(initialIndex: 0)),
-              (route) => false,
-            );
-          }
-        });
+        Get.offAll(() => LoginPage());
       }
     } catch (e, stackTrace) {
 
