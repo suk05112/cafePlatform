@@ -6,7 +6,7 @@ import 'package:cafeplatform/model/user.dart';
 
 class UserProvider with ChangeNotifier {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  User? _user; // Nullable for better initialization handling
+  User? _user;
 
   User? get user => _user;
   bool _isLoggedIn = false;
@@ -32,9 +32,11 @@ class UserProvider with ChangeNotifier {
     _gifticonCacheTime = null;
   }
 
-  // Constructor: Initialize UserProvider and load user from storage
+  // 스토리지 초기화 완료를 외부에서 await할 수 있도록 노출
+  late final Future<void> initialized;
+
   UserProvider() {
-    _loadUserFromStorage();
+    initialized = _loadUserFromStorage().then((_) {});
   }
 
   /// Set the user and save it to storage
@@ -44,9 +46,10 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fetch the user from secure storage (public method)
+  /// 초기화 완료 후 메모리의 _user를 반환. 초기화 전이면 완료될 때까지 대기.
   Future<User?> fetchUser() async {
-    return await _loadUserFromStorage();
+    await initialized;
+    return _user;
   }
 
   /// Save the user to secure storage (private method)

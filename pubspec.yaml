@@ -32,7 +32,7 @@ dependencies:
     sdk: flutter
   dio: ^5.9.0
   path_provider: ^2.1.2
-  http: ^0.13.6
+  http: ^1.2.2
   google_sign_in: ^6.3.0
   js: ^0.6.3 #고정
   ffi: ^2.0.1
@@ -97,6 +97,7 @@ dependencies:
   device_info_plus: ^9.0.0
   sign_in_with_apple: ^7.0.1
   flutter_svg: ^2.0.9
+  cached_network_image: ^3.4.1
   connectivity_plus: ^6.1.0
   fast_contacts: ^5.0.1
 

@@ -24,6 +24,7 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
   String? _currentUserName;
   bool _isLoading = true;
   late TabController _tabController;
+  bool _prevLoggedIn = false;
 
   @override
   void initState() {
@@ -33,37 +34,54 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userProvider = Provider.of<UserProvider>(context);
+    final loggedIn = userProvider.isLoggedIn;
+    if (loggedIn && !_prevLoggedIn) {
+      setState(() => _isLoading = true);
+      fetchGifticons();
+    }
+    _prevLoggedIn = loggedIn;
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
 
+  void _applyGifticonList(List<Gifticon> gifticonList) {
+    final now = DateTime.now();
+    final used = gifticonList.where((g) {
+      final s = g.status?.toUpperCase();
+      return s == 'USED' || s == 'EXPIRED' || s == 'CANCELED' ||
+          (g.validity != null && g.validity!.isBefore(now));
+    }).toList();
+    final unused = gifticonList.where((g) {
+      final s = g.status?.toUpperCase();
+      final isExpiredByDate = g.validity != null && g.validity!.isBefore(now);
+      return (s == 'UNUSED' || s == 'PENDING') && !isExpiredByDate;
+    }).toList();
+    setState(() {
+      usedGifticons = used;
+      unusedGifticons = unused;
+      _isLoading = false;
+    });
+  }
+
   Future<void> fetchGifticons({bool forceRefresh = false}) async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     User? user = await userProvider.fetchUser();
-    if (user == null) return;
-    setState(() {
-      _currentUserName = user.name;
-    });
+    if (user == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+    if (mounted) setState(() => _currentUserName = user.name);
 
     // 캐시가 유효하고 강제 새로고침이 아니면 캐시 사용
     if (!forceRefresh && userProvider.isGifticonCacheValid) {
-      final gifticonList = userProvider.cachedGifticons!;
-      setState(() {
-        usedGifticons = gifticonList
-            .where((g) =>
-                g.status == 'USED' ||
-                g.status == 'EXPIRED' ||
-                g.status == 'CANCELED' ||
-                (g.validity != null && g.validity!.isBefore(DateTime.now())))
-            .toList();
-        unusedGifticons = gifticonList
-            .where((g) =>
-                g.status == 'UNUSED' &&
-                (g.validity == null || !g.validity!.isBefore(DateTime.now())))
-            .toList();
-        _isLoading = false;
-      });
+      if (mounted) _applyGifticonList(userProvider.cachedGifticons!);
       return;
     }
 
@@ -73,22 +91,10 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
       var gifticonList = response.gifticonList;
       userProvider.setGifticonCache(gifticonList);
 
-      setState(() {
-        usedGifticons = gifticonList
-            .where((g) =>
-                g.status == 'USED' ||
-                g.status == 'EXPIRED' ||
-                g.status == 'CANCELED' ||
-                (g.validity != null && g.validity!.isBefore(DateTime.now())))
-            .toList();
-        unusedGifticons = gifticonList
-            .where((g) =>
-                g.status == 'UNUSED' &&
-                (g.validity == null || !g.validity!.isBefore(DateTime.now())))
-            .toList();
-        _isLoading = false;
-      });
-    } catch (error) {
+      if (!mounted) return;
+      _applyGifticonList(gifticonList);
+    } catch (error, st) {
+      debugPrint('[GiftBox] fetchGifticons error: $error\n$st');
       setState(() => _isLoading = false);
     }
   }

@@ -172,9 +172,12 @@ class StoreProvider extends ChangeNotifier {
         notifyListeners();
       }
 
+      final sw = Stopwatch()..start();
       var response = await Api()
           .client
           .getStoreListByDistrict(districtCode, cursor, limit);
+      sw.stop();
+      debugPrint('[PERF] 홈 매장 목록 API (district=$districtCode, cursor=$cursor): ${sw.elapsedMilliseconds}ms');
       var storeList = response.store;
 
       final nextCursor = response.pagination?.next_cursor;
@@ -330,7 +333,10 @@ class StoreProvider extends ChangeNotifier {
       return cached.store;
     }
 
+    final sw = Stopwatch()..start();
     var response = await Api().client.getStoreDetailInfo(storeId);
+    sw.stop();
+    debugPrint('[PERF] 매장 상세 API (storeId=$storeId): ${sw.elapsedMilliseconds}ms');
     _store = response.store;
     _detailCache[storeId] = (store: response.store, cachedAt: DateTime.now());
 

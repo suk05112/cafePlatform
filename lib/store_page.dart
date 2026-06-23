@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/dummyData.dart';
@@ -11,6 +9,7 @@ import 'package:cafeplatform/Payment/select_gift_type_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/widget/store_map_page.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:cafeplatform/utils/cached_image.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
@@ -59,13 +58,10 @@ class _StorePageState extends State<StorePage> {
     setState(() => _storeLoading = true);
     try {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      final sw = Stopwatch()..start();
       final loaded = await storeProvider.fetchDetailStore(widget.storeId);
-      if (!mounted) return;
-      // 슬라이더 표시 전 모든 이미지 캐시 완료 후 setState
-      final urls = (loaded?.store_photo_urls ?? []).where((u) => u.isNotEmpty);
-      await Future.wait(
-        urls.map((url) => precacheImage(NetworkImage(url), context).catchError((_) {})),
-      );
+      sw.stop();
+      debugPrint('[PERF] 매장 상세 전체 (API only): ${sw.elapsedMilliseconds}ms');
       if (!mounted) return;
       setState(() {
         store = loaded;
@@ -632,15 +628,11 @@ class _StoreImageSliderState extends State<StoreImageSlider> {
   }
 
   Widget _imageSlide(String url, int index) {
-    return Image.network(
-      url,
+    return CachedImage(
       key: ValueKey('${widget.store?.store_id}_$index'),
+      url: url,
       width: double.infinity,
       height: _StoreFigma.sliderHeight,
-      fit: BoxFit.cover,
-      gaplessPlayback: true,
-      errorBuilder: (_, __, ___) =>
-          _StoreImagePlaceholder(height: _StoreFigma.sliderHeight),
     );
   }
 

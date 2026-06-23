@@ -12,6 +12,7 @@ import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
 import 'package:cafeplatform/utils/store_distance.dart';
+import 'package:cafeplatform/utils/cached_image.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -260,12 +261,10 @@ class _CafeListState extends State<CafeList> {
                 ),
               ),
               if (storeProvider.listViewIsLoading)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(ColorAssset.mainColor),
-                    ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, __) => const _CafeDiscoverySkeletonRow(),
+                    childCount: 3,
                   ),
                 )
               else if (filteredListViewStores.isEmpty && !storeProvider.isLoadingMore)
@@ -404,9 +403,15 @@ class _CafeListState extends State<CafeList> {
         ),
         const SizedBox(height: 12),
         if (_recommendLoading)
-          const SizedBox(
-            height: 160,
-            child: Center(child: CircularProgressIndicator(color: ColorAssset.mainColor)),
+          SizedBox(
+            height: 210,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: 3,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, __) => const _RecommendMenuSkeletonCard(),
+            ),
           )
         else
           SizedBox(
@@ -517,72 +522,12 @@ class _CafeListState extends State<CafeList> {
   }
 
   Widget _buildStoreThumb(String imageUrl, double width, double height) {
-    final cleanedUrl = imageUrl.trim();
-    if (cleanedUrl.isEmpty ||
-        (!cleanedUrl.startsWith('http://') &&
-            !cleanedUrl.startsWith('https://'))) {
-      return Container(
-        width: width,
-        height: height,
-        color: Colors.grey.shade300,
-        child: Icon(
-          Icons.storefront_outlined,
-          size: width > height ? height * 0.45 : width * 0.45,
-          color: Colors.white70,
-        ),
-      );
-    }
-    // presigned URL은 쿼리스트링이 매번 달라 캐시 미스 발생
-    // path 부분만 key로 고정해서 위젯 재사용 → 재로드 방지
-    final urlPath = Uri.tryParse(cleanedUrl)?.path ?? cleanedUrl;
-    return ClipRRect(
+    return CachedImage(
+      url: imageUrl,
+      width: width,
+      height: height,
       borderRadius: BorderRadius.circular(12),
-      child: Image.network(
-        cleanedUrl,
-        key: ValueKey(urlPath),
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        headers: const {
-          'User-Agent':
-              'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            width: width,
-            height: height,
-            color: Colors.grey.shade200,
-            child: Center(
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: ColorAssset.mainColor,
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
-                ),
-              ),
-            ),
-          );
-        },
-        errorBuilder: (_, __, ___) => Container(
-          width: width,
-          height: height,
-          color: Colors.grey.shade300,
-          child: Icon(
-            Icons.storefront_outlined,
-            size: width * 0.45,
-            color: Colors.white70,
-          ),
-        ),
-        cacheWidth: width.toInt() * 2,
-        cacheHeight: height.toInt() * 2,
-        filterQuality: FilterQuality.medium,
-      ),
+      fallbackIcon: Icons.storefront_outlined,
     );
   }
 
@@ -926,6 +871,100 @@ class _CafeDiscoveryStoreRow extends StatelessWidget {
   }
 }
 
+class _RecommendMenuSkeletonCard extends StatelessWidget {
+  const _RecommendMenuSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0E0E0),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: ColorAssset.mainColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(width: 60, height: 11, color: const Color(0xFFE0E0E0)),
+          const SizedBox(height: 4),
+          Container(width: 100, height: 13, color: const Color(0xFFE0E0E0)),
+          const SizedBox(height: 4),
+          Container(width: 50, height: 13, color: const Color(0xFFE0E0E0)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CafeDiscoverySkeletonRow extends StatelessWidget {
+  const _CafeDiscoverySkeletonRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ColorAssset.mainColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 120, height: 15, color: const Color(0xFFE0E0E0)),
+                  const SizedBox(height: 6),
+                  Container(width: 160, height: 13, color: const Color(0xFFE0E0E0)),
+                  const SizedBox(height: 10),
+                  Container(width: 70, height: 12, color: const Color(0xFFE0E0E0)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Container(
+          height: 0.5,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          color: const Color(0xFFEEEEEE),
+        ),
+      ],
+    );
+  }
+}
+
 class _RecommendMenuCard extends StatelessWidget {
   const _RecommendMenuCard({required this.menu, required this.onTap});
 
@@ -940,7 +979,6 @@ class _RecommendMenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = menu.menuPhoto != null && menu.menuPhoto!.trim().isNotEmpty;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -951,47 +989,12 @@ class _RecommendMenuCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
+              CachedImage(
+                url: menu.menuPhoto ?? '',
+                width: 120,
+                height: 120,
                 borderRadius: BorderRadius.circular(8),
-                child: hasImage
-                    ? Image.network(
-                        menu.menuPhoto!.trim(),
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (_, child, progress) {
-                          if (progress == null) return child;
-                          return Container(
-                            width: 120,
-                            height: 120,
-                            color: const Color(0xFFBDBDBD),
-                            child: const Center(
-                              child: SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: ColorAssset.mainColor,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 120,
-                          height: 120,
-                          color: const Color(0xFFBDBDBD),
-                          child: Icon(Icons.local_cafe_outlined, size: 40,
-                              color: Colors.white.withValues(alpha: 0.85)),
-                        ),
-                      )
-                    : Container(
-                        width: 120,
-                        height: 120,
-                        color: const Color(0xFFBDBDBD),
-                        child: Icon(Icons.local_cafe_outlined, size: 40,
-                            color: Colors.white.withValues(alpha: 0.85)),
-                      ),
+                fallbackIcon: Icons.local_cafe_outlined,
               ),
               const SizedBox(height: 6),
               Text(
@@ -1059,7 +1062,6 @@ class _RecommendMenuListPage extends StatelessWidget {
         itemCount: menus.length,
         itemBuilder: (context, index) {
           final m = menus[index];
-          final hasImage = m.menuPhoto != null && m.menuPhoto!.trim().isNotEmpty;
           return GestureDetector(
             onTap: () async {
               try {
@@ -1094,39 +1096,11 @@ class _RecommendMenuListPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
+                CachedImage(
+                  url: m.menuPhoto ?? '',
+                  height: 150,
                   borderRadius: BorderRadius.circular(10),
-                  child: hasImage
-                      ? Image.network(
-                          m.menuPhoto!.trim(),
-                          width: double.infinity,
-                          height: 150,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (_, child, progress) {
-                            if (progress == null) return child;
-                            return Container(
-                              height: 150,
-                              color: const Color(0xFFBDBDBD),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 22, height: 22,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: ColorAssset.mainColor),
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (_, __, ___) => Container(
-                            height: 150, color: const Color(0xFFBDBDBD),
-                            child: Icon(Icons.local_cafe_outlined, size: 40,
-                                color: Colors.white.withValues(alpha: 0.85)),
-                          ),
-                        )
-                      : Container(
-                          height: 150, color: const Color(0xFFBDBDBD),
-                          child: Icon(Icons.local_cafe_outlined, size: 40,
-                              color: Colors.white.withValues(alpha: 0.85)),
-                        ),
+                  fallbackIcon: Icons.local_cafe_outlined,
                 ),
                 const SizedBox(height: 6),
                 Text(m.storeName,
