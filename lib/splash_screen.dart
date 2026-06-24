@@ -34,7 +34,6 @@ class _SplashScreenState extends State<SplashScreen> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
 
-      unawaited(storeProvider.fetchAvailableRegions());
       await userProvider.fetchUser();
 
       final firebaseUser = fb.FirebaseAuth.instance.currentUser;
@@ -74,6 +73,8 @@ class _SplashScreenState extends State<SplashScreen> {
         await Api().setBaseClient(Api.BASE_URL, quickStart: true);
         debugPrint('[Splash] setBaseClient 완료 (비로그인)');
       }
+
+      unawaited(storeProvider.fetchAvailableRegions());
 
       if (!mounted) return;
 

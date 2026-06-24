@@ -318,7 +318,7 @@ class CustomLogInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    debugPrint('[API] ✗ ${err.response?.statusCode ?? err.type} ${err.requestOptions.path} | ${err.message}');
+    debugPrint('[API] ✗ ${err.response?.statusCode ?? err.type} ${err.requestOptions.path} | message=${err.message} | error=${err.error} | response=${err.response?.data}');
     super.onError(err, handler);
   }
 }
