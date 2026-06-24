@@ -139,6 +139,7 @@ plugin:
 flutter:
   assets:
     - assets/
+    - assets/fonts/
     - assets/terms/cancellation and refund policy and method.txt
     - assets/terms/Agree to provision of personal (credit) information for payment service.txt
     - assets/terms/refund policy.txt
@@ -151,6 +152,27 @@ flutter:
     - assets/coffee.png
     - assets/menu.png
     - assets/gifnut_logo.svg
+  fonts:
+    - family: Paperlogy
+      fonts:
+        - asset: assets/fonts/Paperlogy-1Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Paperlogy-2ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/Paperlogy-3Light.ttf
+          weight: 300
+        - asset: assets/fonts/Paperlogy-4Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Paperlogy-5Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Paperlogy-6SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Paperlogy-7Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Paperlogy-8ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Paperlogy-9Black.ttf
+          weight: 900
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
