@@ -58,7 +58,6 @@ class KakaoShareHelper {
     // API에서 로고 presigned URL 가져오기
     Uri? profileImageUri;
     try {
-      await Api().setBaseClient(Api.BASE_URL);
       final response = await Api().client.getGifnutImageUrl(
             expiresIn: 3600, // 1시간 (기본값)
           );
@@ -118,18 +117,9 @@ class KakaoShareHelper {
         Button(
           title: '선물받기',
           link: Link(
-            // 웹 URL (App Links/Universal Links를 통해 앱으로 연결)
-            // Android: AndroidManifest.xml에 https://www.502company.com/gift가 App Links로 설정되어 있음
-            // iOS: Runner.entitlements에 applinks:www.502company.com이 Associated Domains로 설정되어 있음
             webUrl: Uri.parse(
                 'https://www.502company.com/gift?gifticon_id=${gifticon.gifticon_id}'),
-            // iOS에서는 Universal Links가 카카오톡에서 제대로 작동하지 않을 수 있으므로
-            // 커스텀 스킴도 함께 사용 (웹 서버에서 JavaScript로 앱 열기 시도)
-            mobileWebUrl: Uri.parse(
-                'https://www.502company.com/gift?gifticon_id=${gifticon.gifticon_id}'),
-            // 앱 실행 시 전달될 파라미터
-            // Android: androidExecutionParams가 앱으로 전달됨
-            // iOS: iosExecutionParams가 앱으로 전달되지만, Universal Links를 통해 들어올 때는 query parameter로 전달됨
+            mobileWebUrl: Uri.parse('https://cafe-homepage.web.app/download/user'),
             androidExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
             iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
           ),
