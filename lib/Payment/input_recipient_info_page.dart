@@ -58,8 +58,31 @@ class _InputRecipientInfoPageState extends State<InputRecipientInfoPage> {
 
   Future<void> _pickFromContacts() async {
     final status = await Permission.contacts.request();
-    if (!status.isGranted) {
-      if (mounted) {
+    if (!status.isGranted && !status.isLimited) {
+      if (!mounted) return;
+      if (status.isPermanentlyDenied) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
+            title: const Text('연락처 권한 필요'),
+            content: const Text('연락처 접근 권한이 거부되어 있습니다.\n설정에서 권한을 허용해주세요.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  openAppSettings();
+                },
+                child: Text('설정 열기', style: TextStyle(color: ColorAssset.mainColor)),
+              ),
+            ],
+          ),
+        );
+      } else {
         ScaffoldMessenger.of(context).showUniqueSnackBar(
           const SnackBar(content: Text('연락처 접근 권한이 필요합니다')),
         );

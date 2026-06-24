@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/gifticon.dart';
+import 'package:cafeplatform/provider/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/utils/kakao_share_helper.dart';
 
@@ -368,6 +370,7 @@ class _CompletePaymentState extends State<CompletePayment>
                         ),
                       ),
                       onPressed: () {
+                        context.read<UserProvider>().invalidateGifticonCache();
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
                               builder: (context) => TabPage(initialIndex: 1)),

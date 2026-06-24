@@ -497,6 +497,7 @@ class _LoginPageState extends State<LoginPage> {
                                 // 카카오 로그인 버튼
                                 InkWell(
                                   onTap: () async {
+                                    FocusScope.of(context).unfocus();
                                     await loginService.signInKakao(
                                         onSuccess: loginSuccess,
                                         onError: loginFail);
@@ -512,6 +513,7 @@ class _LoginPageState extends State<LoginPage> {
                                 // 구글 로그인 버튼
                                 InkWell(
                                   onTap: () async {
+                                    FocusScope.of(context).unfocus();
                                     loginService.signInGoogle(
                                         onSuccess: loginSuccess,
                                         onError: loginFail);
@@ -527,6 +529,7 @@ class _LoginPageState extends State<LoginPage> {
                                 // 애플 로그인 버튼
                                 InkWell(
                                   onTap: () async {
+                                    FocusScope.of(context).unfocus();
                                     await loginService.signInApple(
                                         onSuccess: appleLoginSuccess,
                                         onError: loginFail);
