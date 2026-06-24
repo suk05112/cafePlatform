@@ -79,7 +79,7 @@ class Api {
         osVersion = Platform.operatingSystemVersion;
       }
 
-      _cachedUserAgent = '$appName/$appVersion ($platform; $osVersion; $deviceModel)';
+      _cachedUserAgent = 'Gifnut/$appVersion ($platform; $osVersion; $deviceModel)';
       return _cachedUserAgent!;
     } catch (e) {
       return 'Gifnut/1.0.0 (${Platform.operatingSystem})';
