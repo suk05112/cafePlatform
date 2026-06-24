@@ -593,7 +593,7 @@
 			baseConfigurationReference = 03B56FFB2F0D844B00976317 /* Debug-dev.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = dev;
-				APP_NAME = "Gifnut dev";
+				APP_NAME = "기프넛 dev";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -696,7 +696,7 @@
 			baseConfigurationReference = 03B56FFD2F0D846100976317 /* Debug-prod.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = Gifnut;
+				APP_NAME = 기프넛;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -796,7 +796,7 @@
 			baseConfigurationReference = 03B56FFF2F0D846E00976317 /* Release-dev.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = dev;
-				APP_NAME = "Gifnut dev";
+				APP_NAME = "기프넛 dev";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -893,7 +893,7 @@
 			baseConfigurationReference = 03B570012F0D847700976317 /* Release-prod.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = Gifnut;
+				APP_NAME = 기프넛;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -988,7 +988,7 @@
 			baseConfigurationReference = 062626BA470C2755E4BA6462 /* Pods-Runner.profile.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = Gifnut;
+				APP_NAME = 기프넛;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -1083,7 +1083,7 @@
 			baseConfigurationReference = 2EF9EDDD0FD04AAE8B43AF5D /* Release-mock.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = mock;
-				APP_NAME = "Gifnut Mock";
+				APP_NAME = "기프넛 Mock";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -1275,7 +1275,7 @@
 			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = dev;
-				APP_NAME = "Gifnut dev";
+				APP_NAME = "기프넛 dev";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -1303,7 +1303,7 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = Gifnut;
+				APP_NAME = 기프넛;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -1403,7 +1403,7 @@
 			baseConfigurationReference = 83D3F818563F4475BD0AB674 /* Debug-mock.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = mock;
-				APP_NAME = "Gifnut Mock";
+				APP_NAME = "기프넛 Mock";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
