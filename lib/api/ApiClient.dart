@@ -13,6 +13,9 @@ import 'package:cafeplatform/api/gifnut_image_url_response.dart';
 import 'package:cafeplatform/api/find_account_request.dart';
 import 'package:cafeplatform/api/find_account_response.dart';
 import 'package:cafeplatform/api/terms_content_response.dart';
+import 'package:cafeplatform/api/terms_current_response.dart';
+import 'package:cafeplatform/api/terms_agree_request.dart';
+import 'package:cafeplatform/api/terms_agree_response.dart';
 import 'package:cafeplatform/model/Inquiry.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/gifticon.dart';
@@ -202,4 +205,10 @@ abstract class ApiClient {
   Future<TermsContentResponse> getTermsContent(
     @Query('term_type') String termType,
   );
+
+  @GET("/user/terms/current")
+  Future<TermsCurrentResponse> getTermsCurrent();
+
+  @POST("/user/terms/agree")
+  Future<TermsAgreeResponse> postTermsAgree(@Body() TermsAgreeRequest request);
 }

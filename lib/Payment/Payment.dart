@@ -927,12 +927,12 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
   Future<void> _pickFromContacts() async {
     final status = await Permission.contacts.request();
     debugPrint('[ReceiverInfo] contacts permission status: $status');
-    if (status.isGranted) {
+    if (status.isGranted || status.isLimited) {
       final contacts = await FastContacts.getAllContacts(
         fields: [ContactField.displayName, ContactField.phoneNumbers],
       );
       if (!mounted) return;
-      _showContactsPicker(contacts);
+      _showContactsPicker(contacts, isLimited: status.isLimited);
       return;
     }
 
@@ -1009,7 +1009,7 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
     }
   }
 
-  void _showContactsPicker(List<Contact> contacts) {
+  void _showContactsPicker(List<Contact> contacts, {bool isLimited = false}) {
     final searchController = TextEditingController();
     List<Contact> filtered = List.from(contacts);
 
@@ -1045,6 +1045,56 @@ class _ReceiverInfoState extends State<ReceiverInfo> {
                       '연락처 선택',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
                     ),
+                    if (isLimited) ...[
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          showDialog(
+                            context: context,
+                            builder: (dCtx) => AlertDialog(
+                              backgroundColor: Colors.white,
+                              title: const Text('모든 연락처 허용'),
+                              content: const Text('설정 > 개인 정보 보호 > 연락처에서\n앱의 접근을 "모두 허용"으로 변경하면\n전체 연락처를 불러올 수 있습니다.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dCtx),
+                                  child: const Text('취소'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(dCtx);
+                                    openAppSettings();
+                                  },
+                                  child: Text('설정 열기', style: TextStyle(color: ColorAssset.mainColor)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: ColorAssset.mainColor.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.add_circle_outline, size: 16, color: ColorAssset.mainColor),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '더 많은 연락처 허용하기',
+                                  style: TextStyle(fontSize: 13, color: ColorAssset.mainColor, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              Icon(Icons.chevron_right, size: 16, color: ColorAssset.mainColor),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
