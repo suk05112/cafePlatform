@@ -44,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen> {
           userProvider.user != null) {
         try {
           await firebaseUser.getIdToken().timeout(const Duration(seconds: 8));
-          unawaited(Api().setBaseClient(Api.BASE_URL, quickStart: true));
+          await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
           final prefs = await SharedPreferences.getInstance();
           final pendingGifticonId = prefs.getInt('pending_gifticon_id');
@@ -65,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
           await userProvider.clearUser();
         }
       } else {
-        unawaited(Api().setBaseClient(Api.BASE_URL, quickStart: true));
+        await Api().setBaseClient(Api.BASE_URL, quickStart: true);
       }
 
       if (!mounted) return;
