@@ -7,6 +7,7 @@ import 'package:cafeplatform/widget/input_info_widget.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
 import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/terms_agree_request.dart';
 import 'package:dio/dio.dart';
 import 'dart:async';
 import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
@@ -15,11 +16,13 @@ class PhoneAuthResult {
   final PhoneAuthCredential credential;
   final String phoneNumber;
   final String? name;
+  final List<TermAgreementItem> agreements;
 
   PhoneAuthResult({
     required this.credential,
     required this.phoneNumber,
     this.name,
+    this.agreements = const [],
   });
 }
 
@@ -28,10 +31,12 @@ class PhoneAuthPage extends StatefulWidget {
     super.key,
     this.isSocialLogin = false,
     this.provider,
+    this.agreements = const [],
   });
 
   final bool isSocialLogin;
   final String? provider; // SNS provider 또는 "email"
+  final List<TermAgreementItem> agreements;
 
   @override
   State<PhoneAuthPage> createState() => _PhoneAuthPageState();
@@ -50,6 +55,7 @@ class _PhoneAuthPageState extends State<PhoneAuthPage> {
         child: PhoneNumberVerificationWidget(
           isSocialLogin: widget.isSocialLogin,
           provider: widget.provider,
+          agreements: widget.agreements,
           successCallback: (credential) {
             if (credential != null && !_hasNavigated && mounted) {
               _hasNavigated = true;
@@ -75,6 +81,7 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
     this.skipRegistrationCheck = false,
     this.provider,
     this.onLoadingChanged,
+    this.agreements = const [],
   });
 
   final Function(PhoneAuthResult?) successCallback;
@@ -83,6 +90,7 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
   final bool skipRegistrationCheck;
   final String? provider;
   final void Function(bool)? onLoadingChanged;
+  final List<TermAgreementItem> agreements;
 
   @override
   State<PhoneNumberVerificationWidget> createState() =>
@@ -211,6 +219,7 @@ class _PhoneNumberVerificationWidgetState
               credential: credential,
               phoneNumber: phoneNumberController.text,
               name: name,
+              agreements: widget.agreements,
             ),
           );
         }
@@ -537,6 +546,7 @@ class _PhoneNumberVerificationWidgetState
                                                         phoneNumberController
                                                             .text,
                                                     name: name,
+                                                    agreements: widget.agreements,
                                                   ),
                                                 );
 
@@ -623,6 +633,7 @@ class _PhoneNumberVerificationWidgetState
                                   // phoneNumber: "+821025446458",
                                   phoneNumber: phoneNumberController.text,
                                   name: name,
+                                  agreements: widget.agreements,
                                 ),
                               );
                             }
@@ -704,6 +715,7 @@ class _PhoneNumberVerificationWidgetState
               credential: credential,
               phoneNumber: phoneNumber,
               name: name,
+              agreements: widget.agreements,
             ),
           );
         }

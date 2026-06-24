@@ -298,6 +298,46 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<RecommendMenuResponse> getRecommendMenus({
+    double? lat,
+    double? lng,
+    String? districtCode,
+    int? limit,
+    String? cursor,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'lat': lat,
+      r'lng': lng,
+      r'district_code': districtCode,
+      r'limit': limit,
+      r'cursor': cursor,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<RecommendMenuResponse>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/menu/recommend',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = RecommendMenuResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
   Future<MenuPostResponse> addMenu(Menu menu) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -912,33 +952,20 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<RecommendMenuResponse> getRecommendMenus({
-    double? lat,
-    double? lng,
-    String? districtCode,
-    int? limit,
-    String? cursor,
-  }) async {
+  Future<TermsCurrentResponse> getTermsCurrent() async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{
-      r'lat': lat,
-      r'lng': lng,
-      r'district_code': districtCode,
-      r'limit': limit,
-      r'cursor': cursor,
-    };
-    queryParameters.removeWhere((k, v) => v == null);
+    final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _result = await _dio.fetch<Map<String, dynamic>>(
-        _setStreamType<RecommendMenuResponse>(Options(
+        _setStreamType<TermsCurrentResponse>(Options(
       method: 'GET',
       headers: _headers,
       extra: _extra,
     )
             .compose(
               _dio.options,
-              '/menu/recommend',
+              '/user/terms/current',
               queryParameters: queryParameters,
               data: _data,
             )
@@ -947,7 +974,35 @@ class _ApiClient implements ApiClient {
               _dio.options.baseUrl,
               baseUrl,
             ))));
-    final _value = RecommendMenuResponse.fromJson(_result.data!);
+    final _value = TermsCurrentResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
+  Future<TermsAgreeResponse> postTermsAgree(TermsAgreeRequest request) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(request.toJson());
+    final _result = await _dio
+        .fetch<Map<String, dynamic>>(_setStreamType<TermsAgreeResponse>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/user/terms/agree',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = TermsAgreeResponse.fromJson(_result.data!);
     return _value;
   }
 

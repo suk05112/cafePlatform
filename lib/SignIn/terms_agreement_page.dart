@@ -3,6 +3,9 @@ import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/setting/terms_page.dart';
+import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/terms_current_response.dart';
+import 'package:cafeplatform/api/terms_agree_request.dart';
 
 enum TermsType {
   service('SERVICE'),
@@ -36,7 +39,43 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
   bool agreeAge = false;
   bool agreeLocation = false;
 
+  List<TermItem> _termItems = [];
+
   bool get _canProceed => agreeService && agreePrivacy && agreeAge;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTerms();
+  }
+
+  Future<void> _loadTerms() async {
+    try {
+      final response = await Api().client.getTermsCurrent();
+      if (mounted) {
+        setState(() {
+          _termItems = response.terms;
+        });
+      }
+    } catch (_) {}
+  }
+
+  List<TermAgreementItem> _buildAgreements() {
+    final typeToAgreed = {
+      'SERVICE': agreeService,
+      'PRIVACY_CONSENT': agreePrivacy,
+      'MARKETING': agreeMarketing,
+      'LOCATION': agreeLocation,
+    };
+    return _termItems.map((term) {
+      final agreed = typeToAgreed[term.termType] ?? false;
+      return TermAgreementItem(
+        termId: term.termId,
+        termVersionId: term.termVersionId,
+        agreed: agreed,
+      );
+    }).toList();
+  }
 
   void _toggleAll(bool? value) {
     final checked = value ?? false;
@@ -87,12 +126,14 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
 
   Future<void> _handleNext() async {
     if (!_canProceed) return;
+    final agreements = _buildAgreements();
     final phoneAuthResult = await Navigator.push<PhoneAuthResult?>(
       context,
       MaterialPageRoute(
           builder: (_) => PhoneAuthPage(
                 isSocialLogin: widget.isSocialLogin,
                 provider: widget.provider,
+                agreements: agreements,
               )),
     );
     if (phoneAuthResult != null && mounted) {

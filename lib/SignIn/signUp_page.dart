@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:cafeplatform/api/user_response.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
+import 'package:cafeplatform/api/terms_agree_request.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key, required this.phoneAuthResult});
@@ -369,6 +370,9 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
           final registerResponse =
               await Api().client.registerUser(registerUser);
 
+          // 약관 동의 저장 (실패해도 회원가입은 계속 진행)
+          _postTermsAgree(registerResponse.userId).catchError((error) {});
+
           // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 회원가입은 계속 진행)
           // 회원가입 API 호출 후 바로 등록 (로그아웃 전)
           _registerPushToken(registerResponse.userId).catchError((error) {
@@ -572,6 +576,13 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
     } else {
       return '+82$digitsOnly';
     }
+  }
+
+  Future<void> _postTermsAgree(int userId) async {
+    final agreements = widget.phoneAuthResult.agreements;
+    if (agreements.isEmpty) return;
+    final request = TermsAgreeRequest(userId: userId, agreements: agreements);
+    await Api().client.postTermsAgree(request);
   }
 
   Future<void> _registerPushToken(int userId) async {
