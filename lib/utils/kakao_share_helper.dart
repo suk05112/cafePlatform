@@ -119,7 +119,7 @@ class KakaoShareHelper {
           link: Link(
             webUrl: Uri.parse(
                 'https://www.502company.com/gift?gifticon_id=${gifticon.gifticon_id}'),
-            mobileWebUrl: Uri.parse('https://cafe-homepage.web.app/download/user'),
+            mobileWebUrl: Uri.parse('https://www.hellogifnut.com/download/user/'),
             androidExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
             iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
           ),
