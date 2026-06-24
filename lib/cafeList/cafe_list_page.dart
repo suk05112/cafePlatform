@@ -55,15 +55,18 @@ class _CafeListState extends State<CafeList> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-      storeProvider.resetPagination();
-      // 처음에는 "01"로 호출
-      try {
-        await storeProvider.fetchListViewStoresByDistrict("01",
-            cursor: null, limit: 10);
-      } catch (error) {
-        await storeProvider.fetchStoreList();
+      // 스플래시에서 프리패치한 데이터가 있으면 재호출 스킵
+      final hasPrefetched = (storeProvider.listViewStores?.isNotEmpty ?? false);
+      if (!hasPrefetched) {
+        storeProvider.resetPagination();
+        try {
+          await storeProvider.fetchListViewStoresByDistrict("01",
+              cursor: null, limit: 10);
+        } catch (error) {
+          await storeProvider.fetchStoreList();
+        }
+        storeProvider.fetchAvailableRegions();
       }
-      storeProvider.fetchAvailableRegions();
       // 메뉴 추천은 지역 확정 후 _buildDiscoveryRegionRow에서 트리거됨
     });
   }
