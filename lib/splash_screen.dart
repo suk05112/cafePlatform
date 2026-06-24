@@ -37,17 +37,13 @@ class _SplashScreenState extends State<SplashScreen> {
       await userProvider.fetchUser();
 
       final firebaseUser = fb.FirebaseAuth.instance.currentUser;
-      debugPrint('[Splash] firebaseUser=${firebaseUser?.uid}, isLoggedIn=${userProvider.isLoggedIn}');
 
       if (firebaseUser != null &&
           userProvider.isLoggedIn &&
           userProvider.user != null) {
         try {
-          debugPrint('[Splash] getIdToken 시작');
           await firebaseUser.getIdToken().timeout(const Duration(seconds: 8));
-          debugPrint('[Splash] getIdToken 완료, setBaseClient 시작');
           await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-          debugPrint('[Splash] setBaseClient 완료 (로그인)');
 
           final prefs = await SharedPreferences.getInstance();
           final pendingGifticonId = prefs.getInt('pending_gifticon_id');
@@ -64,21 +60,17 @@ class _SplashScreenState extends State<SplashScreen> {
             return;
           }
         } catch (e) {
-          debugPrint('[Splash] 로그인 오류: $e');
           await fb.FirebaseAuth.instance.signOut();
           await userProvider.clearUser();
         }
       } else {
-        debugPrint('[Splash] 비로그인, setBaseClient 시작');
         await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-        debugPrint('[Splash] setBaseClient 완료 (비로그인)');
       }
 
       unawaited(storeProvider.fetchAvailableRegions());
 
       if (!mounted) return;
 
-      debugPrint('[Splash] TabPage로 이동');
       if (mounted) {
         Navigator.pushReplacement(
           context,

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cafeplatform/api/ApiClient.dart';
@@ -122,11 +121,9 @@ class Api {
     try {
       // 첫 번째 시도
       try {
-        debugPrint('[API] FirebaseAppCheck.getToken() 호출');
         final tokenResult = await FirebaseAppCheck.instance
             .getToken()
             .timeout(const Duration(seconds: 12));
-        debugPrint('[API] FirebaseAppCheck.getToken() 응답: $tokenResult');
         if (tokenResult != null) {
           // getToken() 반환값 처리 (String 또는 AppCheckToken 객체)
           String? tokenString;
@@ -221,12 +218,8 @@ class Api {
     if (user == null) return null;
     if (quickStart) {
       try {
-        debugPrint('[API] idToken 요청 (quickStart)');
-        final token = await user.getIdToken().timeout(const Duration(seconds: 6));
-        debugPrint('[API] idToken 완료: ${token != null ? '성공' : 'null'}');
-        return token;
-      } catch (e) {
-        debugPrint('[API] idToken 실패: $e');
+        return await user.getIdToken().timeout(const Duration(seconds: 6));
+      } catch (_) {
         return null;
       }
     }
@@ -234,14 +227,10 @@ class Api {
   }
 
   static Future<String?> _appCheckForSetBase(bool quickStart) async {
-    debugPrint('[API] AppCheck 토큰 요청 시작 (quickStart=$quickStart)');
     if (quickStart) {
       try {
-        final token = await _getAppCheckToken().timeout(const Duration(seconds: 5));
-        debugPrint('[API] AppCheck 토큰 완료: ${token != null ? '성공' : 'null'}');
-        return token;
-      } catch (e) {
-        debugPrint('[API] AppCheck 토큰 실패: $e');
+        return await _getAppCheckToken().timeout(const Duration(seconds: 5));
+      } catch (_) {
         return null;
       }
     }
@@ -254,14 +243,12 @@ class Api {
   /// [quickStart]: 스플래시·첫 진입 시 App Check/토큰을 짧게만 기다리고 병렬로 처리해
   /// 화면 전환이 수십 초 걸리는 것을 줄입니다. 로그인 성공 후 등에는 생략(기본 false).
   Future<ApiClient> setBaseClient(String baseUrl, {bool quickStart = false}) async {
-    debugPrint('[API] setBaseClient 시작 (quickStart=$quickStart, url=$baseUrl)');
     final user = FirebaseAuth.instance.currentUser;
 
     final tokens = await Future.wait<String?>([
       _idTokenForSetBase(user, quickStart),
       _appCheckForSetBase(quickStart),
     ]);
-    debugPrint('[API] setBaseClient 토큰 수집 완료 — idToken=${tokens[0] != null}, appCheck=${tokens[1] != null}');
     final idToken = tokens[0];
     final appCheckToken = tokens[1];
 
@@ -306,19 +293,16 @@ class CustomLogInterceptor extends Interceptor {
       final userAgent = await Api._getUserAgent();
       options.headers['User-Agent'] = userAgent;
     }
-    debugPrint('[API] → ${options.method} ${options.baseUrl}${options.path} | AppCheck=${options.headers.containsKey('X-Firebase-AppCheck')} | Auth=${options.headers.containsKey('Authorization')}');
     super.onRequest(options, handler);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    debugPrint('[API] ← ${response.statusCode} ${response.requestOptions.path}');
     super.onResponse(response, handler);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    debugPrint('[API] ✗ ${err.response?.statusCode ?? err.type} ${err.requestOptions.path} | message=${err.message} | error=${err.error} | response=${err.response?.data}');
     super.onError(err, handler);
   }
 }
