@@ -696,7 +696,7 @@
 			baseConfigurationReference = 03B56FFD2F0D846100976317 /* Debug-prod.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = 기프넛;
+				APP_NAME = "기프넛";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -893,7 +893,7 @@
 			baseConfigurationReference = 03B570012F0D847700976317 /* Release-prod.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = 기프넛;
+				APP_NAME = "기프넛";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -988,7 +988,7 @@
 			baseConfigurationReference = 062626BA470C2755E4BA6462 /* Pods-Runner.profile.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = 기프넛;
+				APP_NAME = "기프넛";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
@@ -1303,7 +1303,7 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				APP_FLAVOR = prod;
-				APP_NAME = 기프넛;
+				APP_NAME = "기프넛";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
