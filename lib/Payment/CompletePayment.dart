@@ -399,6 +399,7 @@ class _CompletePaymentState extends State<CompletePayment>
                         ),
                       ),
                       onPressed: () {
+                        context.read<UserProvider>().invalidateGifticonCache();
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => TabPage()),
                           (route) => false,
@@ -453,6 +454,7 @@ class _CompletePaymentState extends State<CompletePayment>
                         ),
                       ),
                       onPressed: () {
+                        context.read<UserProvider>().invalidateGifticonCache();
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => TabPage()),
                           (route) => false,
