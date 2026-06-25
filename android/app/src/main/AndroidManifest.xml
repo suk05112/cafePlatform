@@ -9,8 +9,10 @@
 
     <!-- Android 13+ 알림 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- 연락처 -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <application
-        android:label="Gifnut"
+        android:label="기프넛"
         android:name=".MainApplication"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -71,6 +73,21 @@
                 <data android:scheme="kakao275e555cdb8196634a6aef161abe3f84" android:host="oauth"/>
             </intent-filter>
         </activity>
+        <!-- FCM 커스텀 메시지 서비스 -->
+        <service
+            android:name=".MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <!-- FCM 기본 알림 채널 설정 (Android 8.0+) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -87,5 +104,16 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 결제 앱 패키지 가시성 (Android 11+) -->
+        <package android:name="com.shcard.smartpay"/>
+        <package android:name="com.samsung.android.spay"/>
+        <package android:name="com.lguplus.paynow"/>
+        <package android:name="com.kbcard.kbkookmincard"/>
+        <package android:name="com.hyundaicard.appcard"/>
+        <package android:name="com.wooricard.wcard"/>
+        <package android:name="com.hanaskcard.paycla"/>
+        <package android:name="com.lottemembers.android"/>
+        <package android:name="kr.co.citibank.citimobile"/>
+        <package android:name="com.nh.cashcardmobile"/>
     </queries>
 </manifest>

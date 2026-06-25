@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cafeplatform/Payment/Payment.dart';
+import 'package:get/get.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
-import 'package:cafeplatform/api/API.dart';
-import 'package:cafeplatform/model/user.dart';
-import 'package:cafeplatform/provider/user_provider.dart';
+import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
-import 'package:provider/provider.dart';
 
 class GifticonInfo extends StatelessWidget {
   const GifticonInfo({super.key});
@@ -13,40 +10,30 @@ class GifticonInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: const CommonAppBar(title: "선물하기"),
-      body: Container(
-        margin: EdgeInsets.fromLTRB(10, 5, 5, 10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                SizedBox(
-                  height: 100,
-                  child: ItemInfo(),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const ItemInfo(),
+              const SizedBox(height: 20),
+              Text(
+                '*유의사항 \n상품은 우리랑 상관 없다. \n선물받은 기프티콘 사용안하면 80% 환불된다. \n나에게 선물하기 한 기프티콘은 일주일 안에 환불가능하다.\n80%이상 사용시 포인트로 환급된다. \n이런저런 유의사항 써놓기',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: Colors.grey.shade800,
                 ),
-                SizedBox(
-                  height: 10.0,
-                ),
-                Text(
-                  '*유의사항 \n상품은 우리랑 상관 없다. \n선물받은 기프티콘 사용안하면 80% 환불된다. \n나에게 선물하기 한 기프티콘은 일주일 안에 환불가능하다.\n80%이상 사용시 포인트로 환급된다. \n이런저런 유의사항 써놓기',
-                  style: TextStyle(fontSize: 10),
-                ),
-              ],
-            ),
-            Container(
-                child: Column(
-              children: [
-                gift(),
-                SizedBox(
-                  height: 10.0,
-                ),
-                giftToMe()
-              ],
-            ))
-          ],
+              ),
+              const SizedBox(height: 28),
+              gift(),
+              const SizedBox(height: 12),
+              giftToMe(),
+            ],
+          ),
         ),
       ),
     );
@@ -58,30 +45,44 @@ class ItemInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Row(
-        children: [
-          Image.asset(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
             'assets/coffee.jpeg',
-            height: 200,
+            width: 88,
+            height: 88,
+            fit: BoxFit.cover,
           ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: <Widget>[
+        ),
+        const SizedBox(width: 16),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Text(
-                "아메리카노",
-                style: TextStyle(fontSize: 25, color: Colors.black),
+                '아메리카노',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
+              SizedBox(height: 6),
               Text(
-                "4500원",
-                style: TextStyle(fontSize: 15, color: Colors.black),
-              )
+                '4500원',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black87,
+                ),
+              ),
             ],
-          )
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -93,8 +94,6 @@ class gift extends StatefulWidget {
   _gift createState() =>
       _gift(); // StatefulWidget은 상태를 생성하는 createState() 메서드로 구현한다.
 }
-
-int _cnt = 0;
 
 class _gift extends State<gift> {
   @override
@@ -113,18 +112,8 @@ class _gift extends State<gift> {
         ),
         child: Text('선물하기'),
 
-        // 클릭 이벤트
         onPressed: () {
-          // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
-          setState(() {
-            // Navigator.push(
-            //   context,
-            //   MaterialPageRoute(
-            //       builder: (context) => Payment(
-            //             type: 1,
-            //           )),
-            // );
-          });
+          Get.offAll(() => const TabPage(initialIndex: 0));
         },
       ),
     ));
@@ -155,18 +144,8 @@ class _giftToMe extends State<giftToMe> {
         ),
         child: Text('나에게 선물하기'),
 
-        // 클릭 이벤트
         onPressed: () {
-          // setState() 메서드를 수행시 다시 build() 메서드가 실행되며 동적 화면이 구현된다.
-          setState(() {
-            // Navigator.push(
-            //   context,
-            //   MaterialPageRoute(
-            //       builder: (context) => Payment(
-            //             type: 1,
-            //           )),
-            // );
-          });
+          Get.offAll(() => const TabPage(initialIndex: 0));
         },
       ),
     ));

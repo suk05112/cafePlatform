@@ -7,6 +7,7 @@ import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
+import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 
 class CafeListMapView extends StatefulWidget {
   const CafeListMapView({super.key});
@@ -64,6 +65,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
       if (mounted) {
         final storeProvider =
             Provider.of<StoreProvider>(context, listen: false);
+        final list = storeProvider.listViewStores;
+        if (list != null &&
+            list.isNotEmpty &&
+            (storeProvider.mapViewStores == null ||
+                storeProvider.mapViewStores!.isEmpty)) {
+          storeProvider.setMapViewStores(List<Store>.from(list));
+        }
         final storesForMap = _effectiveStores(storeProvider);
         _initialTarget = await _resolveInitialTarget(storesForMap);
         if (mounted) {
@@ -123,13 +131,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     // 유효한 좌표를 가진 초기 타겟 계산
     final initialTarget = _getValidInitialTarget(storesForMap);
 
-    print(
-        'build: initialTarget = ${initialTarget.latitude}, ${initialTarget.longitude}');
-    print('build: _initialTarget = $_initialTarget');
-    print('build: storesForMap.length = ${storesForMap.length}');
     if (storesForMap.isNotEmpty) {
-      print(
-          'build: 첫 번째 매장 좌표 = ${storesForMap.first.store_lat}, ${storesForMap.first.store_lng}');
     }
 
     // // Provider 데이터가 변경되면 마커 업데이트 (중복 방지)
@@ -139,68 +141,98 @@ class _CafeListMapViewState extends State<CafeListMapView> {
     //   }
     // });
 
-    return Stack(
-      children: [
-        NaverMap(
-          options: NaverMapViewOptions(
-            indoorEnable: false,
-            locationButtonEnable: true,
-            scrollGesturesEnable: true,
-            consumeSymbolTapEvents: true,
-            initialCameraPosition: NCameraPosition(
-              target: initialTarget,
-              zoom: 13,
-            ),
-            mapType: NMapType.basic,
-            activeLayerGroups: [NLayerGroup.building, NLayerGroup.transit],
-          ),
-          onMapReady: (controller) {
-            _mapController = controller;
-            final markers = <NMarker>[];
-            for (final store in storesForMap) {
-              final marker = NMarker(
-                id: store.store_id.toString(),
-                position: NLatLng(store.store_lat, store.store_lng),
-              );
-              marker.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
-              _markers[store.store_id.toString()] = marker;
-              marker.setOnTapListener((overlay) {
-                if (_selectedStore.value?.store_id == store.store_id) {
-                  _clearSelection();
-                } else {
-                  _updateMarkerSelection(overlay, store);
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8E8E8),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: NaverMap(
+              options: NaverMapViewOptions(
+                indoorEnable: false,
+                locationButtonEnable: true,
+                scrollGesturesEnable: true,
+                consumeSymbolTapEvents: true,
+                initialCameraPosition: NCameraPosition(
+                  target: initialTarget,
+                  zoom: 13,
+                ),
+                mapType: NMapType.basic,
+                activeLayerGroups: [NLayerGroup.building, NLayerGroup.transit],
+              ),
+              onMapReady: (controller) {
+                _mapController = controller;
+                final markers = <NMarker>[];
+                for (final store in storesForMap) {
+                  final marker = NMarker(
+                    id: store.store_id.toString(),
+                    position: NLatLng(store.store_lat, store.store_lng),
+                  );
+                  try {
+                    marker
+                        .setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+                  } catch (_) {
+                    // 에셋 실패 시 기본 마커 사용
+                  }
+                  _markers[store.store_id.toString()] = marker;
+                  marker.setOnTapListener((overlay) {
+                    if (_selectedStore.value?.store_id == store.store_id) {
+                      _clearSelection();
+                    } else {
+                      _updateMarkerSelection(overlay, store);
+                    }
+                  });
+                  markers.add(marker);
                 }
-              });
-              markers.add(marker);
-            }
-            if (markers.isNotEmpty) {
-              controller.addOverlayAll(markers.toSet());
-            }
-          },
-          onMapTapped: (point, latLng) {
-            _clearSelection();
-          },
-        ),
-        SafeArea(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 140),
-              child: _buildLocationSearchButton2(),
+                if (markers.isNotEmpty) {
+                  controller.addOverlayAll(markers.toSet());
+                }
+              },
+              onMapTapped: (point, latLng) {
+                _clearSelection();
+              },
             ),
           ),
-        ),
-        ValueListenableBuilder<Store?>(
-          valueListenable: _selectedStore,
-          builder: (_, store, __) {
-            if (store == null) return const SizedBox.shrink();
-            return Align(
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 0, 0),
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  elevation: 2,
+                  shadowColor: Colors.black26,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    color: Colors.black87,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Align(
               alignment: Alignment.bottomCenter,
-              child: _buildBottomCard(store),
-            );
-          },
-        ),
-      ],
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 140),
+                child: _buildLocationSearchButton2(),
+              ),
+            ),
+          ),
+          ValueListenableBuilder<Store?>(
+            valueListenable: _selectedStore,
+            builder: (_, store, __) {
+              if (store == null) return const SizedBox.shrink();
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: _buildBottomCard(store),
+              );
+            },
+          ),
+        ],
+      ),
     );
 
     /*Stack(
@@ -218,7 +250,6 @@ class _CafeListMapViewState extends State<CafeListMapView> {
             liteModeEnable: false, // 라이트 모드 비활성화
           ),
           onMapReady: (controller) async {
-            print('onMapReady: 지도 준비 완료');
             // if (!mounted || _isDisposed) return;
             _mapController = controller;
             // if (mapControllerCompleter.isCompleted == false) {
@@ -228,10 +259,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
             // 지도가 준비된 후 현재 카메라 위치 확인
             try {
               final cameraPosition = await controller.getCameraPosition();
-              print(
-                  'onMapReady: 현재 카메라 위치 = ${cameraPosition.target.latitude}, ${cameraPosition.target.longitude}, zoom = ${cameraPosition.zoom}');
             } catch (e) {
-              print('onMapReady: 카메라 위치 가져오기 오류: $e');
             }
 
             final marker =
@@ -247,12 +275,10 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               try {
                 // 아이콘이 초기화되지 않았으면 초기화 대기
                 if (_defaultIcon == null || _selectedIcon == null) {
-                  print('onMapReady: 아이콘 초기화 대기 중...');
                   // 아이콘 초기화가 완료될 때까지 대기
                   for (int i = 0; i < 30; i++) {
                     await Future.delayed(const Duration(milliseconds: 100));
                     if (_defaultIcon != null && _selectedIcon != null) {
-                      print('onMapReady: 아이콘 초기화 완료');
                       break;
                     }
                     if (!mounted || _isDisposed) return;
@@ -261,11 +287,9 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
                 // onMapReady에서는 마커가 이미 있으면 추가하지 않음
                 if (!_isUpdatingMarkers) {
-                  print('onMapReady: 마커 추가 시작, 매장 개수: ${storesForMap.length}');
                   await _mapController.clearOverlays();
                   // await _addMarkers(_mapController, storesForMap);
 
-                  print('onMapReady: 마커 추가 완료');
                 }
 
                 // 마커가 있으면 카메라를 마커 위치로 이동
@@ -289,7 +313,6 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                       final centerLat = sumLat / count;
                       final centerLng = sumLng / count;
 
-                      print('onMapReady: 마커 중심 위치 = $centerLat, $centerLng');
 
                       // 카메라를 마커 중심으로 이동 (약간의 딜레이 후)
                       Future.delayed(Duration(milliseconds: 500), () async {
@@ -301,16 +324,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                                 zoom: 13,
                               ),
                             );
-                            print('onMapReady: 카메라를 마커 중심으로 이동 완료');
                           } catch (e) {
-                            print('onMapReady: 카메라 이동 오류: $e');
                           }
                         }
                       });
                     }
                   } else {
                     // 유효한 매장이 없으면 서울로 이동
-                    print('onMapReady: 유효한 매장 좌표가 없어 서울로 이동');
                     Future.delayed(Duration(milliseconds: 500), () async {
                       if (mounted && !_isDisposed) {
                         try {
@@ -320,9 +340,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                               zoom: 13,
                             ),
                           );
-                          print('onMapReady: 서울로 카메라 이동 완료');
                         } catch (e) {
-                          print('onMapReady: 서울 카메라 이동 오류: $e');
                         }
                       }
                     });
@@ -339,17 +357,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                               zoom: 13,
                             ),
                           );
-                          print('onMapReady: 초기 타겟으로 카메라 이동 완료');
                         } catch (e) {
-                          print('onMapReady: 초기 타겟 카메라 이동 오류: $e');
                         }
                       }
                     });
                   }
                 }
               } catch (e) {
-                print('onMapReady 마커 추가 오류: $e');
-                print('스택 트레이스: ${StackTrace.current}');
               }
             }
             */
@@ -385,17 +399,16 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   }
 
   List<Store> _effectiveStores(StoreProvider storeProvider) {
-    // 검색된 매장이 있으면 우선 표시
     if (_searchedStores.isNotEmpty) return _searchedStores;
-    // Provider에서 지도 뷰 전용 데이터 가져오기
     if (storeProvider.mapViewStores != null &&
         storeProvider.mapViewStores!.isNotEmpty) {
       return storeProvider.mapViewStores!;
-    } else {
-      return [];
-      // return _dummyStores;
     }
-    return _dummyStores;
+    final list = storeProvider.listViewStores;
+    if (list != null && list.isNotEmpty) {
+      return list;
+    }
+    return [];
   }
 
   Future<NLatLng> _resolveInitialTarget(List<Store> stores) async {
@@ -443,7 +456,6 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           }
         }
       } catch (e) {
-        print('위치 권한 확인 오류: $e');
         hasLocationPermission = false;
       }
 
@@ -455,11 +467,9 @@ class _CafeListMapViewState extends State<CafeListMapView> {
           final response =
               await Api().client.getStoreListByLocation(gpsLat, gpsLng);
           if (response.store.isNotEmpty) {
-            print('GPS 위치에 매장 있음, GPS 위치 표시');
             return NLatLng(gpsLat, gpsLng);
           }
         } catch (e) {
-          print('GPS 위치 매장 확인 오류: $e');
         }
 
         // 5. 위치권한 있고, gps위치에 매장 없으면
@@ -479,12 +489,10 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                     .getStoreListByDistrict(districtCode, 0, 1);
                 if (response.store.isNotEmpty) {
                   // 매장이 있는 지역의 첫 번째 매장 위치 반환
-                  print('매장 존재하는 지역 찾음: ${region.region_name}');
                   final store = response.store.first;
                   return NLatLng(store.store_lat, store.store_lng);
                 }
               } catch (e) {
-                print('지역별 매장 확인 오류: $e');
                 continue;
               }
             }
@@ -492,7 +500,6 @@ class _CafeListMapViewState extends State<CafeListMapView> {
         }
 
         // 5-1. 전체지역에 매장 없으면 gps위치 보여주기
-        print('전체 지역에 매장 없음, GPS 위치 표시');
         return NLatLng(gpsLat, gpsLng);
       }
 
@@ -507,12 +514,10 @@ class _CafeListMapViewState extends State<CafeListMapView> {
             final response =
                 await Api().client.getStoreListByDistrict(districtCode, 0, 1);
             if (response.store.isNotEmpty) {
-              print('지역 1개에 매장 있음: ${region.region_name}');
               final store = response.store.first;
               return NLatLng(store.store_lat, store.store_lng);
             }
           } catch (e) {
-            print('지역 1개 매장 확인 오류: $e');
           }
         }
       }
@@ -534,21 +539,17 @@ class _CafeListMapViewState extends State<CafeListMapView> {
             final response =
                 await Api().client.getStoreListByDistrict(districtCode, 0, 1);
             if (response.store.isNotEmpty) {
-              print('선택된 지역에 매장 있음: ${selectedRegion.region_name}');
               final store = response.store.first;
               return NLatLng(store.store_lat, store.store_lng);
             }
           } catch (e) {
-            print('선택된 지역 매장 확인 오류: $e');
           }
         }
       }
 
       // 2. 위치권한 없고, 존재하는 매장도 없으면 기본위치 서울
-      print('기본 위치 서울 표시');
       return const NLatLng(37.5665, 126.9780);
     } catch (e) {
-      print('_resolveInitialTarget 오류: $e');
       // 오류 발생 시 기본 위치
       if (stores.isNotEmpty) {
         final store = stores.first;
@@ -637,20 +638,24 @@ class _CafeListMapViewState extends State<CafeListMapView> {
   }
 
   void _updateMarkerSelection(NMarker selectedMarker, Store store) {
-    // 이전 선택된 마커를 기본 아이콘으로 변경
     if (_activeMarker != null) {
-      _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      try {
+        _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      } catch (_) {}
     }
-    // 새로 선택된 마커를 selected_pin 아이콘으로 변경
-    selectedMarker
-        .setIcon(NOverlayImage.fromAssetImage('assets/selected_pin.png'));
+    try {
+      selectedMarker
+          .setIcon(NOverlayImage.fromAssetImage('assets/selected_pin.png'));
+    } catch (_) {}
     _activeMarker = selectedMarker;
     _selectedStore.value = store;
   }
 
   void _clearSelection() {
     if (_activeMarker != null) {
-      _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      try {
+        _activeMarker!.setIcon(NOverlayImage.fromAssetImage('assets/pin.png'));
+      } catch (_) {}
       _activeMarker = null;
     }
     _selectedStore.value = null;
@@ -724,7 +729,6 @@ class _CafeListMapViewState extends State<CafeListMapView> {
         );
       },
       errorBuilder: (context, error, stackTrace) {
-        print('이미지 로드 오류: $error, URL: $cleanedUrl');
         return Container(
           width: width,
           height: height,
@@ -863,7 +867,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
 
                   if (validStores.isEmpty) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showUniqueSnackBar(
                         const SnackBar(
                           content: Text('주변에 매장이 없습니다.'),
                           duration: Duration(seconds: 2),
@@ -891,9 +895,8 @@ class _CafeListMapViewState extends State<CafeListMapView> {
                     );
                   }
                 } catch (e) {
-                  print('현위치 검색 버튼 클릭 오류: $e');
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showUniqueSnackBar(
                       const SnackBar(
                         content: Text('검색 중 오류가 발생했습니다.'),
                         duration: Duration(seconds: 2),
@@ -981,7 +984,7 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               .toList();
 
           if (validStores.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
               const SnackBar(
                 content: Text('주변에 매장이 없습니다.'),
                 duration: Duration(seconds: 2),
@@ -1034,14 +1037,13 @@ class _CafeListMapViewState extends State<CafeListMapView> {
               Provider.of<StoreProvider>(context, listen: false);
           storeProvider.setMapViewStores(validStores);
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showUniqueSnackBar(
             SnackBar(
               content: Text('지도 중심 위치 주변 매장 ${validStores.length}개를 찾았습니다.'),
               duration: const Duration(seconds: 2),
             ),
           );
         } catch (error) {
-          print("지도 중심 위치 검색 오류: $error");
         }
       },
       style: ElevatedButton.styleFrom(

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cafeplatform/api/API.dart';
@@ -65,8 +66,6 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
       // 전화번호에서 하이픈 제거 (API는 숫자만 받을 수 있음)
       final phoneNumber = user.phone_number;
 
-      print(
-          '기프티콘 등록 시도: gifticon_id=${widget.gifticon_id}, user_id=${user.user_id}, phone=$phoneNumber');
 
       // API 호출
       await Api().setBaseClient(Api.BASE_URL);
@@ -77,14 +76,13 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
       );
 
       final response = await Api().client.linkGifticonToUser(request);
-      print('기프티콘 등록 성공: ${response.message}');
 
-      // 등록 성공 시 기프티콘 페이지로 이동
+      // 등록 성공 시 캐시 무효화 후 기프티콘 페이지로 이동
       if (mounted) {
-        Get.off(() => GifticonPage(gifticon_id: widget.gifticon_id));
+        Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
+        Get.off(() => GifticonPage(gifticon_id: widget.gifticon_id, fromKakao: true));
       }
     } on DioException catch (error) {
-      print('기프티콘 등록 오류: $error');
       String errorMessage = '기프티콘 등록 중 오류가 발생했습니다.';
 
       // 서버 에러 메시지 확인
@@ -115,7 +113,6 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
         _isLoading = false;
       });
     } catch (error) {
-      print('기프티콘 등록 오류: $error');
       setState(() {
         _errorMessage = '기프티콘 등록 중 오류가 발생했습니다.';
         _isLoading = false;
@@ -134,7 +131,7 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
               ? Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
+                    CircularProgressIndicator(color: ColorAssset.mainColor),
                     SizedBox(height: 24),
                     Text(
                       '기프티콘을 등록하는 중입니다...',

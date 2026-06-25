@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cafeplatform/Payment/select_gift_type_page.dart';
 import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/provider/menu_provider.dart';
+import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/dummyData.dart';
 
@@ -21,7 +22,6 @@ class _MenuPageState extends State<MenuPage>
 
   @override
   void initState() {
-    print("_MenuPageState init state 호출");
     super.initState();
     if (widget.storeId < 0) {
       // setState(() {
@@ -35,7 +35,6 @@ class _MenuPageState extends State<MenuPage>
 
   @override
   Widget build(BuildContext context) {
-    print("_MenuPageState build 호출 ${widget.storeId}");
     if (widget.storeId < 0) {
       // storeId가 0보다 작으면 더미 데이터
       final menuList = MenuDummyRepository.menus;
@@ -68,17 +67,38 @@ class _MenuPageState extends State<MenuPage>
 
   Widget _buildMenuCard(Menu menu) {
     return GestureDetector(
-      onTap: () {
-        // store_id가 0이거나 유효하지 않은 경우 widget.storeId로 설정
+      onTap: () async {
         if (menu.store_id <= 0 && widget.storeId > 0) {
           menu.store_id = widget.storeId;
-          print('store_id 수정: ${menu.store_id} (menu_id: ${menu.menu_id})');
         }
         Provider.of<MenuProvider>(context, listen: false).setSelectedMenu(menu);
-        Navigator.push(
+
+        String? addr;
+        double? lat;
+        double? lng;
+        var placeName = widget.storeName;
+        if (widget.storeId > 0) {
+          final st = await Provider.of<StoreProvider>(context, listen: false)
+              .fetchDetailStore(widget.storeId);
+          addr = st.store_address;
+          lat = st.store_lat;
+          lng = st.store_lng;
+          if (st.store_name.isNotEmpty) {
+            placeName = st.store_name;
+          }
+        }
+        if (!mounted) return;
+        Navigator.push<void>(
           context,
-          MaterialPageRoute(
-            builder: (context) => SelectGiftPage(menu: menu),
+          MaterialPageRoute<void>(
+            builder: (context) => SelectGiftPage(
+              menu: menu,
+              contextStoreId: widget.storeId > 0 ? widget.storeId : null,
+              exchangeAddress: addr,
+              exchangeLat: lat,
+              exchangeLng: lng,
+              exchangePlaceName: placeName,
+            ),
           ),
         );
       },
@@ -124,7 +144,6 @@ class _MenuPageState extends State<MenuPage>
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        print('메뉴 이미지 로드 오류: $error');
                         try {
                           return Image.asset(
                             'assets/menu.png',

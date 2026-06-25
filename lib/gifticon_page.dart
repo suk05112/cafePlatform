@@ -3,12 +3,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
-import 'package:get/get.dart';
 import 'package:cafeplatform/Extension/datetime_extension.dart';
 import 'package:cafeplatform/Payment/GifticonInfo.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
-import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
@@ -20,11 +18,14 @@ import 'package:flutter/foundation.dart';
 import 'package:cafeplatform/order/order_detail_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
+import 'package:cafeplatform/main.dart';
 
 class GifticonPage extends StatefulWidget {
-  const GifticonPage({super.key, required this.gifticon_id});
+  const GifticonPage({super.key, required this.gifticon_id, this.fromKakao = false});
 
   final int gifticon_id;
+  final bool fromKakao;
   @override
   State<GifticonPage> createState() => _GifticonPageState();
 
@@ -40,14 +41,12 @@ class GifticonPage extends StatefulWidget {
       //       validity: DateTime(2025, 4, 1));
       //   return gifticon;
       // } else {
+      await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getGifticon(gifticonId);
       var gifticon = response.gifticon;
-      print("gifticon: ${gifticon.gifticon_id}");
-      print("gifticon: ${gifticon.toJson()}");
       return gifticon;
       // }
     } catch (error) {
-      print("GifticonPage::fetchGifticon:: fetch 오류: $error");
       return null;
     }
   }
@@ -69,10 +68,6 @@ class _GifticonPageState extends State<GifticonPage>
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  void _navigateToHome() {
-    Get.offAll(() => const TabPage(initialIndex: 0));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,20 +87,21 @@ class _GifticonPageState extends State<GifticonPage>
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.home, color: Colors.black),
-              onPressed: _navigateToHome,
-              tooltip: '홈으로 가기',
-            ),
-          ],
+          actions: widget.fromKakao
+              ? [
+                  IconButton(
+                    icon: const Icon(Icons.home_outlined, color: Colors.black),
+                    onPressed: () => Get.offAll(() => const TabPage(initialIndex: 1)),
+                  ),
+                ]
+              : null,
         ),
         body: SafeArea(
             child: FutureBuilder<Gifticon?>(
                 future: futureGifticon,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
+                    return Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
                   } else if (snapshot.hasError) {
                     return Center(
                       child: Column(
@@ -195,7 +191,7 @@ class _GifticonPageState extends State<GifticonPage>
                                   SizedBox(height: 12),
                                   selectedTabIndex == 0
                                       ? gifticonInfo(gifticon)
-                                      : getDetailInfo(),
+                                      : getDetailInfo(gifticon.store_name),
                                   SizedBox(height: 24),
                                 ],
                               ),
@@ -580,10 +576,7 @@ class _GifticonPageState extends State<GifticonPage>
 
   Widget useButton(gifticon) {
     String statusText = gifticonStatus(gifticon?.status, gifticon.validity);
-    bool available = false;
-    if (statusText == "사용가능") {
-      available = true;
-    }
+    bool available = statusText == "사용가능" && gifticon.store_id != null;
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -594,13 +587,19 @@ class _GifticonPageState extends State<GifticonPage>
           ),
           foregroundColor: Colors.white,
           backgroundColor:
-              available == true ? ColorAssset.mainColor : Colors.grey[400],
+              available ? ColorAssset.mainColor : Colors.grey[400],
           elevation: 0,
         ),
         onPressed: available == false
             ? null
             : () async {
-                await ShowQR(gifticon.gifticon_id, gifticon.store_id);
+                await ShowQR(gifticon.gifticon_id, gifticon.store_id!);
+                if (mounted) {
+                  Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
+                  setState(() {
+                    futureGifticon = GifticonPage.fetchGifticon(widget.gifticon_id);
+                  });
+                }
               },
         child: Text(
           '사용하기',
@@ -741,9 +740,9 @@ class _GifticonPageState extends State<GifticonPage>
     );
   }
 
-  Widget getDetailInfo() {
+  Widget getDetailInfo(String storeName) {
     return Column(
-      children: [Product_notice_information(), Cancellation_refund_policy()],
+      children: [Product_notice_information(storeName), Cancellation_refund_policy()],
     );
   }
 
@@ -783,7 +782,7 @@ class _GifticonPageState extends State<GifticonPage>
     // return await DefaultAssetBundle.of(ctx).loadString('assets/2016_GDP.txt');
   }
 
-  Widget Product_notice_information() {
+  Widget Product_notice_information(String storeName) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
@@ -841,7 +840,7 @@ class _GifticonPageState extends State<GifticonPage>
               children: <Widget>[
                 Column(children: [
                   rowWidget('발행자', '502 컴퍼니'),
-                  rowWidget('교환권 공급자', '카페 이름'),
+                  rowWidget('교환권 공급자', storeName),
                   rowWidget('유효기간', '발급일 포함 365일'),
                   // rowWidget('환불조건 및 방법', contents),
                 ])
@@ -1054,7 +1053,6 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
         setState(() {});
       }
     } catch (e) {
-      print('아이콘 초기화 오류: $e');
       // 오류가 발생해도 계속 진행
       // fallback으로 asset 이미지 직접 사용 시도
       try {
@@ -1065,29 +1063,24 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
           setState(() {});
         }
       } catch (fallbackError) {
-        print('Fallback 아이콘 초기화 오류: $fallbackError');
       }
     }
   }
 
   Future<void> _addMarker() async {
     if (_isDisposed || !_isMapReady) {
-      print('마커 추가 스킵: disposed=$_isDisposed, mapReady=$_isMapReady');
       return;
     }
 
     // 마커 아이콘이 없으면 초기화 시도
     if (_markerIcon == null) {
-      print('마커 아이콘이 없어서 초기화 시도');
       await _initMarkerIcon();
       if (_markerIcon == null || _isDisposed || !_isMapReady) {
-        print('마커 아이콘 초기화 실패 또는 disposed');
         return;
       }
     }
 
     try {
-      print('마커 추가 시도: lat=${widget.latitude}, lng=${widget.longitude}');
       final marker = NMarker(
         id: 'store',
         position: NLatLng(widget.latitude, widget.longitude),
@@ -1096,26 +1089,20 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
       // 아이콘 설정
       if (_markerIcon != null) {
         marker.setIcon(_markerIcon!);
-        print('마커 아이콘 설정 완료');
       } else {
         // 아이콘이 여전히 null이면 기본 아이콘 생성 시도
-        print('마커 아이콘이 null, 기본 아이콘 생성 시도');
         try {
           final defaultIcon =
               await NOverlayImage.fromAssetImage('assets/pin.png');
           marker.setIcon(defaultIcon);
           _markerIcon = defaultIcon; // 캐시에 저장
         } catch (iconError) {
-          print('기본 아이콘 생성 실패: $iconError');
           // 아이콘 없이 마커 추가 시도 (기본 마커 사용)
         }
       }
 
       await _mapController.addOverlay(marker);
-      print("마커 추가 완료: lat=${widget.latitude}, lng=${widget.longitude}");
     } catch (e) {
-      print('마커 추가 오류: $e');
-      print('마커 추가 오류 스택: ${e.toString()}');
     }
   }
 
@@ -1127,7 +1114,6 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
       try {
         _mapController.dispose();
       } catch (e) {
-        print('NaverMapWidget dispose 오류 (무시 가능): $e');
       }
     }
     super.dispose();
@@ -1172,7 +1158,6 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
               mapControllerCompleter.complete(controller);
             }
 
-            print("Naver Map is ready.");
 
             // 지도가 준비되면 마커 추가
             if (!_isDisposed) {

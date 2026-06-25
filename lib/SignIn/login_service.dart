@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,26 +34,17 @@ class LoginService {
       final phoneLogin = await _auth.signInWithCredential(phoneCredential);
 
       final fbUser = phoneLogin.user;
-      print(
-          "providerId: ${phoneCredential.providerId}, signInMethod: ${phoneCredential.signInMethod}");
-      print(
-          "providerId: ${snsCredential.providerId}, signInMethod: ${snsCredential.signInMethod}");
 
       if (fbUser != null) {
-        print("link시도");
         try {
           await fbUser.linkWithCredential(snsCredential);
-          print("Credential 링크 성공");
         } on FirebaseAuthException catch (linkError) {
           // 이미 링크되어 있는 경우 처리
           if (linkError.code == 'provider-already-linked') {
-            print("이미 provider가 링크되어 있음 - 기존 계정 사용");
             // 이미 링크되어 있으면 기존 사용자를 그대로 반환
             return phoneLogin;
           } else {
             // 다른 Firebase 오류인 경우
-            print(
-                "Firebase Auth 링크 에러: ${linkError.code} / ${linkError.message}");
             rethrow;
           }
         }
@@ -63,12 +55,9 @@ class LoginService {
       // phoneLogin.credential = snsCredential;
       // 3) 최종 로그인은 SNS로 다시 해야 provider가 SNS로 찍힘
     } on FirebaseAuthException catch (e) {
-      print(
-          "Firebase Auth 에러: ${e.code} / ${e.message} ${e.credential?.providerId}");
       // Firebase 오류도 onError로 전달
       onError(Future.value(AuthError.firebase));
     } catch (e) {
-      print("알 수 없는 에러: $e");
       onError(AuthErrorHandler.handle(e));
     }
     return null;
@@ -83,15 +72,12 @@ class LoginService {
       // User created successfully
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        print('The email address is already in use by another account.');
         return true;
       } else {
         // Handle other FirebaseAuthException errors
-        print('Firebase Auth Error: ${e.message} ${e.code}');
       }
     } catch (e) {
       // Handle any other unexpected errors
-      print('General Error: $e');
     }
 
     return false;
@@ -127,7 +113,6 @@ class LoginService {
           .signInWithEmailAndPassword(email: email, password: password);
       // return true;
     } catch (error) {
-      print("google error catch $error");
       onError(await AuthErrorHandler.handle(e));
     }
   }
@@ -149,14 +134,11 @@ class LoginService {
           accessToken: googleSignInAuthentication.accessToken,
           idToken: googleSignInAuthentication.idToken,
         );
-        print(
-            "google email: ${googleSignInAccount.email}, ${googleSignInAccount.displayName}");
 
         onSuccess(credential, googleSignInAccount.email,
             googleSignInAccount.displayName ?? "name", credential.providerId);
       }
     } catch (error) {
-      print("google error catch $error");
       onError(await AuthErrorHandler.handle(e));
     }
   }
@@ -169,29 +151,21 @@ class LoginService {
   }) async {
     kakao.OAuthToken? token;
     if (await kakao.isKakaoTalkInstalled()) {
-      print("isKakaoTalkInstalled 여기 탐");
       try {
         token = await kakao.UserApi.instance.loginWithKakaoTalk();
-        print('카카오톡으로 로그인 성공');
       } catch (error) {
-        print('카카오톡으로 로그인 실패 $error');
         if (error is PlatformException && error.code == 'CANCELED') {
-          print('카카오톡으로 로그인 실패 $error with CANCELED');
         }
         try {
           token = await kakao.UserApi.instance.loginWithKakaoAccount();
-          print('카카오계정으로 로그인 성공');
         } catch (error) {
-          print('카카오계정으로 로그인 실패 $error');
           onError(await AuthErrorHandler.handle(e));
         }
       }
     } else {
       try {
         token = await kakao.UserApi.instance.loginWithKakaoAccount();
-        print('카카오계정으로 로그인 성공');
       } catch (error) {
-        print('카카오계정으로 로그인 실패 $error');
         onError(await AuthErrorHandler.handle(e));
       }
     }
@@ -204,8 +178,6 @@ class LoginService {
       );
 
       kakao.User kakaoUser = await kakao.UserApi.instance.me();
-      print(
-          "kakaoemail: ${kakaoUser.kakaoAccount?.email} ${kakaoUser.kakaoAccount?.profile?.nickname ?? ""}");
 
       onSuccess(
           credential,
@@ -213,7 +185,6 @@ class LoginService {
           kakaoUser.kakaoAccount?.profile?.nickname ?? "name",
           credential.providerId);
     } catch (error) {
-      print('카카오계정으로 로그인 실패 $error');
       onError(await AuthErrorHandler.handle(e));
     }
     return;
@@ -238,15 +209,10 @@ class LoginService {
         accessToken: credential.authorizationCode,
       );
 
-      print(
-          "appel id token: ${oauthCredential.providerId}, ${oauthCredential.idToken}");
-      print(
-          "appel id email: ${credential.email} ${credential.familyName}${credential.givenName} ${oauthCredential.appleFullPersonName}");
       final name = "${credential.familyName}${credential.givenName}";
 
       onSuccess(oauthCredential, credential.email, name);
     } catch (error) {
-      print('애플계정으로 로그인 실패 $error');
       onError(AuthErrorHandler.handle(error));
       return;
     }
@@ -255,7 +221,6 @@ class LoginService {
 
   Future<bool> isRegisteredUser(String? email, String provider,
       {String? phone}) async {
-    print("register 확인할 email=$email, provider=$provider, phone=$phone");
     try {
       // email이 null이면 query parameter로 전달하지 않음 (Retrofit이 자동 처리)
       final response = await Api().client.getIsRegisteredUser(
@@ -263,10 +228,10 @@ class LoginService {
             provider,
             phone,
           );
-      print(" isRegisteredUser$response");
       return response.isRegistered;
+    } on DioException {
+      rethrow;
     } catch (e) {
-      print("❌ Error: $e");
       return false;
     }
   }

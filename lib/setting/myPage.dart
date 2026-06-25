@@ -36,7 +36,6 @@ class _MyPageState extends State<MyPage> {
                             icon: Icon(Icons.settings), // 검색 아이콘 생성
                             onPressed: () {
                               // 아이콘 버튼 실행
-                              print('Search button is clicked');
                               Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -113,7 +112,6 @@ class _MyPageState extends State<MyPage> {
             onTap: () {
               // NavigaageRoutor.push(context,
               //     MaterialPte(builder: (context) => GifticonListPage()));
-              print("Container clicked");
             },
             child: Container(
               margin: EdgeInsets.all(10),

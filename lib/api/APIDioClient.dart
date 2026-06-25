@@ -34,8 +34,6 @@ class ApiServiceImpl implements ApiDioClient {
             "https://cafe-platform-bucket.s3.amazonaws.com/logo/s3_test6.png"),
         body: bytes);
 
-    print("image upload");
-    print(response.statusCode);
     // print("image path");
     // print(File(pickedFile!.path).path);
     // var path = await MultipartFile.fromFile(File(pickedFile!.path).path,

@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
@@ -9,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:dio/dio.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:get/get.dart';
+import 'package:cafeplatform/SignIn/login_page.dart';
 
 class UserInfoPage extends StatefulWidget {
   const UserInfoPage({super.key});
@@ -421,6 +424,44 @@ class _UserInfoPageState extends State<UserInfoPage> {
                             ),
                             onPressed: () async {
                               if (inputController.text == '회원탈퇴') {
+                                // 미사용 기프티콘 체크
+                                final userId = userProvider.user?.user_id;
+                                if (userId != null) {
+                                  try {
+                                    await Api().setBaseClient(Api.BASE_URL);
+                                    final response = await Api().client.getGifticonList(userId);
+                                    final hasUnused = response.gifticonList.any((g) =>
+                                        g.status == 'UNUSED' &&
+                                        (g.validity == null || !g.validity!.isBefore(DateTime.now())));
+                                    if (hasUnused && context.mounted) {
+                                      await showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          title: const Text(
+                                            '미사용 기프티콘 있음',
+                                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                          ),
+                                          content: const Text(
+                                            '미사용 된 기프티콘이 있습니다. 환불 혹은 사용 완료 후 탈퇴가 가능합니다. 환불 문의는 \'더보기>문의하기\' 로 남겨주세요',
+                                            style: TextStyle(fontSize: 14, height: 1.5),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(ctx).pop(),
+                                              child: const Text('확인'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                  } catch (_) {}
+                                }
+                                if (!context.mounted) return;
                                 Navigator.of(context).pop();
                                 await _handleWithdrawal(context);
                               } else {
@@ -450,14 +491,25 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
   Future<void> _handleLogout(BuildContext context) async {
     try {
+      // 서버 FCM 토큰 삭제
+      final userId = userProvider.user?.user_id;
+      final prefs = await SharedPreferences.getInstance();
+      final fcmToken = prefs.getString('fcm_token');
+      if (userId != null && fcmToken != null) {
+        try {
+          await Api().setBaseClient(Api.BASE_URL);
+          await Api().client.deleteUserPushToken(userId, fcmToken);
+        } catch (e) {
+        }
+      }
+
       // Firebase Auth 로그아웃
       await firebase_auth.FirebaseAuth.instance.signOut();
 
       // UserProvider에서 사용자 정보 삭제
       await userProvider.clearUser();
 
-      // SharedPreferences에서 FCM 토큰 삭제 (선택사항)
-      final prefs = await SharedPreferences.getInstance();
+      // SharedPreferences에서 FCM 토큰 삭제
       await prefs.remove('fcm_token');
 
       // // 모든 스택을 제거하고 TabPage(매장 리스트)로 이동
@@ -473,7 +525,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
         );
       });
     } catch (e) {
-      print('로그아웃 오류: $e');
     }
   }
 
@@ -499,7 +550,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
               child: const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(color: ColorAssset.mainColor),
                   SizedBox(height: 16),
                   Text(
                     '회원 탈퇴 처리 중...',
@@ -534,10 +585,8 @@ class _UserInfoPageState extends State<UserInfoPage> {
             providerData.any((info) => info.providerId == 'apple.com');
 
         if (hasAppleProvider) {
-          print('애플 계정으로 가입된 사용자 확인됨');
           // 회원 탈퇴를 위해 Apple 로그인을 다시 요청하여 authorizationCode 받기 및 Firebase 재인증
           try {
-            print('애플 로그인 재요청 (authorizationCode 획득 및 재인증용)');
             final appleCredential = await SignInWithApple.getAppleIDCredential(
               scopes: [
                 AppleIDAuthorizationScopes.email,
@@ -545,7 +594,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
               ],
             );
             appleAuthorizationCode = appleCredential.authorizationCode;
-            print('애플 authorizationCode 획득 성공');
 
             // Firebase 재인증 (requires-recent-login 오류 방지)
             try {
@@ -555,13 +603,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
                 accessToken: appleCredential.authorizationCode,
               );
               await user.reauthenticateWithCredential(oauthCredential);
-              print('Firebase 재인증 완료');
             } catch (reAuthError) {
-              print('Firebase 재인증 실패: $reAuthError');
               // 재인증 실패해도 authorizationCode는 전달 가능 (서버에서 처리)
             }
           } catch (e) {
-            print('애플 로그인 재요청 실패 (authorizationCode 획득 실패): $e');
             // 애플 로그인 실패 시 null로 전달 (서버에서 처리 불가)
             appleAuthorizationCode = null;
             // 사용자에게 오류 메시지 표시
@@ -603,19 +648,15 @@ class _UserInfoPageState extends State<UserInfoPage> {
       // 서버에서 사용자 삭제 API 호출
       if (userId != null) {
         try {
+          await Api().setBaseClient(Api.BASE_URL);
           final deleteResponse =
               await Api().client.deleteUser(userId, appleAuthorizationCode);
-          print(
-              '서버 사용자 삭제 완료: ${deleteResponse.message}, user_id: ${deleteResponse.userId}, apple_revoked: ${deleteResponse.appleRevoked}');
         } on DioException catch (e) {
-          print('서버 사용자 삭제 오류: ${e.response?.statusCode} - ${e.message}');
           // 서버 삭제 실패해도 Firebase 삭제는 시도
         } catch (e) {
-          print('서버 사용자 삭제 오류: $e');
           // 서버 삭제 실패해도 Firebase 삭제는 시도
         }
       } else {
-        print('user_id가 없어 서버 삭제를 건너뜁니다.');
       }
 
       // Firebase 사용자 삭제
@@ -623,12 +664,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
         try {
           await user.delete();
           if (hasAppleProvider) {
-            print('Firebase 사용자 삭제 완료 (애플 계정과의 연결도 끊어짐)');
           } else {
-            print('Firebase 사용자 삭제 완료');
           }
         } on firebase_auth.FirebaseAuthException catch (e) {
-          print('파베 회원 탈퇴 처리 오류: ${e.code} - ${e.message}');
 
           // requires-recent-login 오류인 경우 특별 처리
           if (e.code == 'requires-recent-login') {
@@ -668,9 +706,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
           }
 
           // 다른 Firebase 오류인 경우에도 계속 진행 (서버 데이터는 이미 삭제됨)
-          print('Firebase 계정 삭제 실패했으나 서버 데이터는 삭제되었습니다.');
         } catch (e) {
-          print('파베 회원 탈퇴 처리 오류: $e');
           // 기타 오류인 경우에도 계속 진행
         }
       }
@@ -679,7 +715,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
       try {
         await firebase_auth.FirebaseAuth.instance.signOut();
       } catch (e) {
-        print('Firebase 로그아웃 오류: $e');
         // 로그아웃 실패해도 계속 진행
       }
 
@@ -688,7 +723,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('fcm_token');
       } catch (e) {
-        print('SharedPreferences 토큰 삭제 오류: $e');
         // 오류가 발생해도 계속 진행
       }
 
@@ -703,10 +737,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
       // UserProvider에서 사용자 정보 삭제 (캐싱된 userProvider 사용)
       try {
         await userProvider.clearUser();
-        print('UserProvider clearUser 완료');
       } catch (e, stackTrace) {
-        print('UserProvider clearUser 오류: $e');
-        print('스택 트레이스: $stackTrace');
         // 오류가 발생해도 계속 진행
       }
 
@@ -740,15 +771,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(successContext).pop();
-                      // 다이얼로그 닫은 후 TabPage로 이동
-                      if (mounted && context.mounted) {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const TabPage(initialIndex: 0)),
-                          (route) => false,
-                        );
-                      }
+                      Get.offAll(() => LoginPage());
                     },
                     child: const Text(
                       '확인',
@@ -763,31 +786,12 @@ class _UserInfoPageState extends State<UserInfoPage> {
             },
           );
         } catch (dialogError) {
-          print('탈퇴 완료 다이얼로그 표시 오류: $dialogError');
-          // 다이얼로그 표시 실패 시에도 TabPage로 이동
-          if (mounted && context.mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (context) => const TabPage(initialIndex: 0)),
-              (route) => false,
-            );
-          }
+          Get.offAll(() => LoginPage());
         }
       } else {
-        // mounted가 false인 경우 직접 이동
-        Future.microtask(() {
-          if (mounted && context.mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (context) => const TabPage(initialIndex: 0)),
-              (route) => false,
-            );
-          }
-        });
+        Get.offAll(() => LoginPage());
       }
     } catch (e, stackTrace) {
-      print('회원 탈퇴 처리 오류: $e');
-      print('스택 트레이스: $stackTrace');
 
       // 로딩 다이얼로그 닫기
       if (mounted &&

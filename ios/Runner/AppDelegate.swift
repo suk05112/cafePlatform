@@ -1,6 +1,9 @@
 import Flutter
 import UIKit
+import UserNotifications
 import FirebaseCore
+import FirebaseAuth
+import FirebaseMessaging
 import FirebaseCrashlytics
 
 @main
@@ -9,67 +12,88 @@ import FirebaseCrashlytics
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Firebase 초기화 (Flutter에서도 초기화되지만, 여기서도 명시적으로 초기화)
     FirebaseApp.configure()
     FirebaseConfiguration.shared.setLoggerLevel(.min)
-    GeneratedPluginRegistrant.register(with: self)
+    UNUserNotificationCenter.current().delegate = self
+    application.registerForRemoteNotifications()
 
-    let controller = window.rootViewController as! FlutterViewController
-
-    let flavorChannel = FlutterMethodChannel(
+    let controller = window?.rootViewController as? FlutterViewController
+    if let controller = controller {
+      let flavorChannel = FlutterMethodChannel(
         name: "flavor",
-        binaryMessenger: controller.binaryMessenger)
-
-    flavorChannel.setMethodCallHandler({(call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
-        // Note: this method is invoked on the UI thread
+        binaryMessenger: controller.binaryMessenger
+      )
+      flavorChannel.setMethodCallHandler { _, result in
         let flavor = Bundle.main.infoDictionary?["App-Flavor"]
         result(flavor)
-    })
+      }
+    }
+
+    GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
-  
-  // URL Scheme 처리 (카카오톡 로그인 등)
+
   override func application(
     _ app: UIApplication,
     open url: URL,
-    options: [UIApplication.OpenURLOptionsKey : Any] = [:]
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
-    // Flutter의 app_links 플러그인이 처리하도록 먼저 시도
     if super.application(app, open: url, options: options) {
       return true
     }
-    
-    // 직접 처리하지 않고 app_links가 처리하도록 함
-    // app_links는 내부적으로 이 메서드를 호출하므로 여기서는 super 호출만으로 충분
     return false
   }
-  
-  // Universal Links 처리
+
   override func application(
     _ application: UIApplication,
     continue userActivity: NSUserActivity,
     restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
   ) -> Bool {
-    // Flutter의 app_links 플러그인이 처리하도록 먼저 시도
     if super.application(application, continue: userActivity, restorationHandler: restorationHandler) {
       return true
     }
-    
-    // Universal Link인 경우 처리
     if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
-       let url = userActivity.webpageURL {
-      // app_links가 처리하도록 함
+       userActivity.webpageURL != nil {
       return false
     }
-    
     return false
   }
-  
-  // SceneDelegate를 사용하지 않는 경우를 위한 처리
+
   override func application(
     _ application: UIApplication,
     handleOpen url: URL
   ) -> Bool {
     return super.application(application, handleOpen: url)
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    print("✅ APNs 토큰 등록됨")
+    Auth.auth().setAPNSToken(deviceToken, type: .unknown)
+    Messaging.messaging().apnsToken = deviceToken
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    print("❌ APNs 등록 실패: \(error)")
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    print("📨 didReceiveRemoteNotification 호출됨")
+    if Auth.auth().canHandleNotification(userInfo) {
+      print("✅ FirebaseAuth가 notification 처리함")
+      completionHandler(.noData)
+      return
+    }
+    Messaging.messaging().appDidReceiveMessage(userInfo)
+    completionHandler(.newData)
   }
 }

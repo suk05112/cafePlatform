@@ -32,10 +32,8 @@ class KakaoShareHelper {
           Uri uri =
               await ShareClient.instance.shareDefault(template: defaultFeed);
           await ShareClient.instance.launchKakaoTalk(uri);
-          print('카카오톡 공유 완료');
           onSuccess?.call();
         } catch (error) {
-          print('카카오톡 공유 실패 $error');
           onError?.call('카카오톡 공유에 실패했습니다: $error');
         }
       } else {
@@ -44,15 +42,12 @@ class KakaoShareHelper {
           Uri shareUrl = await WebSharerClient.instance
               .makeDefaultUrl(template: defaultFeed);
           await launchBrowserTab(shareUrl, popupOpen: true);
-          print('카카오톡 미설치 - 웹 공유 URL: $shareUrl');
           onSuccess?.call();
         } catch (error) {
-          print('카카오톡 웹 공유 실패 $error');
           onError?.call('카카오톡 공유에 실패했습니다: $error');
         }
       }
     } catch (error) {
-      print('카카오톡 공유 오류: $error');
       onError?.call('카카오톡 공유 중 오류가 발생했습니다: $error');
     }
   }
@@ -63,31 +58,24 @@ class KakaoShareHelper {
     // API에서 로고 presigned URL 가져오기
     Uri? profileImageUri;
     try {
-      await Api().setBaseClient(Api.BASE_URL);
       final response = await Api().client.getGifnutImageUrl(
             expiresIn: 3600, // 1시간 (기본값)
           );
       if (response.url.isNotEmpty) {
         profileImageUri = Uri.parse(response.url);
-        print('로고 presigned URL API 호출 성공: ${response.url}');
       }
     } on DioException catch (e) {
       // DioException 타입별로 구체적인 오류 메시지 출력
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        print('로고 presigned URL API 호출 실패 (타임아웃): ${e.type}');
       } else if (e.type == DioExceptionType.badResponse) {
-        print('로고 presigned URL API 호출 실패 (서버 오류): ${e.response?.statusCode}');
       } else if (e.type == DioExceptionType.connectionError) {
-        print('로고 presigned URL API 호출 실패 (연결 오류): ${e.message}');
       } else {
-        print('로고 presigned URL API 호출 실패: ${e.type} - ${e.message}');
       }
       // 실패 시 null로 설정 (카카오톡 기본 프로필 이미지 사용)
       profileImageUri = null;
     } catch (e) {
-      print('로고 presigned URL API 호출 실패 (예외): $e');
       // 실패 시 null로 설정 (카카오톡 기본 프로필 이미지 사용)
       profileImageUri = null;
     }
@@ -129,18 +117,9 @@ class KakaoShareHelper {
         Button(
           title: '선물받기',
           link: Link(
-            // 웹 URL (App Links/Universal Links를 통해 앱으로 연결)
-            // Android: AndroidManifest.xml에 https://www.502company.com/gift가 App Links로 설정되어 있음
-            // iOS: Runner.entitlements에 applinks:www.502company.com이 Associated Domains로 설정되어 있음
             webUrl: Uri.parse(
                 'https://www.502company.com/gift?gifticon_id=${gifticon.gifticon_id}'),
-            // iOS에서는 Universal Links가 카카오톡에서 제대로 작동하지 않을 수 있으므로
-            // 커스텀 스킴도 함께 사용 (웹 서버에서 JavaScript로 앱 열기 시도)
-            mobileWebUrl: Uri.parse(
-                'https://www.502company.com/gift?gifticon_id=${gifticon.gifticon_id}'),
-            // 앱 실행 시 전달될 파라미터
-            // Android: androidExecutionParams가 앱으로 전달됨
-            // iOS: iosExecutionParams가 앱으로 전달되지만, Universal Links를 통해 들어올 때는 query parameter로 전달됨
+            mobileWebUrl: Uri.parse('https://www.hellogifnut.com/download/user/'),
             androidExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
             iosExecutionParams: {'gifticon_id': '${gifticon.gifticon_id}'},
           ),

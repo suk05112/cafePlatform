@@ -33,7 +33,7 @@ Map<String, dynamic> _$MenuPostResponseToJson(MenuPostResponse instance) =>
 Menu _$MenuFromJson(Map<String, dynamic> json) => Menu(
       menu_id: json['menu_id'] as int? ?? 0,
       store_id: json['store_id'] as int? ?? 0,
-      name: json['menu_name'] as String?,
+      name: json['name'] as String?,
       price: json['price'] as int? ?? 0,
       menu_image_url: json['menu_photo'] as String?,
       description: json['description'] as String?,
@@ -43,7 +43,7 @@ Menu _$MenuFromJson(Map<String, dynamic> json) => Menu(
 Map<String, dynamic> _$MenuToJson(Menu instance) => <String, dynamic>{
       'menu_id': instance.menu_id,
       'store_id': instance.store_id,
-      'menu_name': instance.name,
+      'name': instance.name,
       'price': instance.price,
       'menu_photo': instance.menu_image_url,
       'description': instance.description,

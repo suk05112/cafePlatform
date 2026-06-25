@@ -1,13 +1,14 @@
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:cafeplatform/config/flavors.dart';
 
 /// S3 presigned URL 생성을 위한 헬퍼 클래스
 /// AWS Signature Version 4 알고리즘을 사용하여 presigned URL 생성
 class S3PresignedUrlHelper {
-  // S3 버킷 설정
-  static const String bucketName = 'cafeplatform-dev';
-  // static const String bucketName = 'gifnut-common-resources';
+  // S3 버킷 설정 (flavor에 따라 dev/prod 버킷 분기)
+  static String get bucketName =>
+      F.appFlavor == Flavor.prod ? 'cafeplatform' : 'cafeplatform-dev';
 
   static const String region = 'ap-northeast-2';
   static const String service = 's3';
@@ -100,8 +101,6 @@ class S3PresignedUrlHelper {
 
       return 'https://$bucketName.s3.$region.amazonaws.com$canonicalUri?$queryString';
     } catch (e, stackTrace) {
-      print('S3 presigned URL 생성 실패: $e');
-      print('스택 트레이스: $stackTrace');
       rethrow;
     }
   }

@@ -298,6 +298,46 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<RecommendMenuResponse> getRecommendMenus({
+    double? lat,
+    double? lng,
+    String? districtCode,
+    int? limit,
+    String? cursor,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'lat': lat,
+      r'lng': lng,
+      r'district_code': districtCode,
+      r'limit': limit,
+      r'cursor': cursor,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<RecommendMenuResponse>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/menu/recommend',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = RecommendMenuResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
   Future<MenuPostResponse> addMenu(Menu menu) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -353,24 +393,24 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<PurchaseGifticonResponse> purchaseGifticon(
+  Future<PaymentUrlResponse> getPaymentUrl(
     int userId,
-    Gifticon gifticon,
+    PaymentUrlRequest request,
   ) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     final _data = <String, dynamic>{};
-    _data.addAll(gifticon.toJson());
-    final _result = await _dio.fetch<Map<String, dynamic>>(
-        _setStreamType<PurchaseGifticonResponse>(Options(
+    _data.addAll(request.toJson());
+    final _result = await _dio
+        .fetch<Map<String, dynamic>>(_setStreamType<PaymentUrlResponse>(Options(
       method: 'POST',
       headers: _headers,
       extra: _extra,
     )
             .compose(
               _dio.options,
-              '/order/${userId}',
+              '/order/${userId}/payment-url',
               queryParameters: queryParameters,
               data: _data,
             )
@@ -379,7 +419,7 @@ class _ApiClient implements ApiClient {
               _dio.options.baseUrl,
               baseUrl,
             ))));
-    final _value = PurchaseGifticonResponse.fromJson(_result.data!);
+    final _value = PaymentUrlResponse.fromJson(_result.data!);
     return _value;
   }
 
@@ -442,7 +482,7 @@ class _ApiClient implements ApiClient {
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     await _dio.fetch<void>(_setStreamType<void>(Options(
-      method: 'GET',
+      method: 'POST',
       headers: _headers,
       extra: _extra,
     )
@@ -658,6 +698,34 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<void> deleteUserPushToken(
+    int userId,
+    String fcmToken,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{r'X-FCM-Token': fcmToken};
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    await _dio.fetch<void>(_setStreamType<void>(Options(
+      method: 'DELETE',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/user/push-token/${userId}',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        ))));
+  }
+
+  @override
   Future<DeleteUserResponse> deleteUser(
     int userId,
     String? authorizationCode,
@@ -853,6 +921,88 @@ class _ApiClient implements ApiClient {
               baseUrl,
             ))));
     final _value = FindAccountResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
+  Future<TermsContentResponse> getTermsContent(String termType) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{r'term_type': termType};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<TermsContentResponse>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/user/terms/content',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = TermsContentResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
+  Future<TermsCurrentResponse> getTermsCurrent() async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<TermsCurrentResponse>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/user/terms/current',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = TermsCurrentResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
+  Future<TermsAgreeResponse> postTermsAgree(TermsAgreeRequest request) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(request.toJson());
+    final _result = await _dio
+        .fetch<Map<String, dynamic>>(_setStreamType<TermsAgreeResponse>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/user/terms/agree',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = TermsAgreeResponse.fromJson(_result.data!);
     return _value;
   }
 

@@ -36,8 +36,9 @@ class _NetworkCheckerState extends State<NetworkChecker> {
   }
 
   void _updateConnectionStatus(List<ConnectivityResult> result) {
-    final hasConnection =
-        result.isNotEmpty && result.any((r) => r != ConnectivityResult.none);
+    // iOS 등에서 빈 리스트가 나오면 "오프라인"으로 오인해 전체 앱이 막히지 않도록 함
+    final hasConnection = result.isEmpty ||
+        result.any((r) => r != ConnectivityResult.none);
 
     if (mounted) {
       final wasOffline = !_hasInternet;
@@ -60,7 +61,15 @@ class _NetworkCheckerState extends State<NetworkChecker> {
   @override
   Widget build(BuildContext context) {
     if (!_hasInternet) {
-      return const NoInternetScreen();
+      return NoInternetScreen(
+        onReconnect: () {
+          if (!mounted) return;
+          setState(() {
+            _hasInternet = true;
+            _refreshKey++;
+          });
+        },
+      );
     }
     // key를 변경하여 인터넷 재연결 시 child를 새로고침
     return KeyedSubtree(

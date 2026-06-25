@@ -18,10 +18,11 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.gifnut.cafeplatform"
     // compileSdk = flutter.compileSdkVersion
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
@@ -40,6 +41,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // 릴리스에서 초기화/멀티덱스 이슈로 스플래시에서 멈춤 완화
+        // https://medium.com/@chetan.akarte/flutter-app-freezes-on-the-splash-screen-in-release-mode-e15a6045a189
+        multiDexEnabled true
     }
 
     signingConfigs {
@@ -69,11 +73,16 @@ android {
         dev {
             dimension "default"
             applicationIdSuffix ".dev"
-            resValue "string", "app_name", "MyApp Dev"
+            resValue "string", "app_name", "Gifnut Dev"
         }
         prod {
             dimension "default"
-            resValue "string", "app_name", "MyApp"
+            resValue "string", "app_name", "Gifnut"
+        }
+        mock {
+            dimension "default"
+            applicationIdSuffix ".mock"
+            resValue "string", "app_name", "Gifnut Mock"
         }
     }
 }
@@ -83,6 +92,9 @@ flutter {
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    implementation "androidx.multidex:multidex:2.0.1"
+    implementation 'com.google.firebase:firebase-messaging'
     implementation platform("com.google.firebase:firebase-bom:33.4.0")
     // implementation 'com.google.firebase:firebase-analytics:21.5.0'
     

@@ -20,6 +20,46 @@ end
 
 ensure_compatible_xcodeproj_object_version!
 
+# --- Patch: xcodeproj 1.27.0 crashes on Xcode 26.x because groupable_helper calls
+# source_tree/path on XCBuildConfiguration, which doesn't have those methods.
+# We patch GroupableHelper directly so gem updates don't reset the fix.
+require 'xcodeproj'
+module Xcodeproj
+  class Project
+    module Object
+      class GroupableHelper
+        class << self
+          def real_path(object)
+            return object.project.project_dir unless object.respond_to?(:path)
+            source_tree = source_tree_real_path(object)
+            path = object.path || ''.freeze
+            source_tree ? source_tree + path : Pathname(path)
+          end
+
+          def source_tree_real_path(object)
+            return object.project.project_dir unless object.respond_to?(:source_tree)
+            case object.source_tree
+            when '<group>'
+              object_parent = parent(object)
+              if object_parent.isa == 'PBXProject'.freeze
+                object.project.project_dir + object.project.root_object.project_dir_path
+              else
+                real_path(object_parent)
+              end
+            when 'SOURCE_ROOT'
+              object.project.project_dir
+            when '<absolute>'
+              nil
+            else
+              Pathname.new("${#{object.source_tree}}")
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
@@ -56,5 +96,11 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+        'PERMISSION_CONTACTS=1',
+      ]
+    end
   end
 end

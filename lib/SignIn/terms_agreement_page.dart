@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:cafeplatform/setting/terms_page.dart';
+import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/terms_current_response.dart';
+import 'package:cafeplatform/api/terms_agree_request.dart';
 
 enum TermsType {
-  service('https://www.502company.com/term/user/service/'),
-  privacy('https://www.502company.com/term/user/privacy-consent/'),
-  marketing('https://www.502company.com/term/user/marketing/');
-  // service('https://www.502company.com/terms/service'),
-  // privacy('https://www.502company.com/terms/privacy'),
-  // marketing('https://www.502company.com/terms/marketing');
+  service('SERVICE'),
+  privacy('PRIVACY'),
+  marketing('MARKETING'),
+  location('LOCATION');
 
-  const TermsType(this.url);
-  final String url;
+  const TermsType(this.termType);
+  final String termType;
 }
 
 class TermsAgreementPage extends StatefulWidget {
@@ -36,8 +37,45 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
   bool agreePrivacy = false;
   bool agreeMarketing = false;
   bool agreeAge = false;
+  bool agreeLocation = false;
+
+  List<TermItem> _termItems = [];
 
   bool get _canProceed => agreeService && agreePrivacy && agreeAge;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTerms();
+  }
+
+  Future<void> _loadTerms() async {
+    try {
+      final response = await Api().client.getTermsCurrent();
+      if (mounted) {
+        setState(() {
+          _termItems = response.terms;
+        });
+      }
+    } catch (_) {}
+  }
+
+  List<TermAgreementItem> _buildAgreements() {
+    final typeToAgreed = {
+      'SERVICE': agreeService,
+      'PRIVACY_CONSENT': agreePrivacy,
+      'MARKETING': agreeMarketing,
+      'LOCATION': agreeLocation,
+    };
+    return _termItems.map((term) {
+      final agreed = typeToAgreed[term.termType] ?? false;
+      return TermAgreementItem(
+        termId: term.termId,
+        termVersionId: term.termVersionId,
+        agreed: agreed,
+      );
+    }).toList();
+  }
 
   void _toggleAll(bool? value) {
     final checked = value ?? false;
@@ -47,6 +85,7 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
       agreePrivacy = checked;
       agreeMarketing = checked;
       agreeAge = checked;
+      agreeLocation = checked;
     });
   }
 
@@ -56,7 +95,7 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
   }) {
     setState(() {
       update(!value);
-      agreeAll = agreeService && agreePrivacy && agreeMarketing && agreeAge;
+      agreeAll = agreeService && agreePrivacy && agreeMarketing && agreeAge && agreeLocation;
     });
   }
 
@@ -65,20 +104,36 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
       context,
       MaterialPageRoute(
         builder: (_) => TermsWebViewPage(
-          url: type.url,
+          title: _termTitle(type),
+          termType: type.termType,
         ),
       ),
     );
   }
 
+  String _termTitle(TermsType type) {
+    switch (type) {
+      case TermsType.service:
+        return '이용약관';
+      case TermsType.privacy:
+        return '개인정보 수집 및 이용동의';
+      case TermsType.marketing:
+        return 'E-mail 및 SMS 광고성 정보 수신동의';
+      case TermsType.location:
+        return '위치서비스 이용약관';
+    }
+  }
+
   Future<void> _handleNext() async {
     if (!_canProceed) return;
+    final agreements = _buildAgreements();
     final phoneAuthResult = await Navigator.push<PhoneAuthResult?>(
       context,
       MaterialPageRoute(
           builder: (_) => PhoneAuthPage(
                 isSocialLogin: widget.isSocialLogin,
                 provider: widget.provider,
+                agreements: agreements,
               )),
     );
     if (phoneAuthResult != null && mounted) {
@@ -163,6 +218,17 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
                       height: 1.3,
                     ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                _AgreementTile(
+                  label: '위치서비스 이용약관',
+                  requiredLabel: '(선택)',
+                  value: agreeLocation,
+                  onChanged: (_) => _toggleItem(
+                    value: agreeLocation,
+                    update: (checked) => agreeLocation = checked,
+                  ),
+                  onLinkTap: () => _openTermsSite(TermsType.location),
                 ),
                 const SizedBox(height: 24),
                 Spacer(),
@@ -287,48 +353,3 @@ class _AgreementTile extends StatelessWidget {
   }
 }
 
-class TermsWebViewPage extends StatefulWidget {
-  const TermsWebViewPage({super.key, required this.url});
-
-  final String url;
-
-  @override
-  State<TermsWebViewPage> createState() => _TermsWebViewPageState();
-}
-
-class _TermsWebViewPageState extends State<TermsWebViewPage> {
-  bool _isLoading = true;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CommonAppBar(title: '약관 상세'),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            SizedBox.expand(
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-                initialSettings: InAppWebViewSettings(
-                  javaScriptEnabled: true,
-                  domStorageEnabled: true,
-                  useHybridComposition: true,
-                  transparentBackground: false,
-                  enableViewportScale: true,
-                ),
-                onLoadStart: (controller, url) =>
-                    setState(() => _isLoading = true),
-                onLoadStop: (controller, url) =>
-                    setState(() => _isLoading = false),
-              ),
-            ),
-            if (_isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}

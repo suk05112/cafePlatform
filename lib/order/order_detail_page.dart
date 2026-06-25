@@ -24,10 +24,10 @@ class OrderDetailPage extends StatefulWidget {
 class _OrderDetailPageState extends State<OrderDetailPage>
     with SingleTickerProviderStateMixin {
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isRefunding = false;
 
   @override
   void initState() {
-    print("init state 호출");
     super.initState();
   }
 
@@ -35,10 +35,8 @@ class _OrderDetailPageState extends State<OrderDetailPage>
     try {
       await Api().setBaseClient(Api.BASE_URL);
       var response = await Api().client.getOrderDetail(widget.orderId);
-      print('주문 상세 조회 성공: ${response.order_detail.toJson()}');
       return response.order_detail;
     } catch (error) {
-      print('주문 상세 조회 오류: $error');
       rethrow;
     }
   }
@@ -64,7 +62,9 @@ class _OrderDetailPageState extends State<OrderDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Stack(
+      children: [
+        Scaffold(
         backgroundColor: Colors.grey[50],
         appBar: const CommonAppBar(title: '주문 상세내역'),
         body: SafeArea(
@@ -72,7 +72,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
           future: _fetchOrderDetail(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
             }
 
             if (snapshot.hasError) {
@@ -134,13 +134,24 @@ class _OrderDetailPageState extends State<OrderDetailPage>
                     if (orderDetail.gifticons
                         .any((g) => g.is_receiver_linked == false))
                       SizedBox(height: 16),
-                    cancelButton(),
+                    if (orderDetail.status?.toUpperCase() != 'REFUNDED')
+                      cancelButton(),
                   ],
                 ),
               ),
             );
           },
-        )));
+        ))),
+        if (_isRefunding)
+          const ModalBarrier(dismissible: false, color: Colors.black26),
+        if (_isRefunding)
+          Center(
+            child: CircularProgressIndicator(
+              color: ColorAssset.mainColor,
+            ),
+          ),
+      ],
+    );
   }
 
   Widget gifticonInfoList(OrderDetailResponse orderDetail) {
@@ -337,7 +348,13 @@ class _OrderDetailPageState extends State<OrderDetailPage>
           SizedBox(height: 12),
           _buildInfoRow("결제방식", orderDetail.payment ?? "정보 없음"),
           SizedBox(height: 12),
-          _buildInfoRow("결제상태", _getOrderStatusText(orderDetail.status)),
+          _buildInfoRow(
+            "결제상태",
+            _getOrderStatusText(orderDetail.status),
+            valueColor: orderDetail.status?.toUpperCase() == 'REFUNDED'
+                ? Colors.red[700]
+                : null,
+          ),
           Divider(
             thickness: 1,
             height: 24,
@@ -369,7 +386,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
     return Row(
       children: [
         Text(
@@ -384,7 +401,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
           value,
           style: TextStyle(
             fontSize: 13,
-            color: Colors.black87,
+            color: valueColor ?? Colors.black87,
           ),
         ),
       ],
@@ -458,16 +475,13 @@ class _OrderDetailPageState extends State<OrderDetailPage>
       await KakaoShareHelper.shareGifticon(
         gifticon,
         onSuccess: () {
-          print('카카오톡 공유 완료');
           _showToast('카카오톡으로 선물을 전달했습니다.');
         },
         onError: (error) {
-          print('카카오톡 공유 실패: $error');
           _showToast('카카오톡 공유에 실패했습니다.');
         },
       );
     } catch (error) {
-      print('카카오톡 공유 오류: $error');
       _showToast('카카오톡 공유 중 오류가 발생했습니다.');
     }
   }
@@ -672,6 +686,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
   }
 
   Future<void> _handleRefund() async {
+    setState(() => _isRefunding = true);
     try {
       // 환불 API 호출
       await Api().client.refundGifticon(widget.orderId);
@@ -716,10 +731,11 @@ class _OrderDetailPageState extends State<OrderDetailPage>
         _showRefundFailureDialog(errorMessage);
       }
     } catch (e) {
-      print("환불 오류: $e");
       if (mounted) {
         _showRefundFailureDialog("예기치 않은 오류가 발생했습니다.");
       }
+    } finally {
+      if (mounted) setState(() => _isRefunding = false);
     }
   }
 

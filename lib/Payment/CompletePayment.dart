@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/model/gifticon.dart';
+import 'package:cafeplatform/provider/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/utils/kakao_share_helper.dart';
 
@@ -38,8 +40,6 @@ class _CompletePaymentState extends State<CompletePayment>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
-    print(
-        'didChangeAppLifecycleState: $state, showGiftCompleteScreen: $_showGiftCompleteScreen');
     if (state == AppLifecycleState.resumed) {
       // 앱이 포그라운드로 돌아왔을 때
       await _checkSharingComplete();
@@ -68,8 +68,6 @@ class _CompletePaymentState extends State<CompletePayment>
     final prefs = await SharedPreferences.getInstance();
     final sharingInProgress = prefs.getBool('sharing_in_progress') ?? false;
 
-    print('_checkSharingComplete');
-    print('sharingInProgress: $sharingInProgress isSharing: $_isSharing');
     // 공유 중이었다가 앱으로 돌아온 경우 완료 화면 표시
     if (sharingInProgress && _isSharing) {
       await prefs.remove('sharing_in_progress');
@@ -85,7 +83,6 @@ class _CompletePaymentState extends State<CompletePayment>
   }
 
   Future<void> _checkUnsentGift() async {
-    print('_checkUnsentGift');
     if (_hasShownUnsentGiftDialog) return;
 
     final prefs = await SharedPreferences.getInstance();
@@ -94,12 +91,10 @@ class _CompletePaymentState extends State<CompletePayment>
 
     // 공유가 진행 중이면 안보낸 선물로 처리하지 않음
     if (sharingInProgress) {
-      print('_checkUnsentGift: 공유 진행 중이므로 무시');
       return;
     }
 
     if (unsentGifticonId != null && unsentGifticonId.isNotEmpty) {
-      print('_checkUnsentGift 다이얼로그 보여주기');
 
       _hasShownUnsentGiftDialog = true;
       _showUnsentGiftDialog();
@@ -107,7 +102,6 @@ class _CompletePaymentState extends State<CompletePayment>
   }
 
   Future<void> _saveUnsentGift() async {
-    print('_saveUnsentGift');
     if (widget.gifticon == null) return;
 
     final prefs = await SharedPreferences.getInstance();
@@ -117,7 +111,6 @@ class _CompletePaymentState extends State<CompletePayment>
   }
 
   Future<void> _clearUnsentGift() async {
-    print('_clearUnsentGift');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('unsent_gifticon_id');
     await prefs.remove('unsent_gifticon_name');
@@ -182,7 +175,6 @@ class _CompletePaymentState extends State<CompletePayment>
       await KakaoShareHelper.shareGifticon(
         widget.gifticon!,
         onSuccess: () async {
-          print('_shareToKakaoTalk: 카카오톡 공유 완료');
           // 공유 성공 시 저장된 정보 모두 제거
           await _clearUnsentGift();
           // sharing_in_progress는 유지하여 앱 복귀 시 완료 화면 표시
@@ -190,7 +182,6 @@ class _CompletePaymentState extends State<CompletePayment>
           // _isSharing은 앱 복귀 시 _checkSharingComplete에서 false로 설정됨
         },
         onError: (error) async {
-          print('카카오톡 공유 실패: $error');
           // 공유 실패 시 플래그 제거
           await prefs.remove('sharing_in_progress');
           if (mounted) {
@@ -201,7 +192,6 @@ class _CompletePaymentState extends State<CompletePayment>
         },
       );
     } catch (error) {
-      print('카카오톡 공유 오류: $error');
       prefs.remove('sharing_in_progress');
       if (mounted) {
         setState(() {
@@ -380,6 +370,7 @@ class _CompletePaymentState extends State<CompletePayment>
                         ),
                       ),
                       onPressed: () {
+                        context.read<UserProvider>().invalidateGifticonCache();
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
                               builder: (context) => TabPage(initialIndex: 1)),
@@ -408,6 +399,7 @@ class _CompletePaymentState extends State<CompletePayment>
                         ),
                       ),
                       onPressed: () {
+                        context.read<UserProvider>().invalidateGifticonCache();
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => TabPage()),
                           (route) => false,
@@ -462,6 +454,7 @@ class _CompletePaymentState extends State<CompletePayment>
                         ),
                       ),
                       onPressed: () {
+                        context.read<UserProvider>().invalidateGifticonCache();
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => TabPage()),
                           (route) => false,

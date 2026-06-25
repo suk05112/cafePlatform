@@ -1,3 +1,5 @@
+import 'package:cafeplatform/api/payment_url_request.dart';
+import 'package:cafeplatform/api/payment_url_response.dart';
 import 'package:cafeplatform/api/gifticon_response.dart';
 import 'package:cafeplatform/api/store_post_response.dart';
 import 'package:cafeplatform/api/user_response.dart';
@@ -10,6 +12,10 @@ import 'package:cafeplatform/api/notice_response.dart';
 import 'package:cafeplatform/api/gifnut_image_url_response.dart';
 import 'package:cafeplatform/api/find_account_request.dart';
 import 'package:cafeplatform/api/find_account_response.dart';
+import 'package:cafeplatform/api/terms_content_response.dart';
+import 'package:cafeplatform/api/terms_current_response.dart';
+import 'package:cafeplatform/api/terms_agree_request.dart';
+import 'package:cafeplatform/api/terms_agree_response.dart';
 import 'package:cafeplatform/model/Inquiry.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/gifticon.dart';
@@ -84,6 +90,15 @@ abstract class ApiClient {
     @Path('store_id') int storeId,
   );
 
+  @GET("/menu/recommend")
+  Future<RecommendMenuResponse> getRecommendMenus({
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+    @Query('district_code') String? districtCode,
+    @Query('limit') int? limit,
+    @Query('cursor') String? cursor,
+  });
+
   @POST("/menu/")
   Future<MenuPostResponse> addMenu(
     @Body() Menu menu,
@@ -94,13 +109,13 @@ abstract class ApiClient {
     @Path('user_id') int userId,
   );
 
-  @POST("/order/{user_id}")
-  Future<PurchaseGifticonResponse> purchaseGifticon(
+  @POST("/order/{user_id}/payment-url")
+  Future<PaymentUrlResponse> getPaymentUrl(
     @Path('user_id') int userId,
-    @Body() Gifticon gifticon,
+    @Body() PaymentUrlRequest request,
   );
 
-  @POST("/order/payment/result")
+@POST("/order/payment/result")
   Future<void> sendPaymentResult(
     @Body() PaymentResultRequest paymentResult,
   );
@@ -110,7 +125,7 @@ abstract class ApiClient {
     @Path('gifticon_id') int gifticonId,
   );
 
-  @GET("/order/refund/{order_id}")
+  @POST("/order/refund/{order_id}")
   Future<void> refundGifticon(
     @Path('order_id') int orderId,
   );
@@ -152,6 +167,12 @@ abstract class ApiClient {
     @Header('X-FCM-Token') String? fcmToken,
   );
 
+  @DELETE("/user/push-token/{user_id}")
+  Future<void> deleteUserPushToken(
+    @Path('user_id') int userId,
+    @Header('X-FCM-Token') String fcmToken,
+  );
+
   @DELETE("/user/{user_id}")
   Future<DeleteUserResponse> deleteUser(
     @Path('user_id') int userId,
@@ -179,4 +200,15 @@ abstract class ApiClient {
 
   @POST("/user/find-account")
   Future<FindAccountResponse> findAccount(@Body() FindAccountRequest request);
+
+  @GET("/user/terms/content")
+  Future<TermsContentResponse> getTermsContent(
+    @Query('term_type') String termType,
+  );
+
+  @GET("/user/terms/current")
+  Future<TermsCurrentResponse> getTermsCurrent();
+
+  @POST("/user/terms/agree")
+  Future<TermsAgreeResponse> postTermsAgree(@Body() TermsAgreeRequest request);
 }

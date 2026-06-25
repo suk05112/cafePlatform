@@ -1,14 +1,22 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/cafeList/cafe_list_map_view.dart';
+import 'package:cafeplatform/cafeList/region_picker_sheet.dart';
 import 'package:cafeplatform/cafeList/search_page.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/model/Store.dart';
+import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/model/region.dart';
+import 'package:cafeplatform/Payment/select_gift_type_page.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
 import 'package:cafeplatform/store_page.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
+import 'package:cafeplatform/utils/store_distance.dart';
+import 'package:cafeplatform/utils/cached_image.dart';
+import 'package:cafeplatform/api/API.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+
 
 class CafeList extends StatefulWidget {
   const CafeList({super.key});
@@ -17,34 +25,53 @@ class CafeList extends StatefulWidget {
   State<CafeList> createState() => _CafeListState();
 }
 
-class _CafeListState extends State<CafeList>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+class _CafeListState extends State<CafeList> {
+  static const Color _pageBg = Colors.white;
+  static const Color _searchFill = Color(0xFFFAFAFA);
+  static const Color _searchBorder = Color(0xFFEEEEEE);
+  static const Color _hintColor = Color(0xFF9F9F9F);
   String? _selectedRegionCode;
+  bool _isRegionPickerOpen = false;
   final ScrollController _scrollController = ScrollController();
+  double _refLat = kDefaultReferenceLatitude;
+  double _refLng = kDefaultReferenceLongitude;
+  bool _hasLocationPermission = false;
+
+  List<RecommendMenu> _recommendMenus = [];
+  bool _recommendLoading = false;
+  bool _recommendTapping = false;
+
+  // 지역 변경 감지용
+  String? _previousRegionCode;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-
-    // 스크롤 리스너 추가
     _scrollController.addListener(_onScroll);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _resolveLocation();
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-      storeProvider.resetPagination();
-      // 처음에는 "01"로 호출
-      try {
-        await storeProvider.fetchListViewStoresByDistrict("01",
-            cursor: null, limit: 10);
-      } catch (error) {
-        print("초기 매장 로드 오류: $error");
-        await storeProvider.fetchStoreList();
+      // 스플래시에서 프리패치한 데이터가 있으면 재호출 스킵
+      final hasPrefetched = (storeProvider.listViewStores?.isNotEmpty ?? false);
+      if (!hasPrefetched) {
+        storeProvider.resetPagination();
+        try {
+          await storeProvider.fetchListViewStoresByDistrict("01",
+              cursor: null, limit: 10);
+        } catch (error) {
+          await storeProvider.fetchStoreList();
+        }
+        storeProvider.fetchAvailableRegions();
       }
-      storeProvider.fetchAvailableRegions();
+      // 메뉴 추천은 지역 확정 후 _buildDiscoveryRegionRow에서 트리거됨
     });
   }
+
+
 
   void _onScroll() {
     // 스크롤 위치 확인
@@ -56,18 +83,85 @@ class _CafeListState extends State<CafeList>
     if (position.pixels >= threshold && position.pixels > 0) {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
 
-      print(
-          '스크롤 감지: pixels=${position.pixels}, maxScrollExtent=${position.maxScrollExtent}, threshold=$threshold');
-      print(
-          '페이지네이션 상태: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}, nextCursor=${storeProvider.nextCursor}');
+      // print(
+      //     '스크롤 감지: pixels=${position.pixels}, maxScrollExtent=${position.maxScrollExtent}, threshold=$threshold');
+      // print(
+      //     '페이지네이션 상태: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}, nextCursor=${storeProvider.nextCursor}');
 
       if (storeProvider.hasMore && !storeProvider.isLoadingMore) {
-        print('다음 페이지 로드 시작');
+        // print('다음 페이지 로드 시작');
         storeProvider.loadMoreStores();
-      } else {
-        print(
-            '다음 페이지 로드 스킵: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}');
       }
+      // else {
+      //   print(
+      //       '다음 페이지 로드 스킵: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}');
+      // }
+    }
+  }
+
+  Future<void> _resolveLocation() async {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (!enabled) return;
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) return;
+
+    Position? pos;
+    try {
+      pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (_) {
+      try {
+        pos = await Geolocator.getLastKnownPosition();
+      } catch (_) {}
+    }
+    if (pos == null || !mounted) return;
+    setState(() {
+      _refLat = pos!.latitude;
+      _refLng = pos.longitude;
+      _hasLocationPermission = true;
+    });
+    // 위치 해결 후 메뉴 추천 재호출 하지 않음 (지역 변경 시에만 호출)
+  }
+
+  // 현재 선택된 지역의 district_code 반환
+  String? _getSelectedDistrictCode() {
+    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    final regionCode = storeProvider.selectedRegionCode ?? _selectedRegionCode;
+    if (regionCode == null) return null;
+    final regions = storeProvider.availableRegions;
+    if (regions.isEmpty) return null;
+    final region = regions.firstWhere(
+      (r) => r.region_code == regionCode,
+      orElse: () => regions.first,
+    );
+    return region.districts?.isNotEmpty == true
+        ? region.districts!.first.district_code
+        : regionCode;
+  }
+
+  Future<void> _loadRecommendMenus() async {
+    if (_recommendLoading) return;
+    final districtCode = _getSelectedDistrictCode();
+    if (districtCode == null || districtCode.isEmpty) return;
+
+    setState(() => _recommendLoading = true);
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+      final resp = await Api().client.getRecommendMenus(
+        districtCode: districtCode,
+        limit: 100,
+      );
+      if (!mounted) return;
+      setState(() => _recommendMenus = resp.menuList);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _recommendLoading = false);
     }
   }
 
@@ -75,7 +169,6 @@ class _CafeListState extends State<CafeList>
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -87,7 +180,6 @@ class _CafeListState extends State<CafeList>
         await storeProvider.fetchListViewStoresByDistrict("01",
             cursor: null, limit: 10);
       } catch (error) {
-        print("매장 로드 오류: $error");
         await storeProvider.fetchStoreList();
       }
       storeProvider.fetchAvailableRegions();
@@ -102,74 +194,343 @@ class _CafeListState extends State<CafeList>
     final selectedRegionCode =
         storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
+    // 지역 변경 감지: 이전 지역과 다르면 메뉴 추천 재호출
+    if (selectedRegionCode != null && selectedRegionCode != _previousRegionCode) {
+      _previousRegionCode = selectedRegionCode;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadRecommendMenus();
+      });
+    }
+
     final filteredListViewStores =
         _filterStores(listViewStores, selectedRegionCode);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _pageBg,
       body: SafeArea(
         child: NetworkAwareWidget(
           onRetry: _refreshData,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: _buildRegionAndSearchRow()),
-                        const SizedBox(width: 8),
-                        // IconButton(
-                        //   onPressed: crashtest,
-                        //   icon: const Icon(Icons.bug_report, size: 20),
-                        //   tooltip: '크래시 테스트',
-                        //   style: IconButton.styleFrom(
-                        //     backgroundColor: Colors.red.withOpacity(0.1),
-                        //     padding: const EdgeInsets.all(8),
-                        //   ),
-                        // ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '카페 ${filteredListViewStores.length}개',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _buildDiscoveryRegionRow(),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildSearchAndMapRow(),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildMenuRecommendationSection(),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            const Text(
+                              '내 근처 매장 찾기',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF212121),
+                                height: 1.2,
+                              ),
+                            ),
+                            if (filteredListViewStores.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                '${filteredListViewStores.length}',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              TabBar(
-                controller: _tabController,
-                indicatorColor: Colors.black,
-                labelColor: Colors.black,
-                indicatorWeight: 3,
-                unselectedLabelColor: Colors.grey,
-                tabs: const [
-                  Tab(text: '리스트로 보기'),
-                  Tab(text: '지도로 보기'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildStoreList(filteredListViewStores),
-                    CafeListMapView(
-                      key: const ValueKey('map_view'),
+              if (storeProvider.listViewIsLoading)
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, __) => const _CafeDiscoverySkeletonRow(),
+                    childCount: 3,
+                  ),
+                )
+              else if (filteredListViewStores.isEmpty && !storeProvider.isLoadingMore)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _buildEmptyStoreState(),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.only(bottom: 32),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index >= filteredListViewStores.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: CircularProgressIndicator(color: ColorAssset.mainColor),
+                            ),
+                          );
+                        }
+                        final store = filteredListViewStores[index];
+                        return _CafeDiscoveryStoreRow(
+                          store: store,
+                          refLat: _refLat,
+                          refLng: _refLng,
+                          hasLocationPermission: _hasLocationPermission,
+                          buildImage: _buildStoreThumb,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => StorePage(
+                                  storeId: store.store_id,
+                                  storeName: store.store_name,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      childCount: filteredListViewStores.length +
+                          (storeProvider.isLoadingMore ? 1 : 0),
                     ),
-                  ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEmptyStoreState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.store_outlined, size: 56, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            Text(
+              '등록된 매장이 없습니다',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '다른 지역을 선택하거나 잠시 후 다시 확인해 주세요',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuRecommendationSection() {
+    final display = _recommendMenus.take(10).toList();
+
+    if (!_recommendLoading && _recommendMenus.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Text(
+                '이런 메뉴는 어떠세요?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade900,
+                  height: 1.2,
+                ),
+              ),
+              const Spacer(),
+              if (!_recommendLoading)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => _RecommendMenuListPage(
+                          menus: _recommendMenus,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        '더보기',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade600),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_recommendLoading)
+          SizedBox(
+            height: 210,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: 3,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, __) => const _RecommendMenuSkeletonCard(),
+            ),
+          )
+        else
+          SizedBox(
+            height: 210,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: display.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final m = display[index];
+                return _RecommendMenuCard(
+                  menu: m,
+                  onTap: () => _onRecommendMenuItemTap(m),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _onRecommendMenuItemTap(RecommendMenu item) {
+    if (_recommendTapping) return;
+    _recommendTapping = true;
+
+    // RecommendMenu 데이터로 Menu 객체를 직접 생성해 즉시 이동
+    // 매장 주소/좌표는 SelectGiftPage 안에서 백그라운드 로드
+    final menu = Menu(
+      menu_id: item.menuId,
+      store_id: item.storeId,
+      name: item.menuName,
+      price: item.price,
+      menu_image_url: item.menuPhoto,
+      description: item.description,
+    );
+
+    Navigator.push(context, MaterialPageRoute<void>(
+      builder: (_) => SelectGiftPage(
+        menu: menu,
+        contextStoreId: item.storeId,
+        exchangePlaceName: item.storeName,
+        loadStoreId: item.storeId,
+      ),
+    )).then((_) => _recommendTapping = false);
+  }
+
+  Widget _buildSearchAndMapRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const SearchPage()),
+              );
+            },
+            child: Container(
+              height: 47,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: _searchFill,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: _searchBorder),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search, color: Colors.grey.shade500, size: 22),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '매장명, 메뉴명으로 검색해보세요',
+                      style: TextStyle(
+                        color: _hintColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.3,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Material(
+          color: Colors.white,
+          shape: const CircleBorder(),
+          child: IconButton(
+            icon: Icon(Icons.map_outlined,
+                color: Colors.grey.shade800, size: 26),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const CafeListMapView(),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStoreThumb(String imageUrl, double width, double height) {
+    return CachedImage(
+      url: imageUrl,
+      width: width,
+      height: height,
+      borderRadius: BorderRadius.circular(12),
+      fallbackIcon: Icons.storefront_outlined,
     );
   }
 
@@ -183,7 +544,6 @@ class _CafeListState extends State<CafeList>
 
       // 테스트용 로그 기록
       await FirebaseCrashlytics.instance.log("크래시 로깅 테스트 시작");
-      print("✅ Crashlytics 테스트 설정 완료");
 
       // 테스트 에러 기록 (크래시 없이)
       await FirebaseCrashlytics.instance.recordError(
@@ -193,13 +553,11 @@ class _CafeListState extends State<CafeList>
         fatal: false,
       );
 
-      print("✅ 테스트 에러가 Crashlytics에 기록되었습니다. Firebase 콘솔에서 확인하세요.");
 
       // 실제 크래시를 발생시키려면 아래 주석 해제 (앱이 종료됩니다)
       // await Future.delayed(const Duration(seconds: 2));
       // FirebaseCrashlytics.instance.crash();
     } catch (error, stackTrace) {
-      print("❌ Crashlytics 테스트 오류: $error");
       await FirebaseCrashlytics.instance.recordError(
         error,
         stackTrace,
@@ -219,17 +577,15 @@ class _CafeListState extends State<CafeList>
       // 테스트용 로그 기록
       await FirebaseCrashlytics.instance.log("크래시 로깅 테스트 시작");
 
-      print("크래시 로깅 테스트 준비 완료");
 
       // 실제 크래시를 테스트하려면 아래 주석을 해제하세요
       // 주의: 이 코드는 앱을 강제로 크래시시킵니다
       // FirebaseCrashlytics.instance.crash();
 
-      // 또는 null assertion으로 크래시 발생 (자동으로 Crashlytics에 기록됨)
+      // null assertion으로 예외 발생 → Crashlytics 자동 기록
       String? testString;
-      print(testString!); // 이 코드는 NullPointerException을 발생시켜 크래시를 만듭니다
+      testString!; // ignore: unnecessary_null_check_on_non_nullable_value
     } catch (error, stackTrace) {
-      print("crashtest error: $error");
       // 에러 발생 시 Crashlytics에 기록
       try {
         await FirebaseCrashlytics.instance.recordError(
@@ -238,20 +594,17 @@ class _CafeListState extends State<CafeList>
           reason: 'crashtest 함수 실행 중 에러 발생',
           fatal: false,
         );
-        print("에러가 Crashlytics에 기록되었습니다");
       } catch (crashlyticsError) {
-        print("Crashlytics에 에러 기록 실패: $crashlyticsError");
       }
     }
   }
 
-  Widget _buildRegionAndSearchRow() {
+  Widget _buildDiscoveryRegionRow() {
     final storeProvider = context.watch<StoreProvider>();
     final availableRegions = storeProvider.availableRegions;
     final selectedRegionCode =
         storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
-    // 지역이 하나만 있으면 자동으로 선택
     if (availableRegions.length == 1 && selectedRegionCode == null) {
       final singleRegionCode = availableRegions.first.region_code;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -260,7 +613,6 @@ class _CafeListState extends State<CafeList>
             _selectedRegionCode = singleRegionCode;
           });
           storeProvider.setSelectedRegionCode(singleRegionCode);
-          // 해당 지역으로 매장 목록 로드
           final districtCode =
               availableRegions.first.districts?.isNotEmpty == true
                   ? availableRegions.first.districts!.first.district_code
@@ -270,9 +622,7 @@ class _CafeListState extends State<CafeList>
               cursor: null, limit: 10);
         }
       });
-    }
-    // 기본 선택 지역이 없으면 첫 번째 지역을 기본으로 설정
-    else if (selectedRegionCode == null && availableRegions.isNotEmpty) {
+    } else if (selectedRegionCode == null && availableRegions.isNotEmpty) {
       final firstRegionCode = availableRegions.first.region_code;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -280,7 +630,6 @@ class _CafeListState extends State<CafeList>
             _selectedRegionCode = firstRegionCode;
           });
           storeProvider.setSelectedRegionCode(firstRegionCode);
-          // 첫 번째 지역으로 매장 목록 로드
           final firstDistrictCode =
               availableRegions.first.districts?.isNotEmpty == true
                   ? availableRegions.first.districts!.first.district_code
@@ -304,192 +653,45 @@ class _CafeListState extends State<CafeList>
           : Region(region_name: '지역 선택', region_code: ''),
     );
 
-    return Row(
-      children: [
-        PopupMenuButton<String>(
-          onSelected: (regionCode) async {
-            // 특정 지역 선택 - district_code로 API 호출
-            setState(() {
-              _selectedRegionCode = regionCode;
-            });
-            storeProvider.setSelectedRegionCode(regionCode);
-            try {
-              final selectedRegion = availableRegions.firstWhere(
-                (r) => r.region_code == regionCode,
-              );
-              // region의 첫 번째 district_code 사용
-              final districtCode = selectedRegion.districts?.isNotEmpty == true
-                  ? selectedRegion.districts!.first.district_code
-                  : regionCode; // district가 없으면 region_code 사용
-
-              storeProvider.resetPagination();
-              await storeProvider.fetchListViewStoresByDistrict(districtCode,
-                  cursor: null, limit: 10);
-            } catch (error) {
-              print("지역별 매장 로드 오류: $error");
-            }
-          },
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          color: Colors.white,
-          elevation: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onTap: () async {
+        if (_isRegionPickerOpen) return;
+        _isRegionPickerOpen = true;
+        await showStoreRegionPickerBottomSheet(context);
+        _isRegionPickerOpen = false;
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '현재 지역',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade600,
+                letterSpacing: -0.3,
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.place_outlined, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  selectedRegion.region_name,
-                  overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                selectedRegion.region_name,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                  letterSpacing: -0.5,
                 ),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down, size: 18),
-              ],
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-          itemBuilder: (BuildContext context) => [
-            ...availableRegions.map((region) => PopupMenuItem<String>(
-                  value: region.region_code,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.place_outlined,
-                          size: 18,
-                          color: selectedRegionCode == region.region_code
-                              ? Colors.black87
-                              : Colors.grey[400],
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            region.region_name,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight:
-                                  selectedRegionCode == region.region_code
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                        if (selectedRegionCode == region.region_code) ...[
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.check,
-                            size: 18,
-                            color: Colors.black87,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                )),
+            Icon(Icons.keyboard_arrow_down,
+                size: 20, color: Colors.grey.shade700),
           ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => SearchPage()),
-              );
-            },
-            child: Container(
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: ColorAssset.grey4,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.search, color: ColorAssset.grey5),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '매장명으로 검색',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: ColorAssset.grey5,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStoreList(List<Store> stores) {
-    final storeProvider = context.watch<StoreProvider>();
-
-    if (stores.isEmpty && !storeProvider.isLoadingMore) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.store_outlined,
-                size: 64,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '등록된 매장이 없습니다.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      child: GridView.builder(
-        controller: _scrollController,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          // 세로 공간을 조금 더 넉넉하게 주어 카드 내용이 넘치지 않도록 조정
-          childAspectRatio: 0.7,
-          mainAxisSpacing: 18,
-          crossAxisSpacing: 12,
-        ),
-        itemCount: stores.length + (storeProvider.isLoadingMore ? 1 : 0),
-        itemBuilder: (_, index) {
-          if (index >= stores.length) {
-            // 로딩 인디케이터
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          return _StoreCard(store: stores[index]);
-        },
       ),
     );
   }
@@ -504,176 +706,420 @@ class _CafeListState extends State<CafeList>
   }
 }
 
-class _StoreCard extends StatelessWidget {
-  const _StoreCard({required this.store});
+/// Figma discovery 리스트 행 (검색 화면 [_DiscoveryStoreRow]와 동일 톤)
+class _CafeDiscoveryStoreRow extends StatelessWidget {
+  const _CafeDiscoveryStoreRow({
+    required this.store,
+    required this.refLat,
+    required this.refLng,
+    required this.hasLocationPermission,
+    required this.buildImage,
+    required this.onTap,
+  });
 
   final Store store;
+  final double refLat;
+  final double refLng;
+  final bool hasLocationPermission;
+  final Widget Function(String url, double w, double h) buildImage;
+  final VoidCallback onTap;
 
-  String _getStoreImageUrl() {
-    // 로고 URL이 있으면 로고 사용
-    String? logoUrl = store.store_logo.trim();
+  static const Color _rowTitleColor = Color(0xFF333333);
+  static const Color _rowSubtitleColor = Color(0xFF757575);
+
+  static String _imageUrl(Store store) {
+    final logoUrl = store.store_logo.trim();
     if (logoUrl.isNotEmpty &&
         (logoUrl.startsWith('http://') || logoUrl.startsWith('https://'))) {
       return logoUrl;
     }
-
-    // 로고가 없으면 매장 사진의 첫 번째 이미지 사용
     if (store.store_photo_urls.isNotEmpty) {
-      String? photoUrl = store.store_photo_urls[0].trim();
+      final photoUrl = store.store_photo_urls[0].trim();
       if (photoUrl.isNotEmpty &&
           (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
         return photoUrl;
       }
     }
-
-    // 둘 다 없으면 빈 문자열 반환 (기본 이미지 사용)
     return '';
-  }
-
-  Widget _buildStoreImage(String imageUrl) {
-    // URL 검증 및 정리
-    final cleanedUrl = imageUrl.trim();
-
-    // URL이 비어있거나 유효하지 않은 경우
-    if (cleanedUrl.isEmpty ||
-        (!cleanedUrl.startsWith('http://') &&
-            !cleanedUrl.startsWith('https://'))) {
-      return Container(
-        color: Colors.grey[100],
-        child: Icon(
-          Icons.storefront,
-          size: 60,
-          color: Colors.grey[400],
-        ),
-      );
-    }
-
-    return Image.network(
-      cleanedUrl,
-      fit: BoxFit.cover,
-      headers: {
-        'User-Agent':
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          color: Colors.grey[200],
-          child: Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-            ),
-          ),
-        );
-      },
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded) return child;
-        if (frame != null) return child;
-        // 프레임이 null이면 로딩 중이거나 에러
-        return Container(
-          color: Colors.grey[100],
-          child: Icon(
-            Icons.storefront,
-            size: 60,
-            color: Colors.grey[400],
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        print('이미지 로드 오류: $error, URL: $cleanedUrl');
-        print('스택 트레이스: $stackTrace');
-        return Container(
-          color: Colors.grey[100],
-          child: Icon(
-            Icons.storefront,
-            size: 60,
-            color: Colors.grey[400],
-          ),
-        );
-      },
-      // 캐시 최적화
-      cacheWidth: 800,
-      cacheHeight: 450,
-      // 이미지 형식 검증 비활성화 (일부 서버의 경우 필요)
-      filterQuality: FilterQuality.medium,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StorePage(
-              storeId: store.store_id,
-              storeName: store.store_name,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
+    final desc = store.store_description.trim().isNotEmpty
+        ? store.store_description.trim()
+        : store.store_address;
+
+    final showOpenBadge =
+        store.open_yn != null && store.open_yn!.toUpperCase() == 'Y';
+
+    final distanceLabel = hasLocationPermission
+        ? storeDistanceLabel(refLat, refLng, store.store_lat, store.store_lng)
+        : null;
+
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: onTap,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: _buildStoreImage(_getStoreImageUrl()),
-              ),
-            ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Column(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    store.store_name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(
+                          child: buildImage(_imageUrl(store), 100, 100),
+                        ),
+                        if (showOpenBadge)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: ColorAssset.mainColor
+                                    .withValues(alpha: 0.95),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  bottomRight: Radius.circular(6),
+                                ),
+                              ),
+                              child: const Text(
+                                'OPEN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    store.store_address,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          store.store_name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: _rowTitleColor,
+                            height: 1.2,
+                            letterSpacing: -0.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          desc,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: _rowSubtitleColor,
+                            height: 1.25,
+                            letterSpacing: -0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (distanceLabel != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                distanceLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade600,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    store.store_description.isNotEmpty
-                        ? store.store_description
-                        : '특별한 커피와 디저트를 즐겨보세요.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
                   ),
                 ],
               ),
             ),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              color: const Color(0xFFEEEEEE),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RecommendMenuSkeletonCard extends StatelessWidget {
+  const _RecommendMenuSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0E0E0),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: ColorAssset.mainColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(width: 60, height: 11, color: const Color(0xFFE0E0E0)),
+          const SizedBox(height: 4),
+          Container(width: 100, height: 13, color: const Color(0xFFE0E0E0)),
+          const SizedBox(height: 4),
+          Container(width: 50, height: 13, color: const Color(0xFFE0E0E0)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CafeDiscoverySkeletonRow extends StatelessWidget {
+  const _CafeDiscoverySkeletonRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ColorAssset.mainColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 120, height: 15, color: const Color(0xFFE0E0E0)),
+                  const SizedBox(height: 6),
+                  Container(width: 160, height: 13, color: const Color(0xFFE0E0E0)),
+                  const SizedBox(height: 10),
+                  Container(width: 70, height: 12, color: const Color(0xFFE0E0E0)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Container(
+          height: 0.5,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          color: const Color(0xFFEEEEEE),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecommendMenuCard extends StatelessWidget {
+  const _RecommendMenuCard({required this.menu, required this.onTap});
+
+  final RecommendMenu menu;
+  final VoidCallback onTap;
+
+  static const Color _subtitleColor = Color(0xFF757575);
+
+  String _formatPrice(int price) => price
+      .toString()
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 120,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CachedImage(
+                url: menu.menuPhoto ?? '',
+                width: 120,
+                height: 120,
+                borderRadius: BorderRadius.circular(8),
+                fallbackIcon: Icons.local_cafe_outlined,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                menu.storeName,
+                style: const TextStyle(fontSize: 12, color: _subtitleColor, height: 1.2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                menu.menuName,
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w500,
+                    color: Color(0xFF1A1A1F), height: 1.35),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '${_formatPrice(menu.price)}원',
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1F), height: 1.35),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendMenuListPage extends StatelessWidget {
+  const _RecommendMenuListPage({required this.menus});
+
+  final List<RecommendMenu> menus;
+
+  String _formatPrice(int price) => price
+      .toString()
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          '이런 메뉴는 어떠세요?',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black87),
+        ),
+        centerTitle: true,
+      ),
+      body: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 16,
+          childAspectRatio: 0.78,
+        ),
+        itemCount: menus.length,
+        itemBuilder: (context, index) {
+          final m = menus[index];
+          return GestureDetector(
+            onTap: () async {
+              try {
+                await Api().setBaseClient(Api.BASE_URL);
+                final menuResp = await Api().client.getMenuList(m.storeId);
+                if (!context.mounted) return;
+                Menu? picked;
+                for (final menu in menuResp.menuList) {
+                  if (menu.menu_id == m.menuId) { picked = menu; break; }
+                }
+                if (picked == null) {
+                  Navigator.push(context, MaterialPageRoute<void>(
+                    builder: (_) => StorePage(storeId: m.storeId, storeName: m.storeName),
+                  ));
+                  return;
+                }
+                final storeResp = await Api().client.getStoreDetailInfo(m.storeId);
+                if (!context.mounted) return;
+                final detail = storeResp.store;
+                Navigator.push(context, MaterialPageRoute<void>(
+                  builder: (_) => SelectGiftPage(
+                    menu: picked!,
+                    contextStoreId: m.storeId,
+                    exchangeAddress: detail.store_address,
+                    exchangeLat: detail.store_lat,
+                    exchangeLng: detail.store_lng,
+                    exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : m.storeName,
+                  ),
+                ));
+              } catch (_) {}
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CachedImage(
+                  url: m.menuPhoto ?? '',
+                  height: 150,
+                  borderRadius: BorderRadius.circular(10),
+                  fallbackIcon: Icons.local_cafe_outlined,
+                ),
+                const SizedBox(height: 6),
+                Text(m.storeName,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF757575), height: 1.2),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(m.menuName,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1F), height: 1.35),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text('${_formatPrice(m.price)}원',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1F), height: 1.35)),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

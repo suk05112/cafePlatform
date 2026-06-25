@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class NoInternetScreen extends StatefulWidget {
-  const NoInternetScreen({super.key});
+  /// 네비게이터 스택에 올려진 화면이 아니라 루트로만 쓰일 때 연결 복구 알림용
+  final VoidCallback? onReconnect;
+
+  const NoInternetScreen({super.key, this.onReconnect});
 
   @override
   State<NoInternetScreen> createState() => _NoInternetScreenState();
@@ -25,13 +28,14 @@ class _NoInternetScreenState extends State<NoInternetScreen> {
         _isChecking = false;
       });
 
-      final hasConnection = connectivityResult.isNotEmpty &&
+      final hasConnection = connectivityResult.isEmpty ||
           connectivityResult.any((r) => r != ConnectivityResult.none);
 
       if (hasConnection) {
-        // 연결이 복구되면 Navigator.pop()으로 이전 화면으로 돌아가거나
-        // 앱을 다시 시작할 수 있습니다
-        Navigator.of(context).pop();
+        widget.onReconnect?.call();
+        if (widget.onReconnect == null && context.mounted) {
+          Navigator.of(context).maybePop();
+        }
       }
     }
   }

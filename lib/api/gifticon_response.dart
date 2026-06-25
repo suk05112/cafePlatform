@@ -4,28 +4,6 @@ import 'package:cafeplatform/model/gifticon.dart';
 part 'gifticon_response.g.dart';
 
 @JsonSerializable()
-class PurchaseGifticonResponse {
-  @JsonKey(name: 'order_id')
-  int order_id;
-
-  @JsonKey(name: 'gifticon_id')
-  int gifticon_id;
-
-  @JsonKey(name: 'order_no')
-  String order_no;
-
-  PurchaseGifticonResponse({
-    required this.order_id,
-    required this.gifticon_id,
-    required this.order_no,
-  });
-
-  factory PurchaseGifticonResponse.fromJson(Map<String, dynamic> json) =>
-      _$PurchaseGifticonResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$PurchaseGifticonResponseToJson(this);
-}
-
-@JsonSerializable()
 class PaymentResultRequest {
   @JsonKey(name: 'order_id')
   int order_id;

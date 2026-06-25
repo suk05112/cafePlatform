@@ -1,19 +1,43 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:cafeplatform/model/gifticon.dart';
 import 'package:cafeplatform/model/user.dart';
 
 class UserProvider with ChangeNotifier {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  User? _user; // Nullable for better initialization handling
+  User? _user;
 
   User? get user => _user;
   bool _isLoggedIn = false;
   bool get isLoggedIn => _isLoggedIn;
 
-  // Constructor: Initialize UserProvider and load user from storage
+  List<Gifticon>? _cachedGifticons;
+  DateTime? _gifticonCacheTime;
+
+  List<Gifticon>? get cachedGifticons => _cachedGifticons;
+
+  bool get isGifticonCacheValid {
+    if (_cachedGifticons == null || _gifticonCacheTime == null) return false;
+    return DateTime.now().difference(_gifticonCacheTime!).inHours < 1;
+  }
+
+  void setGifticonCache(List<Gifticon> gifticons) {
+    _cachedGifticons = gifticons;
+    _gifticonCacheTime = DateTime.now();
+  }
+
+  void invalidateGifticonCache() {
+    _cachedGifticons = null;
+    _gifticonCacheTime = null;
+    notifyListeners();
+  }
+
+  // 스토리지 초기화 완료를 외부에서 await할 수 있도록 노출
+  late final Future<void> initialized;
+
   UserProvider() {
-    _loadUserFromStorage();
+    initialized = _loadUserFromStorage().then((_) {});
   }
 
   /// Set the user and save it to storage
@@ -23,14 +47,14 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fetch the user from secure storage (public method)
+  /// 초기화 완료 후 메모리의 _user를 반환. 초기화 전이면 완료될 때까지 대기.
   Future<User?> fetchUser() async {
-    return await _loadUserFromStorage();
+    await initialized;
+    return _user;
   }
 
   /// Save the user to secure storage (private method)
   Future<void> _saveUserToStorage(User user) async {
-    print("${user.name}, ${user.email}, ${user.phone_number}");
     try {
       final userJson = jsonEncode({
         'user_id': user.user_id,
@@ -41,9 +65,7 @@ class UserProvider with ChangeNotifier {
       });
       await _storage.write(key: "user", value: userJson);
       _isLoggedIn = true;
-      print("User saved to secure storage.");
     } catch (e) {
-      print("Failed to save user to storage: $e");
     }
   }
 
@@ -61,17 +83,13 @@ class UserProvider with ChangeNotifier {
           uid: userMap['uid'] ?? '',
         );
         notifyListeners();
-        print("User loaded from secure storage.");
-        print("${_user?.name}, ${_user?.email}, ${_user?.phone_number}");
         _isLoggedIn = true;
 
         return _user;
       } else {
-        print("No user data found in secure storage.");
         return null;
       }
     } catch (e) {
-      print("Failed to load user from storage: $e");
       return null;
     }
   }
@@ -82,24 +100,22 @@ class UserProvider with ChangeNotifier {
       await _storage.delete(key: "user");
       _user = null;
       _isLoggedIn = false;
+      _cachedGifticons = null;
+      _gifticonCacheTime = null;
 
       // notifyListeners를 안전하게 호출
       // 이미 dispose된 위젯에서 호출될 수 있으므로 try-catch로 감싸기
       try {
         notifyListeners();
       } catch (e) {
-        print("notifyListeners 오류 (무시 가능): $e");
       }
-      print("User data cleared from storage.");
     } catch (e) {
-      print("Failed to clear user data: $e");
       // 오류가 발생해도 상태는 업데이트
       _user = null;
       _isLoggedIn = false;
       try {
         notifyListeners();
       } catch (notifyError) {
-        print("notifyListeners 오류 (무시 가능): $notifyError");
       }
     }
   }

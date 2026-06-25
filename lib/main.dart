@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -9,6 +10,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/user_response.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -17,7 +20,6 @@ import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:cafeplatform/Home.dart';
 import 'package:cafeplatform/MenuForStore.dart';
 import 'package:cafeplatform/SignIn/terms_agreement_page.dart';
-import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/cafeList/cafe_list_map_view.dart';
 import 'package:cafeplatform/cafeList/cafe_list_page.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
@@ -38,17 +40,63 @@ import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:app_links/app_links.dart';
 import 'package:cafeplatform/widget/network_checker.dart';
+import 'package:cafeplatform/utils/fcm_token_util.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+const _kNotificationChannelId = 'default_channel';
+const _kNotificationChannelName = '기프넛 알림';
+
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> _initLocalNotifications() async {
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const iosInit = DarwinInitializationSettings();
+  await _localNotifications.initialize(
+    const InitializationSettings(android: androidInit, iOS: iosInit),
+  );
+  await _localNotifications
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _kNotificationChannelId,
+          _kNotificationChannelName,
+          importance: Importance.high,
+        ),
+      );
+}
+
+void _showLocalNotification(RemoteMessage message) {
+  final notification = message.notification;
+  final title = notification?.title ?? message.data['title'];
+  final body = notification?.body ?? message.data['body'];
+  if (title == null && body == null) return;
+
+  _localNotifications.show(
+    message.hashCode,
+    title,
+    body,
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
+        _kNotificationChannelId,
+        _kNotificationChannelName,
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    ),
+  );
+}
 
 // 백그라운드 메시지 핸들러 (top-level 함수여야 함)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  print('백그라운드 메시지 수신: ${message.messageId}');
-  print('메시지 데이터: ${message.data}');
-  if (message.notification != null) {
-    print('알림 제목: ${message.notification?.title}');
-    print('알림 내용: ${message.notification?.body}');
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
   }
+  DartPluginRegistrant.ensureInitialized();
+  await _initLocalNotifications();
+  _showLocalNotification(message);
 }
 
 // void main() => runApp(MyApp()); // 프로그램을 실행할 때 MyApp 부터 실행하겠어!
@@ -61,77 +109,98 @@ FutureOr<void> main() async {
   // 백그라운드 메시지 핸들러 등록 (Firebase 초기화 전에 등록해야 함)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Firebase가 이미 초기화되지 않은 경우에만 초기화
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    // 이미 초기화된 경우 무시
-    print("Firebase 이미 초기화됨 또는 초기화 오류: $e");
-  }
-
-  await _initialize();
-
-  runApp(MyApp());
+  // MyApp을 즉시 띄우고, 무거운 초기화는 _StartupShell에서 비동기로 진행 (릴리스 스플래시 정지 완화)
+  runApp(const _StartupShell());
   // handleDeepLinks();
 }
 
+/// 네이버맵 — UI를 막지 않음 ([release 스플래시 정지](https://medium.com/@chetan.akarte/flutter-app-freezes-on-the-splash-screen-in-release-mode-e15a6045a189) 대응)
+Future<void> _initNaverMapSdk() async {
+  try {
+    await NaverMapSdk.instance
+        .initialize(
+          clientId: 'ofzfofvuev',
+          onAuthFailed: (ex) =>
+              log("********* 네이버맵 인증오류 : $ex *********"),
+        )
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () =>
+              log('네이버맵 SDK 초기화 타임아웃 — 지도 기능에 제한이 있을 수 있음'),
+        );
+  } catch (e, st) {
+    log('네이버맵 SDK 초기화 오류: $e', stackTrace: st);
+  }
+}
+
 Future<void> _initialize() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  Firebase.initializeApp();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown, // 필요 없으면 제거
+    DeviceOrientation.portraitDown,
   ]);
 
-  await NaverMapSdk.instance.initialize(
-      clientId: 'ofzfofvuev',
-      onAuthFailed: (ex) => log("********* 네이버맵 인증오류 : $ex *********"));
+  if (!kDebugMode) {
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                '일시적인 오류가 발생했습니다.',
+                style: TextStyle(fontSize: 16, color: Colors.black87),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '잠시 후 다시 시도해 주세요.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    };
+  }
 
-  // Firebase Crashlytics 초기화 및 에러 핸들러 설정
   try {
-    // Crashlytics 수집 활성화/비활성화 설정
-    // Debug 모드에서도 테스트를 위해 활성화 (필요시 false로 변경)
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
 
-    // Flutter 에러 핸들러 설정
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-      // 디버그 모드에서는 원래 에러도 표시
       if (kDebugMode) {
         FlutterError.presentError(errorDetails);
       }
     };
 
-    // 플랫폼 레벨 에러 핸들러 설정
     PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
 
-    print("✅ Firebase Crashlytics 초기화 완료");
   } catch (e) {
-    print("❌ Firebase Crashlytics 에러 핸들러 설정 오류: $e");
   }
 
-  // FCM 토큰 초기화 및 저장
-  await _initializeFCM();
+  // setBaseClient는 스플래시·로그인에서 호출 (여기서 await 하면 App Check·토큰과 겹쳐 수십 초 대기 유발)
 
-  getPermission();
-  await Api().setBaseClient(Api.BASE_URL);
+  // FCM·네이버맵은 백그라운드에서 진행 (스플래시/첫 화면을 막지 않음)
+  unawaited(_initializeFCM());
+  unawaited(_initNaverMapSdk());
 }
 
 void handleDeepLink(Uri uri) async {
-  print('Deep link received: $uri');
-  print('  - scheme: ${uri.scheme}');
-  print('  - host: ${uri.host}');
-  print('  - path: ${uri.path}');
-  print('  - queryParameters: ${uri.queryParameters}');
+
+  // gifnut://payment/result 또는 gifnut://payment/cancel — PayletterWebViewPage가 직접 처리
+  if (uri.scheme == 'gifnut' && uri.host == 'payment') {
+    return;
+  }
 
   // 카카오 OAuth 콜백 URL은 무시 (카카오 SDK가 자체적으로 처리)
   // kakaoc...://oauth 또는 kakao...://oauth 형식의 URL은 카카오 로그인 OAuth 콜백
   if (uri.host == 'oauth' &&
       (uri.scheme.startsWith('kakaoc') || uri.scheme.startsWith('kakao'))) {
-    print('카카오 OAuth 콜백 URL - 무시 (카카오 SDK가 처리): $uri');
     return;
   }
 
@@ -143,7 +212,6 @@ void handleDeepLink(Uri uri) async {
     int retryCount = 0;
     const maxRetries = 30;
     while (Get.context == null && retryCount < maxRetries) {
-      print("Waiting for Flutter context... (${retryCount + 1}/$maxRetries)");
       await Future.delayed(const Duration(milliseconds: 100));
       retryCount++;
     }
@@ -158,7 +226,6 @@ void handleDeepLink(Uri uri) async {
   if (isKakaoLink || isGifnutLink) {
     // 기프티콘 선물받기 처리
     final gifticonId = uri.queryParameters['gifticon_id'];
-    print('기프티콘 선물받기 - gifticon_id: $gifticonId (카카오 링크: $isKakaoLink)');
 
     if (gifticonId != null && gifticonId.isNotEmpty) {
       final gifticonIdInt = int.tryParse(gifticonId);
@@ -166,7 +233,6 @@ void handleDeepLink(Uri uri) async {
         // context가 준비될 때까지 추가 대기 (필요시)
         var context = Get.context;
         if (context == null) {
-          print("Context가 여전히 없음: 추가 대기 중...");
           await Future.delayed(const Duration(milliseconds: 500));
           context = Get.context;
         }
@@ -182,21 +248,18 @@ void handleDeepLink(Uri uri) async {
             // 로그인 상태 확인 (재확인)
             if (userProvider.isLoggedIn && userProvider.user != null) {
               // 로그인 되어있으면 기프티콘 등록 페이지로 이동
-              print("로그인 상태 확인됨: 기프티콘 등록 페이지로 이동");
               // 약간의 지연을 추가하여 Flutter가 완전히 준비되도록 함
               await Future.delayed(const Duration(milliseconds: 300));
               Get.offAll(
                   () => RegisterGifticonPage(gifticon_id: gifticonIdInt));
             } else {
               // 로그인 안되어있으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-              print("비로그인 상태: 딥링크 정보 저장 후 로그인 페이지로 이동");
               final prefs = await SharedPreferences.getInstance();
               await prefs.setInt('pending_gifticon_id', gifticonIdInt);
               await Future.delayed(const Duration(milliseconds: 300));
               Get.offAll(() => LoginPage());
             }
           } catch (e) {
-            print("Provider 접근 오류: $e");
             // 오류 발생 시 딥링크 정보 저장 후 로그인 페이지로 이동
             final prefs = await SharedPreferences.getInstance();
             await prefs.setInt('pending_gifticon_id', gifticonIdInt);
@@ -205,7 +268,6 @@ void handleDeepLink(Uri uri) async {
           }
         } else {
           // context가 여전히 없으면 딥링크 정보를 저장하고 로그인 페이지로 이동
-          print("Context를 가져올 수 없음: 딥링크 정보 저장 후 로그인 페이지로 이동");
           final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('pending_gifticon_id', gifticonIdInt);
           await Future.delayed(const Duration(milliseconds: 300));
@@ -215,7 +277,6 @@ void handleDeepLink(Uri uri) async {
       }
     } else {
       // gifticon_id가 없으면 매장 리스트 페이지로 이동
-      print("gifticon_id가 없음: 매장 리스트 페이지로 이동");
       await Future.delayed(const Duration(milliseconds: 300));
       Get.offAll(() => TabPage(initialIndex: 0));
       return;
@@ -226,13 +287,11 @@ void handleDeepLink(Uri uri) async {
   if (uri.scheme == 'gifnut' && uri.host == 'share') {
     final type = uri.queryParameters['type'];
     final id = uri.queryParameters['id'];
-    print('공유 링크 - type: $type, id: $id');
 
     if (type == 'store' && id != null) {
       final storeId = int.tryParse(id);
       if (storeId != null) {
         // 매장 상세 페이지로 이동
-        print("매장 상세 페이지로 이동: store_id=$storeId");
         // TODO: StorePage로 이동하는 로직 추가 필요
         // Get.offAll(() => StorePage(storeId: storeId, storeName: ''));
         return;
@@ -244,19 +303,16 @@ void handleDeepLink(Uri uri) async {
   // 카카오 OAuth 콜백 등은 이미 위에서 처리했으므로 여기서는 추가 처리 불필요
   final query = uri.queryParameters['query'];
   if (query != null && query == 'one') {
-    print("기존 로직: query=one");
     Get.offAll(() => CafeList());
     // TODO: '/friends' 라우트가 등록되어 있지 않으므로 주석 처리
     // Get.toNamed('/friends'); // 친구 목록 페이지로 이동
   } else if (query != null && query == 'two') {
-    print("기존 로직: query=two");
     // TODO: '/main' 라우트가 등록되어 있지 않으므로 주석 처리
     // Get.offAllNamed('/main'); // 메인 페이지로 이동
     Get.offAll(() => SplashScreen()); // SplashScreen으로 이동
   } else {
     // 알 수 없는 딥링크인 경우만 처리 (카카오 OAuth는 이미 필터링됨)
     // 현재 로그인 중인 경우에는 네비게이션하지 않음
-    print("알 수 없는 딥링크 형식 - 무시: $uri");
     // Get.offAll(() => LoginPage()); // 주석 처리 - 로그인 플로우 방해 방지
   }
 }
@@ -266,14 +322,12 @@ Future<void> handleDeepLinks() async {
   // 앱이 처음 실행될 때 딥링크 처리
   try {
     final initialLink = await getInitialLink();
-    print('Initial deep link: $initialLink');
     if (initialLink != null) {
       final uri = Uri.parse(initialLink);
       handleDeepLink(uri); // 딥링크 처리 함수 호출
     }
   } on PlatformException {
     // 예외 처리 (특히 앱이 백그라운드에서 실행될 때 발생할 수 있음)
-    print("Error getting initial deep link");
   }
 
   // 딥링크를 수신하기 위한 리스너 설정
@@ -287,74 +341,50 @@ Future<void> handleDeepLinks() async {
 
 Future<void> _initializeFCM() async {
   try {
+    await _initLocalNotifications();
+
     final messaging = FirebaseMessaging.instance;
 
-    // 알림 권한 요청 (iOS)
-    NotificationSettings settings = await messaging.requestPermission(
+    // iOS 포그라운드에서도 알림 배너/소리/배지 표시
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
       alert: true,
-      announcement: false,
       badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
       sound: true,
     );
 
-    print('FCM 알림 권한 상태: ${settings.authorizationStatus}');
-
     // 포그라운드 메시지 핸들러
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('포그라운드 메시지 수신!');
-      print('메시지 데이터: ${message.data}');
-
-      if (message.notification != null) {
-        print('알림 제목: ${message.notification?.title}');
-        print('알림 내용: ${message.notification?.body}');
-      }
+      _showLocalNotification(message);
     });
 
     // 앱이 종료된 상태에서 알림을 탭했을 때 처리
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('알림 탭으로 앱 열림');
-      print('메시지 데이터: ${message.data}');
       if (message.notification != null) {
-        print('알림 제목: ${message.notification?.title}');
-        print('알림 내용: ${message.notification?.body}');
       }
     });
 
     // 앱이 종료된 상태에서 알림을 탭하여 앱이 시작된 경우 처리
     RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
-      print('초기 메시지로 앱 시작');
-      print('메시지 데이터: ${initialMessage.data}');
       if (initialMessage.notification != null) {
-        print('알림 제목: ${initialMessage.notification?.title}');
-        print('알림 내용: ${initialMessage.notification?.body}');
       }
     }
 
-    // FCM 토큰 가져오기
-    String? token = await messaging.getToken();
-
-    if (token != null) {
-      print('FCM 토큰: $token');
-
-      // SharedPreferences에 저장
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('fcm_token', token);
-      print('FCM 토큰 저장 완료');
-    } else {
-      print('FCM 토큰을 가져올 수 없습니다.');
+    // FCM 토큰: 권한이 이미 결정된 경우에만 요청 (notDetermined면 홈에서 권한 요청 후 토큰 갱신)
+    final settings = await messaging.getNotificationSettings();
+    if (settings.authorizationStatus != AuthorizationStatus.notDetermined) {
+      final token = await fetchFcmTokenRespectingIosApns();
+      if (token != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('fcm_token', token);
+      }
     }
 
     // 토큰 갱신 리스너
     messaging.onTokenRefresh.listen((newToken) {
-      print('FCM 토큰 갱신: $newToken');
       _saveFCMToken(newToken);
     });
   } catch (e) {
-    print('FCM 초기화 오류: $e');
   }
 }
 
@@ -362,29 +392,29 @@ Future<void> _saveFCMToken(String token) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('fcm_token', token);
-    print('FCM 토큰 저장 완료: $token');
   } catch (e) {
-    print('FCM 토큰 저장 오류: $e');
   }
 }
 
-getPermission() async {
-  print("위치권한 요청");
 
-  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    return Future.error('Location services are disabled.');
+/// 첫 프레임에서 곧바로 [MyApp]을 그린 뒤, 무거운 초기화는 백그라운드에서 수행한다.
+/// (스플래시/런치스크린에서 멈춤 — [Medium](https://medium.com/@chetan.akarte/flutter-app-freezes-on-the-splash-screen-in-release-mode-e15a6045a189))
+class _StartupShell extends StatefulWidget {
+  const _StartupShell();
+
+  @override
+  State<_StartupShell> createState() => _StartupShellState();
+}
+
+class _StartupShellState extends State<_StartupShell> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_initialize());
   }
 
-  var requestStatus = await Permission.location.request();
-  var status = await Permission.location.status;
-  // var status = await Permission.locationWhenInUse.status;
-  if (status.isGranted) {
-    print('허락됨');
-  } else if (status.isDenied) {
-    print('거절됨');
-    Permission.contacts.request(); // 현재 거절된 상태니 팝업창 띄워달라는 코드
-  }
+  @override
+  Widget build(BuildContext context) => const MyApp();
 }
 
 // StatelessWidget은 변화지 않는 화면을 작업할 때 사용.
@@ -422,9 +452,7 @@ class _MyAppState extends State<MyApp> {
       // ✅ 앱 실행 중 / 백그라운드 복귀
       _linkSubscription = _appLinks.uriLinkStream.listen(
         (Uri uri) {
-          // Flutter가 준비될 때까지 대기
           WidgetsBinding.instance.addPostFrameCallback((_) async {
-            // 첫 프레임이 렌더링된 후 약간의 지연을 추가
             await Future.delayed(const Duration(milliseconds: 300));
             handleDeepLink(uri);
           });
@@ -443,7 +471,6 @@ class _MyAppState extends State<MyApp> {
     // 앱이 처음 실행될 때 딥링크 처리
     try {
       final initialLink = await getInitialLink();
-      print('Initial deep link: $initialLink');
       if (initialLink != null) {
         final uri = Uri.parse(initialLink);
         // WidgetsBinding.instance.addPostFrameCallback을 사용하여 context가 준비된 후 처리
@@ -452,14 +479,12 @@ class _MyAppState extends State<MyApp> {
         });
       }
     } on PlatformException {
-      print("Error getting initial deep link");
     }
 
     // 앱이 실행 중일 때 딥링크를 수신하기 위한 리스너 설정
     _linkSubscription = linkStream.listen(
       (String? link) {
         if (link != null) {
-          print('Deep link received while app is running: $link');
           final uri = Uri.parse(link);
           // context가 준비된 후 처리
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -468,7 +493,6 @@ class _MyAppState extends State<MyApp> {
         }
       },
       onError: (err) {
-        print('Deep link error: $err');
       },
     ) as StreamSubscription<String?>?;
   }
@@ -490,17 +514,13 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (context) => OrderProvider()),
         ChangeNotifierProvider(create: (context) => UserProvider()),
       ],
-      child: Consumer<UserProvider>(
-        builder: (context, userProvider, _) {
-          return NetworkChecker(
-            child: GetMaterialApp(
-              title: "MyApp",
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(primarySwatch: Colors.blue),
-              home: SplashScreen(),
-            ),
-          );
-        },
+      child: NetworkChecker(
+        child: GetMaterialApp(
+          title: "MyApp",
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(primarySwatch: Colors.blue),
+          home: SplashScreen(),
+        ),
       ),
       /*
         child: GetMaterialApp(
@@ -549,12 +569,140 @@ class TabPage extends StatefulWidget {
 }
 
 class _TabPageState extends State<TabPage> {
-  late int _selectedIndex; // 처음에 나올 화면 지정
+  late int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _requestPermissionsAndShowPrompts();
+    });
+  }
+
+  Future<void> _requestPermissionsAndShowPrompts() async {
+    if (!mounted) return;
+
+    // 1. 알림 시스템 권한 요청 (1회) + 결과를 service_push_enabled로 저장
+    final notificationSettings = await FirebaseMessaging.instance.getNotificationSettings();
+    if (notificationSettings.authorizationStatus == AuthorizationStatus.notDetermined) {
+      final result = await FirebaseMessaging.instance.requestPermission(
+        alert: true, badge: true, sound: true,
+      );
+      final granted =
+          result.authorizationStatus == AuthorizationStatus.authorized ||
+          result.authorizationStatus == AuthorizationStatus.provisional;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('service_push_enabled', granted);
+      if (granted) {
+        final token = await fetchFcmTokenRespectingIosApns();
+        if (token != null) {
+          await prefs.setString('fcm_token', token);
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    // 2. 위치 시스템 권한 요청 (1회)
+    final locationStatus = await Permission.location.status;
+    if (locationStatus == PermissionStatus.denied) {
+      await Permission.location.request();
+    }
+
+    if (!mounted) return;
+
+    // 3. 이벤트·할인 바텀시트 (1회)
+    final prefs = await SharedPreferences.getInstance();
+    final notificationPromptShown = prefs.getBool('notification_prompt_shown') ?? false;
+    if (!notificationPromptShown && mounted) {
+      await _showNotificationPermissionSheet();
+    }
+  }
+
+  // Future<void> _showLocationPermissionSheet() async {
+  //   if (!mounted) return;
+  //   await showModalBottomSheet(
+  //     context: context,
+  //     isDismissible: false,
+  //     enableDrag: false,
+  //     backgroundColor: Colors.white,
+  //     shape: const RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  //     ),
+  //     builder: (ctx) => _LocationPermissionSheet(
+  //       onAllow: () async {
+  //         Navigator.pop(ctx);
+  //         final prefs = await SharedPreferences.getInstance();
+  //         await prefs.setBool('location_prompt_shown', true);
+  //         await Permission.location.request();
+  //       },
+  //       onLater: () async {
+  //         Navigator.pop(ctx);
+  //         final prefs = await SharedPreferences.getInstance();
+  //         await prefs.setBool('location_prompt_shown', true);
+  //       },
+  //     ),
+  //   );
+  // }
+
+  Future<void> _showNotificationPermissionSheet() async {
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _NotificationPermissionSheet(
+        onAllow: () async {
+          Navigator.pop(ctx);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('notification_prompt_shown', true);
+          await prefs.setBool('marketing_push_enabled', true);
+          if (mounted) await _syncNotificationToServer();
+        },
+        onLater: () async {
+          Navigator.pop(ctx);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('notification_prompt_shown', true);
+          await prefs.setBool('marketing_push_enabled', false);
+        },
+      ),
+    );
+  }
+
+  Future<void> _syncNotificationToServer() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.user;
+      if (user == null) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final fcmToken = prefs.getString('fcm_token');
+      if (fcmToken == null || fcmToken.isEmpty) return;
+
+      // 서비스 푸시: 시스템 알림 권한 실제 상태 기준
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      final allowServicePush =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+      await prefs.setBool('service_push_enabled', allowServicePush);
+
+      final allowMarketingPush = prefs.getBool('marketing_push_enabled') ?? false;
+
+      await Api().client.registerPushToken(
+        user.user_id,
+        PushTokenRequest(
+          fcmToken: fcmToken,
+          deviceType: Platform.isIOS ? 'ios' : 'android',
+          allowServicePush: allowServicePush,
+          allowMarketingPush: allowMarketingPush,
+        ),
+      );
+    } catch (_) {}
   }
 
   // 이동할 페이지
@@ -570,8 +718,9 @@ class _TabPageState extends State<TabPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _pages[_selectedIndex], // 페이지와 연결
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages.map((p) => p as Widget).toList(),
       ),
       backgroundColor: Colors.white,
       bottomNavigationBar: BottomNavigationBar(
@@ -599,9 +748,184 @@ class _TabPageState extends State<TabPage> {
   }
 
   void _onItemTapped(int index) {
-    // state 갱신
     setState(() {
-      _selectedIndex = index; // index는 item 순서로 0, 1, 2로 구성
+      _selectedIndex = index;
     });
+  }
+}
+
+// class _LocationPermissionSheet extends StatelessWidget {
+//   final VoidCallback onAllow;
+//   final VoidCallback onLater;
+//
+//   const _LocationPermissionSheet({
+//     required this.onAllow,
+//     required this.onLater,
+//   });
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Padding(
+//       padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+//       child: Column(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           const Text(
+//             '내 주변 매장을 찾아드릴게요',
+//             textAlign: TextAlign.center,
+//             style: TextStyle(
+//               fontSize: 20,
+//               fontWeight: FontWeight.bold,
+//               color: Colors.black,
+//             ),
+//           ),
+//           const SizedBox(height: 10),
+//           Text(
+//             '현재 위치를 기반으로\n가까운 매장을 바로 확인할 수 있어요.',
+//             textAlign: TextAlign.center,
+//             style: TextStyle(
+//               fontSize: 14,
+//               color: Colors.grey.shade600,
+//               height: 1.6,
+//             ),
+//           ),
+//           const SizedBox(height: 28),
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: OutlinedButton(
+//                   style: OutlinedButton.styleFrom(
+//                     padding: const EdgeInsets.symmetric(vertical: 15),
+//                     side: BorderSide(color: Colors.grey.shade300),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(50),
+//                     ),
+//                   ),
+//                   onPressed: onLater,
+//                   child: const Text(
+//                     '다음에 하기',
+//                     style: TextStyle(
+//                       fontSize: 15,
+//                       color: Colors.black54,
+//                       fontWeight: FontWeight.w500,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//               const SizedBox(width: 10),
+//               Expanded(
+//                 child: ElevatedButton(
+//                   style: ElevatedButton.styleFrom(
+//                     padding: const EdgeInsets.symmetric(vertical: 15),
+//                     backgroundColor: Colors.black,
+//                     foregroundColor: Colors.white,
+//                     elevation: 0,
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(50),
+//                     ),
+//                   ),
+//                   onPressed: onAllow,
+//                   child: const Text(
+//                     '위치 허용',
+//                     style: TextStyle(
+//                       fontSize: 15,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+class _NotificationPermissionSheet extends StatelessWidget {
+  final VoidCallback onAllow;
+  final VoidCallback onLater;
+
+  const _NotificationPermissionSheet({
+    required this.onAllow,
+    required this.onLater,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '이벤트·할인 소식을 받아보세요',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '최신 이벤트, 할인 정보를 놓치지 마세요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onLater,
+                  child: const Text(
+                    '다음에 하기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                  ),
+                  onPressed: onAllow,
+                  child: const Text(
+                    '알림 켜기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

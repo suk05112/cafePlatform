@@ -14,8 +14,13 @@ class StoreProvider extends ChangeNotifier {
   List<Store>? _listViewStores = [];
   String? _listViewNextCursor;
   bool _listViewHasMore = false;
+  bool _listViewIsLoading = false;
   bool _listViewIsLoadingMore = false;
   String? _listViewCurrentDistrictCode;
+
+  // 리스트 뷰 캐시 (지역 코드 기준 1시간)
+  final Map<String, ({List<Store> stores, String? nextCursor, bool hasMore, DateTime cachedAt})> _listViewCache = {};
+  static const Duration _listCacheTtl = Duration(hours: 1);
 
   // 지도 뷰용 상태
   List<Store>? _mapViewStores = [];
@@ -32,6 +37,7 @@ class StoreProvider extends ChangeNotifier {
   List<Store>? get listViewStores => _listViewStores;
   String? get listViewNextCursor => _listViewNextCursor;
   bool get listViewHasMore => _listViewHasMore;
+  bool get listViewIsLoading => _listViewIsLoading;
   bool get listViewIsLoadingMore => _listViewIsLoadingMore;
 
   // 지도 뷰 getters
@@ -139,41 +145,58 @@ class StoreProvider extends ChangeNotifier {
       {String? cursor, int limit = 20, bool append = false}) async {
     if (_listViewIsLoadingMore) return;
 
+    // 첫 페이지이고 캐시가 유효하면 API 생략
+    if (!append && cursor == null) {
+      final cached = _listViewCache[districtCode];
+      if (cached != null && DateTime.now().difference(cached.cachedAt) < _listCacheTtl) {
+        _listViewCurrentDistrictCode = districtCode;
+        _listViewStores = cached.stores;
+        _listViewNextCursor = cached.nextCursor;
+        _listViewHasMore = cached.hasMore;
+        _listViewIsLoading = false;
+        _listViewIsLoadingMore = false;
+        storeCards = cached.stores;
+        notifyListeners();
+        return;
+      }
+    }
+
     try {
       _listViewCurrentDistrictCode = districtCode;
       if (!append) {
+        _listViewIsLoading = true;
         _listViewIsLoadingMore = false;
+        notifyListeners();
       } else {
         _listViewIsLoadingMore = true;
         notifyListeners();
       }
 
-      print(
-          "store_provider::fetchListViewStoresByDistrict:: fetch 호출 - districtCode: $districtCode, cursor: $cursor, limit: $limit");
+      final sw = Stopwatch()..start();
       var response = await Api()
           .client
           .getStoreListByDistrict(districtCode, cursor, limit);
+      sw.stop();
+      debugPrint('[PERF] 홈 매장 목록 API (district=$districtCode, cursor=$cursor): ${sw.elapsedMilliseconds}ms');
       var storeList = response.store;
 
       final nextCursor = response.pagination?.next_cursor;
       final hasNext = response.pagination?.has_next ?? false;
-      print(
-          "store_provider::fetchListViewStoresByDistrict:: 응답 받음 - store 개수: ${storeList.length}, next_cursor: $nextCursor, has_next: $hasNext");
 
       if (append) {
         appendListViewStores(storeList, nextCursor, hasNext);
       } else {
-        // 새 검색 시에는 setListViewStores를 사용하되, 페이지네이션 정보는 별도로 설정
         _listViewStores = storeList;
         _listViewNextCursor = nextCursor;
         _listViewHasMore = hasNext;
+        _listViewIsLoading = false;
         _listViewIsLoadingMore = false;
-        // 하위 호환성을 위해 기존 필드도 업데이트
-        this.storeCards = storeList;
+        storeCards = storeList;
+        _listViewCache[districtCode] = (stores: storeList, nextCursor: nextCursor, hasMore: hasNext, cachedAt: DateTime.now());
         notifyListeners();
       }
     } catch (error) {
-      print("store_provider::fetchListViewStoresByDistrict:: fetch 오류: $error");
+      _listViewIsLoading = false;
       _listViewIsLoadingMore = false;
       notifyListeners();
       if (!append) {
@@ -196,8 +219,6 @@ class StoreProvider extends ChangeNotifier {
         notifyListeners();
       }
 
-      print(
-          "store_provider::fetchMapViewStoresByDistrict:: fetch 호출 - districtCode: $districtCode, cursor: $cursor, limit: $limit");
       var response = await Api()
           .client
           .getStoreListByDistrict(districtCode, cursor, limit);
@@ -205,8 +226,6 @@ class StoreProvider extends ChangeNotifier {
 
       final nextCursor = response.pagination?.next_cursor;
       final hasNext = response.pagination?.has_next ?? false;
-      print(
-          "store_provider::fetchMapViewStoresByDistrict:: 응답 받음 - store 개수: ${storeList.length}, next_cursor: $nextCursor, has_next: $hasNext");
 
       if (append) {
         appendMapViewStores(storeList, nextCursor, hasNext);
@@ -216,7 +235,6 @@ class StoreProvider extends ChangeNotifier {
         _mapViewHasMore = hasNext;
       }
     } catch (error) {
-      print("store_provider::fetchMapViewStoresByDistrict:: fetch 오류: $error");
       _mapViewIsLoadingMore = false;
       notifyListeners();
       if (!append) {
@@ -228,16 +246,11 @@ class StoreProvider extends ChangeNotifier {
   // 지도 뷰용 현위치 검색
   Future<void> fetchMapViewStoresByLocation(double lat, double lng) async {
     try {
-      print(
-          "store_provider::fetchMapViewStoresByLocation:: fetch 호출 - lat: $lat, lng: $lng");
       var response = await Api().client.getStoreListByLocation(lat, lng);
       var storeList = response.store;
 
-      print(
-          "store_provider::fetchMapViewStoresByLocation:: 응답 받음 - store 개수: ${storeList.length}");
       setMapViewStores(storeList);
     } catch (error) {
-      print("store_provider::fetchMapViewStoresByLocation:: fetch 오류: $error");
       setMapViewStores([]);
     }
   }
@@ -270,30 +283,25 @@ class StoreProvider extends ChangeNotifier {
 
   Future<void> fetchStoreList() async {
     try {
-      print("store_provider::fetchStoreList:: fetch 호출");
       var response = await Api().client.getStoreList();
       var storeList = response.store;
       storeList.forEach(
         (element) {
-          print(
-              "${element.store_name} ${element.store_lat} ${element.store_lng} ");
         },
       );
       setStoreCard(storeList);
     } catch (error) {
-      print("store_provider::fetchStoreList:: fetch 오류: $error");
       setStoreCard(StoreDummyRepository.stores);
     }
   }
 
   Future<void> fetchAvailableRegions() async {
+    if (_availableRegions.isNotEmpty) return;
     try {
-      print("store_provider::fetchAvailableRegions:: fetch 호출");
       var response = await Api().client.getAvailableRegions();
       _availableRegions = response.regions;
       notifyListeners();
     } catch (error) {
-      print("store_provider::fetchAvailableRegions:: fetch 오류: $error");
       _availableRegions = [];
       notifyListeners();
     }
@@ -314,16 +322,23 @@ class StoreProvider extends ChangeNotifier {
   //   return response.body.store;
   // }
 
-  Future<Store> fetchDetailStore(int storeId) async {
-    print("store_provider::getDetailStore:: fetch 호출");
+  // 매장 상세 메모리 캐시 (storeId → (store, 캐시 시각))
+  final Map<int, ({Store store, DateTime cachedAt})> _detailCache = {};
+  static const Duration _cacheTtl = Duration(hours: 1);
 
+  Future<Store> fetchDetailStore(int storeId) async {
+    final cached = _detailCache[storeId];
+    if (cached != null && DateTime.now().difference(cached.cachedAt) < _cacheTtl) {
+      _store = cached.store;
+      return cached.store;
+    }
+
+    final sw = Stopwatch()..start();
     var response = await Api().client.getStoreDetailInfo(storeId);
-    print(
-        "store_provider::getDetailStore:: response.store.store_address: ${response.store.store_address}");
-    print(
-        "store_provider::getDetailStore:: response.store 전체: ${response.store.toJson()}");
+    sw.stop();
+    debugPrint('[PERF] 매장 상세 API (storeId=$storeId): ${sw.elapsedMilliseconds}ms');
     _store = response.store;
-    notifyListeners();
+    _detailCache[storeId] = (store: response.store, cachedAt: DateTime.now());
 
     return response.store;
   }
