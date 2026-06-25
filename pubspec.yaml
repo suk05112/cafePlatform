@@ -100,6 +100,7 @@ dependencies:
   cached_network_image: ^3.4.1
   connectivity_plus: ^6.1.0
   fast_contacts: ^5.0.1
+  flutter_local_notifications: ^18.0.1
 
 
   # The following adds the Cupertino Icons font to your application.

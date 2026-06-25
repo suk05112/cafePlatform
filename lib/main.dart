@@ -41,6 +41,52 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:app_links/app_links.dart';
 import 'package:cafeplatform/widget/network_checker.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+const _kNotificationChannelId = 'gifnut_default_channel';
+const _kNotificationChannelName = '기프넛 알림';
+
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> _initLocalNotifications() async {
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const iosInit = DarwinInitializationSettings();
+  await _localNotifications.initialize(
+    const InitializationSettings(android: androidInit, iOS: iosInit),
+  );
+  await _localNotifications
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _kNotificationChannelId,
+          _kNotificationChannelName,
+          importance: Importance.high,
+        ),
+      );
+}
+
+void _showLocalNotification(RemoteMessage message) {
+  final notification = message.notification;
+  final title = notification?.title ?? message.data['title'];
+  final body = notification?.body ?? message.data['body'];
+  if (title == null && body == null) return;
+
+  _localNotifications.show(
+    message.hashCode,
+    title,
+    body,
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
+        _kNotificationChannelId,
+        _kNotificationChannelName,
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    ),
+  );
+}
 
 // 백그라운드 메시지 핸들러 (top-level 함수여야 함)
 @pragma('vm:entry-point')
@@ -48,8 +94,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
   }
-  if (message.notification != null) {
-  }
+  await _initLocalNotifications();
+  _showLocalNotification(message);
 }
 
 // void main() => runApp(MyApp()); // 프로그램을 실행할 때 MyApp 부터 실행하겠어!
@@ -294,6 +340,8 @@ Future<void> handleDeepLinks() async {
 
 Future<void> _initializeFCM() async {
   try {
+    await _initLocalNotifications();
+
     final messaging = FirebaseMessaging.instance;
 
     // iOS 포그라운드에서도 알림 배너/소리/배지 표시
@@ -305,9 +353,7 @@ Future<void> _initializeFCM() async {
 
     // 포그라운드 메시지 핸들러
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-
-      if (message.notification != null) {
-      }
+      _showLocalNotification(message);
     });
 
     // 앱이 종료된 상태에서 알림을 탭했을 때 처리
