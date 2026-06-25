@@ -186,12 +186,7 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
 
   void _launchExternalApp(String url, Uri uri) async {
     if (uri.scheme == 'intent') {
-      // Android intent:// — fallback URL로 시도
-      final fallback = _extractIntentFallbackUrl(url);
-      final target = fallback != null ? Uri.parse(fallback) : uri;
-      try {
-        await launchUrl(target, mode: LaunchMode.externalApplication);
-      } catch (_) {}
+      await _handleIntentScheme(url);
     } else {
       try {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -199,7 +194,48 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
     }
   }
 
-  // Android intent:// URL에서 S.browser_fallback_url 추출
+  Future<void> _handleIntentScheme(String intentUrl) async {
+    // intent://pay?srCode=xxx#Intent;scheme=shinhan-sr-ansimclick;package=com.shcard.smartpay;end
+    final pathMatch = RegExp(r'^intent://([^#]*)').firstMatch(intentUrl);
+    final schemeMatch = RegExp(r'scheme=([^;]+)').firstMatch(intentUrl);
+    final packageMatch = RegExp(r'package=([^;]+)').firstMatch(intentUrl);
+
+    final pathAndQuery = pathMatch?.group(1) ?? '';
+    final appScheme = schemeMatch?.group(1);
+    final package = packageMatch?.group(1);
+
+    // scheme://path?query 형태로 조합하여 앱 직접 실행
+    if (appScheme != null) {
+      final appUri = Uri.tryParse('$appScheme://$pathAndQuery');
+      if (appUri != null) {
+        try {
+          final launched = await launchUrl(appUri, mode: LaunchMode.externalApplication);
+          if (launched) return;
+        } catch (_) {}
+      }
+    }
+
+    // fallback URL 시도
+    final fallbackUrl = _extractIntentFallbackUrl(intentUrl);
+    if (fallbackUrl != null) {
+      final fallbackUri = Uri.tryParse(fallbackUrl);
+      if (fallbackUri != null) {
+        try {
+          final launched = await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+          if (launched) return;
+        } catch (_) {}
+      }
+    }
+
+    // 앱 미설치 → Play Store로 이동
+    if (package != null) {
+      final storeUri = Uri.parse('https://play.google.com/store/apps/details?id=$package');
+      try {
+        await launchUrl(storeUri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
+  }
+
   String? _extractIntentFallbackUrl(String intentUrl) {
     final match = RegExp(r'S\.browser_fallback_url=([^;]+)').firstMatch(intentUrl);
     if (match == null) return null;

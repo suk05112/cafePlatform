@@ -25,12 +25,13 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   late TabController _tabController;
   bool _prevLoggedIn = false;
+  bool _prevCacheValid = false;
+  bool _initialFetchDone = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    fetchGifticons();
   }
 
   @override
@@ -38,11 +39,26 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
     super.didChangeDependencies();
     final userProvider = Provider.of<UserProvider>(context);
     final loggedIn = userProvider.isLoggedIn;
-    if (loggedIn && !_prevLoggedIn) {
+    final cacheValid = userProvider.isGifticonCacheValid;
+
+    if (!_initialFetchDone) {
+      // 최초 1회 로드
+      _initialFetchDone = true;
+      _prevLoggedIn = loggedIn;
+      _prevCacheValid = cacheValid;
+      fetchGifticons();
+    } else if (loggedIn && !_prevLoggedIn) {
+      // 로그아웃 → 로그인 전환
       setState(() => _isLoading = true);
       fetchGifticons();
+    } else if (loggedIn && _prevCacheValid && !cacheValid) {
+      // 캐시 무효화 → 강제 새로고침
+      setState(() => _isLoading = true);
+      fetchGifticons(forceRefresh: true);
     }
+
     _prevLoggedIn = loggedIn;
+    _prevCacheValid = cacheValid;
   }
 
   @override

@@ -89,5 +89,16 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 결제 앱 패키지 가시성 (Android 11+) -->
+        <package android:name="com.shcard.smartpay"/>
+        <package android:name="com.samsung.android.spay"/>
+        <package android:name="com.lguplus.paynow"/>
+        <package android:name="com.kbcard.kbkookmincard"/>
+        <package android:name="com.hyundaicard.appcard"/>
+        <package android:name="com.wooricard.wcard"/>
+        <package android:name="com.hanaskcard.paycla"/>
+        <package android:name="com.lottemembers.android"/>
+        <package android:name="kr.co.citibank.citimobile"/>
+        <package android:name="com.nh.cashcardmobile"/>
     </queries>
 </manifest>

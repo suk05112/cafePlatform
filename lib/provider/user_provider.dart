@@ -30,6 +30,7 @@ class UserProvider with ChangeNotifier {
   void invalidateGifticonCache() {
     _cachedGifticons = null;
     _gifticonCacheTime = null;
+    notifyListeners();
   }
 
   // 스토리지 초기화 완료를 외부에서 await할 수 있도록 노출
