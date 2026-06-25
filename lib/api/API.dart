@@ -461,6 +461,7 @@ class AuthInterceptor extends Interceptor {
       } on DioException catch (e) {
         handler.next(err);
       }
+      return;
     }
 
     handler.next(err);
