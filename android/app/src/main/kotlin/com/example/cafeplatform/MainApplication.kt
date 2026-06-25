@@ -1,12 +1,30 @@
 package com.gifnut.cafeplatform
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import androidx.multidex.MultiDexApplication
 
 class MainApplication : MultiDexApplication() {
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
         // LeakCanary 완전 비활성화 (WebView Dialog 크래시 방지)
         disableLeakCanary()
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "gifnut_default_channel",
+                "기프넛 알림",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "기프넛 앱 알림"
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
     }
     
     private fun disableLeakCanary() {

@@ -7,6 +7,9 @@ import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/static/payment_guide_text.dart';
 import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/provider/user_provider.dart';
+import 'package:cafeplatform/SignIn/login_page.dart';
+import 'package:provider/provider.dart';
 
 class SelectGiftPage extends StatefulWidget {
   const SelectGiftPage({
@@ -307,6 +310,11 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                         height: 50,
                         child: OutlinedButton(
                           onPressed: () {
+                            final user = Provider.of<UserProvider>(context, listen: false).user;
+                            if (user == null) {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage(returnToPrevious: true)));
+                              return;
+                            }
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -357,6 +365,11 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                             backgroundColor: ColorAssset.mainColor,
                           ),
                           onPressed: () {
+                            final user = Provider.of<UserProvider>(context, listen: false).user;
+                            if (user == null) {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage(returnToPrevious: true)));
+                              return;
+                            }
                             Navigator.push(
                               context,
                               MaterialPageRoute(

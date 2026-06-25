@@ -73,6 +73,13 @@
                 <data android:scheme="kakao275e555cdb8196634a6aef161abe3f84" android:host="oauth"/>
             </intent-filter>
         </activity>
+        <!-- FCM 기본 알림 채널 설정 (Android 8.0+) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="gifnut_default_channel" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
