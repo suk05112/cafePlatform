@@ -18,11 +18,14 @@ import 'package:flutter/foundation.dart';
 import 'package:cafeplatform/order/order_detail_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
+import 'package:cafeplatform/main.dart';
 
 class GifticonPage extends StatefulWidget {
-  const GifticonPage({super.key, required this.gifticon_id});
+  const GifticonPage({super.key, required this.gifticon_id, this.fromKakao = false});
 
   final int gifticon_id;
+  final bool fromKakao;
   @override
   State<GifticonPage> createState() => _GifticonPageState();
 
@@ -84,6 +87,14 @@ class _GifticonPageState extends State<GifticonPage>
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.white,
+          actions: widget.fromKakao
+              ? [
+                  IconButton(
+                    icon: const Icon(Icons.home_outlined, color: Colors.black),
+                    onPressed: () => Get.offAll(() => const TabPage(initialIndex: 1)),
+                  ),
+                ]
+              : null,
         ),
         body: SafeArea(
             child: FutureBuilder<Gifticon?>(

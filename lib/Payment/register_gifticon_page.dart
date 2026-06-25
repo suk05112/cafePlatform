@@ -80,7 +80,7 @@ class _RegisterGifticonPageState extends State<RegisterGifticonPage> {
       // 등록 성공 시 캐시 무효화 후 기프티콘 페이지로 이동
       if (mounted) {
         Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
-        Get.off(() => GifticonPage(gifticon_id: widget.gifticon_id));
+        Get.off(() => GifticonPage(gifticon_id: widget.gifticon_id, fromKakao: true));
       }
     } on DioException catch (error) {
       String errorMessage = '기프티콘 등록 중 오류가 발생했습니다.';
