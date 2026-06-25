@@ -16,7 +16,7 @@ class MainApplication : MultiDexApplication() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                "gifnut_default_channel",
+                "default_channel",
                 "기프넛 알림",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {

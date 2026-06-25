@@ -43,7 +43,7 @@ import 'package:cafeplatform/widget/network_checker.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-const _kNotificationChannelId = 'gifnut_default_channel';
+const _kNotificationChannelId = 'default_channel';
 const _kNotificationChannelName = '기프넛 알림';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
@@ -94,6 +94,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
   }
+  DartPluginRegistrant.ensureInitialized();
   await _initLocalNotifications();
   _showLocalNotification(message);
 }
