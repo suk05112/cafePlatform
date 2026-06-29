@@ -45,13 +45,13 @@ Map<String, dynamic> _$LoginUserGetResponseToJson(
 IsRegisteredUserGetResponse _$IsRegisteredUserGetResponseFromJson(
         Map<String, dynamic> json) =>
     IsRegisteredUserGetResponse(
-      isRegistered: json['isRegistered'] as bool,
+      status: json['status'] as String,
     );
 
 Map<String, dynamic> _$IsRegisteredUserGetResponseToJson(
         IsRegisteredUserGetResponse instance) =>
     <String, dynamic>{
-      'isRegistered': instance.isRegistered,
+      'status': instance.status,
     };
 
 PushTokenRequest _$PushTokenRequestFromJson(Map<String, dynamic> json) =>

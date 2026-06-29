@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:cafeplatform/api/API.dart';
+import 'package:cafeplatform/api/user_response.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class LoginService {
@@ -186,7 +187,7 @@ class LoginService {
   }
 
   Future<void> signInApple({
-    required Function(UserCredential userCredential, String? email, String? name)
+    required Function(AuthCredential credential, String? email, String? name)
         onSuccess,
     required Function(Future<AuthError> error) onError,
   }) async {
@@ -203,10 +204,9 @@ class LoginService {
         accessToken: appleCredential.authorizationCode,
       );
 
-      final userCredential = await _auth.signInWithCredential(oauthCredential);
       final name = "${appleCredential.familyName}${appleCredential.givenName}";
 
-      onSuccess(userCredential, appleCredential.email, name);
+      onSuccess(oauthCredential, appleCredential.email, name);
     } catch (error) {
       onError(AuthErrorHandler.handle(error));
       return;
@@ -214,20 +214,19 @@ class LoginService {
     return;
   }
 
-  Future<bool> isRegisteredUser(String? email, String provider,
+  Future<RegistrationStatus> isRegisteredUser(String? email, String provider,
       {String? phone}) async {
     try {
-      // email이 null이면 query parameter로 전달하지 않음 (Retrofit이 자동 처리)
       final response = await Api().client.getIsRegisteredUser(
             email,
             provider,
             phone,
           );
-      return response.isRegistered;
+      return response.registrationStatus;
     } on DioException {
       rethrow;
     } catch (e) {
-      return false;
+      return RegistrationStatus.newUser;
     }
   }
 }

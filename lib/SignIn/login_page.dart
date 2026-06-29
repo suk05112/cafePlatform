@@ -589,9 +589,9 @@ class _LoginPageState extends State<LoginPage> {
 // 메일이 같아도 최초한번은 번호인증 하도록
       bool needPhoneAuth;
       try {
-        final isRegistered =
+        final regStatus =
             await loginService.isRegisteredUser(email, provider);
-        needPhoneAuth = !isRegistered;
+        needPhoneAuth = regStatus != RegistrationStatus.registered;
       } on DioException catch (e) {
         // isRegisteredUser API 호출 실패 시 alert 표시하고 중단
         String errorMessage = '네트워크 오류가 발생했습니다.';
@@ -995,57 +995,81 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void appleLoginSuccess(fb.UserCredential userCredential, String? email, String? name) async {
-    setState(() {
-      _loading = true;
-    });
+  void appleLoginSuccess(fb.AuthCredential appleCredential, String? email, String? name) async {
+    setState(() => _loading = true);
 
     try {
       const provider = "apple.com";
       final emailForCheck = email ?? "apple";
-      final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? true;
 
-      if (isNewUser) {
-        // 신규 유저: 약관동의 + 전화번호 인증
-        PhoneAuthResult? phoneAuthResult = await Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => TermsAgreementPage(
-                    isSocialLogin: true,
-                    provider: provider,
-                    prefilledName: (name != null && name.isNotEmpty) ? name : null,
-                  )),
+      // 약관동의 + 전화번호 인증 (phone_exists / new 모두 이 플로우 거침)
+      PhoneAuthResult? phoneAuthResult = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => TermsAgreementPage(
+                  isSocialLogin: true,
+                  provider: provider,
+                  prefilledName: (name != null && name.isNotEmpty) ? name : null,
+                )),
+      );
+
+      if (phoneAuthResult == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+
+      await Api().setBaseClient(Api.BASE_URL, quickStart: true);
+
+      if (phoneAuthResult.isAlreadyRegistered) {
+        // phone_exists: 전화번호 인증 credential로 로그인 후 Apple credential link
+        final userCredential = await loginService.phoneAuth(
+          phoneCredential: phoneAuthResult.credential,
+          snsCredential: appleCredential,
+          onError: (error) async {
+            final authError = await error;
+            if (mounted) {
+              setState(() => _loading = false);
+              ScaffoldMessenger.of(context).showUniqueSnackBar(
+                SnackBar(content: Text(authError.message), backgroundColor: Colors.red),
+              );
+            }
+          },
         );
-
-        if (phoneAuthResult == null) {
-          // 약관동의 취소 시 Firebase 계정도 삭제
-          await userCredential.user?.delete();
+        if (userCredential == null || userCredential.user == null) {
+          if (mounted) setState(() => _loading = false);
+          return;
+        }
+        if (!mounted) return;
+        await _loginAndNavigate(emailForCheck, provider, userCredential.user!.uid);
+      } else {
+        // new: 전화번호 인증 후 회원가입
+        final userCredential = await loginService.phoneAuth(
+          phoneCredential: phoneAuthResult.credential,
+          snsCredential: appleCredential,
+          onError: (error) async {
+            final authError = await error;
+            if (mounted) {
+              setState(() => _loading = false);
+              ScaffoldMessenger.of(context).showUniqueSnackBar(
+                SnackBar(content: Text(authError.message), backgroundColor: Colors.red),
+              );
+            }
+          },
+        );
+        if (userCredential == null || userCredential.user == null) {
           if (mounted) setState(() => _loading = false);
           return;
         }
 
-        final firebaseUser = userCredential.user;
-        if (firebaseUser == null) {
-          if (mounted) {
-            setState(() => _loading = false);
-            ScaffoldMessenger.of(context).showUniqueSnackBar(
-              const SnackBar(content: Text('로그인에 실패했습니다. 다시 시도해주세요.'), backgroundColor: Colors.red),
-            );
-          }
-          return;
-        }
-
+        final firebaseUser = userCredential.user!;
         final userName = phoneAuthResult.name ?? name ?? "사용자";
         await firebaseUser.updateDisplayName(userName);
-
-        await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-        final formattedPhoneNumber = _formatToE164(phoneAuthResult.phoneNumber);
 
         final registerUser = my_app.User(
           user_id: 0,
           name: userName,
           email: emailForCheck,
-          phone_number: formattedPhoneNumber,
+          phone_number: _formatToE164(phoneAuthResult.phoneNumber),
           uid: firebaseUser.uid,
           provider: provider,
         );
@@ -1055,7 +1079,6 @@ class _LoginPageState extends State<LoginPage> {
         } catch (e) {
           // 회원가입 실패 시 Firebase 좀비계정 삭제
           await firebaseUser.delete();
-
           if (!mounted) return;
           setState(() => _loading = false);
 
@@ -1086,27 +1109,9 @@ class _LoginPageState extends State<LoginPage> {
 
         if (!mounted) return;
         await _loginAndNavigate(emailForCheck, provider, firebaseUser.uid);
-      } else {
-        // 기존 유저: 약관 스킵하고 바로 서버 로그인
-        final firebaseUser = userCredential.user;
-        if (firebaseUser == null) {
-          if (mounted) {
-            setState(() => _loading = false);
-            ScaffoldMessenger.of(context).showUniqueSnackBar(
-              const SnackBar(content: Text('로그인에 실패했습니다. 다시 시도해주세요.'), backgroundColor: Colors.red),
-            );
-          }
-          return;
-        }
-
-        await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-        if (!mounted) return;
-        await _loginAndNavigate(emailForCheck, provider, firebaseUser.uid);
       }
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
