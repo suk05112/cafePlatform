@@ -946,9 +946,9 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // new / phone_exists: Firebase signOut 후 약관동의 + 전화번호 인증 플로우
-      // (phoneAuth에서 전화번호 credential로 재로그인 + Apple credential link)
-      await _auth.signOut();
+      // new / phone_exists: 임시로 생성된 Apple Firebase 계정 삭제 후 전화번호 인증 플로우
+      // (phoneAuth에서 전화번호 credential로 signIn + Apple credential link)
+      await tempCredential.user!.delete();
 
       PhoneAuthResult? phoneAuthResult = await Navigator.push(
         context,

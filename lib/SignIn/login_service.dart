@@ -35,12 +35,12 @@ class LoginService {
         try {
           await fbUser.linkWithCredential(snsCredential);
         } on FirebaseAuthException catch (linkError) {
-          // 이미 링크되어 있는 경우 처리
           if (linkError.code == 'provider-already-linked') {
-            // 이미 링크되어 있으면 기존 사용자를 그대로 반환
+            return phoneLogin;
+          } else if (linkError.code == 'credential-already-in-use') {
+            // SNS credential이 다른 계정에 이미 연결된 경우 → 무시하고 전화번호 계정으로 진행
             return phoneLogin;
           } else {
-            // 다른 Firebase 오류인 경우
             rethrow;
           }
         }
