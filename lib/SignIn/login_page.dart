@@ -963,17 +963,19 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (phoneAuthResult == null) {
-        // 약관 취소 시 임시 Apple 계정 삭제
-        await tempCredential.user?.delete();
+        // 약관 취소 시 임시 Apple 세션 정리
+        await _auth.signOut();
         if (mounted) setState(() => _loading = false);
         return;
       }
 
-      // 전화번호 인증 완료 → Apple 계정에 전화번호 link (new) 또는 전화번호 계정에 Apple link (phone_exists)
-      debugPrint('[Login] linkPhoneToCurrentUser 시작 - regStatus: $regStatus');
-      final firebaseUser = await loginService.linkPhoneToCurrentUser(
+      // 임시 Apple 계정 signOut → 전화번호로 signIn 후 Apple credential link
+      await _auth.signOut();
+
+      debugPrint('[Login] phoneAuth 시작 - regStatus: $regStatus');
+      final userCredential = await loginService.phoneAuth(
         phoneCredential: phoneAuthResult.credential,
-        appleCredential: appleCredential,
+        snsCredential: appleCredential,
         onError: (error) async {
           final authError = await error;
           if (mounted) {
@@ -984,11 +986,12 @@ class _LoginPageState extends State<LoginPage> {
           }
         },
       );
-      if (firebaseUser == null) {
-        debugPrint('[Login] linkPhoneToCurrentUser 실패 → 중단');
+      if (userCredential == null || userCredential.user == null) {
+        debugPrint('[Login] phoneAuth 실패 → 중단');
         if (mounted) setState(() => _loading = false);
         return;
       }
+      final firebaseUser = userCredential.user!;
       debugPrint('[Login] Firebase link 완료 - uid: ${firebaseUser.uid}, providers: ${firebaseUser.providerData.map((p) => p.providerId).toList()}');
 
       await Api().setBaseClient(Api.BASE_URL, quickStart: true);
