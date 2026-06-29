@@ -204,7 +204,9 @@ class LoginService {
         accessToken: appleCredential.authorizationCode,
       );
 
-      final name = "${appleCredential.familyName}${appleCredential.givenName}";
+      final familyName = appleCredential.familyName ?? "";
+      final givenName = appleCredential.givenName ?? "";
+      final name = (familyName + givenName).isNotEmpty ? familyName + givenName : null;
 
       onSuccess(oauthCredential, appleCredential.email, name);
     } catch (error) {
