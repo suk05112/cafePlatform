@@ -898,7 +898,51 @@ class _LoginPageState extends State<LoginPage> {
       const provider = "apple.com";
       final emailForCheck = email ?? "apple";
 
-      // 약관동의 + 전화번호 인증 (phone_exists / new 모두 이 플로우 거침)
+      // 기존 유저 여부 확인
+      RegistrationStatus regStatus;
+      try {
+        regStatus = await loginService.isRegisteredUser(emailForCheck, provider);
+      } on DioException catch (e) {
+        String errorMessage = '네트워크 오류가 발생했습니다.';
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.sendTimeout) {
+          errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+        } else if (e.type == DioExceptionType.connectionError) {
+          errorMessage = '인터넷 연결을 확인해주세요.';
+        } else if (e.response != null) {
+          errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
+        }
+        if (mounted) {
+          setState(() => _loading = false);
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => AlertDialog(
+              backgroundColor: Colors.white,
+              title: const Text('오류'),
+              content: Text(errorMessage),
+              actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('확인'))],
+            ),
+          );
+        }
+        return;
+      }
+
+      if (regStatus == RegistrationStatus.registered) {
+        // 기존 유저: Firebase signIn 후 바로 서버 로그인
+        final userCredential = await _auth.signInWithCredential(appleCredential);
+        if (userCredential.user == null) {
+          if (mounted) setState(() => _loading = false);
+          return;
+        }
+        await Api().setBaseClient(Api.BASE_URL, quickStart: true);
+        if (!mounted) return;
+        await _loginAndNavigate(emailForCheck, provider, userCredential.user!.uid);
+        return;
+      }
+
+      // new / phone_exists: 약관동의 + 전화번호 인증
       PhoneAuthResult? phoneAuthResult = await Navigator.push(
         context,
         MaterialPageRoute(
