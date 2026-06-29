@@ -915,8 +915,6 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-
       // new / phone_exists 모두 전화번호 인증 후 서버 회원가입
       final userCredential = await loginService.phoneAuth(
         phoneCredential: phoneAuthResult.credential,
@@ -935,6 +933,9 @@ class _LoginPageState extends State<LoginPage> {
         if (mounted) setState(() => _loading = false);
         return;
       }
+
+      // phoneAuth 완료 후 Firebase currentUser가 있는 상태에서 토큰 획득
+      await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
       final firebaseUser = userCredential.user!;
       final rawName = phoneAuthResult.name ?? name ?? "";
