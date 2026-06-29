@@ -22,6 +22,7 @@ class LoginService {
     'https://www.googleapis.com/auth/userinfo.profile',
   ]);
 
+  // Google/Kakao용: 전화번호 계정으로 signIn 후 SNS credential link
   Future<UserCredential?> phoneAuth(
       {required AuthCredential phoneCredential,
       required AuthCredential snsCredential,
@@ -35,10 +36,8 @@ class LoginService {
         try {
           await fbUser.linkWithCredential(snsCredential);
         } on FirebaseAuthException catch (linkError) {
-          if (linkError.code == 'provider-already-linked') {
-            return phoneLogin;
-          } else if (linkError.code == 'credential-already-in-use') {
-            // SNS credential이 다른 계정에 이미 연결된 경우 → 무시하고 전화번호 계정으로 진행
+          if (linkError.code == 'provider-already-linked' ||
+              linkError.code == 'credential-already-in-use') {
             return phoneLogin;
           } else {
             rethrow;
@@ -47,17 +46,14 @@ class LoginService {
       }
 
       return phoneLogin;
-
-      // phoneLogin.credential = snsCredential;
-      // 3) 최종 로그인은 SNS로 다시 해야 provider가 SNS로 찍힘
     } on FirebaseAuthException catch (e) {
-      // Firebase 오류도 onError로 전달
       onError(Future.value(AuthError.firebase));
     } catch (e) {
       onError(AuthErrorHandler.handle(e));
     }
     return null;
   }
+
 
   Future<bool> isRegistered(String email) async {
     try {

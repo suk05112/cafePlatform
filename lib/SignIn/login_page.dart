@@ -946,9 +946,9 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // new / phone_exists: 임시로 생성된 Apple Firebase 계정 삭제 후 전화번호 인증 플로우
-      // (phoneAuth에서 전화번호 credential로 signIn + Apple credential link)
-      await tempCredential.user!.delete();
+      // new / phone_exists: 임시 Apple 계정 삭제 후 전화번호 인증 플로우
+      // 전화번호 uid 사용, Apple credential을 전화번호 계정에 link
+      await tempCredential.user?.delete();
 
       PhoneAuthResult? phoneAuthResult = await Navigator.push(
         context,
@@ -966,7 +966,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // new / phone_exists 모두 전화번호 인증 후 서버 회원가입
+      // 전화번호 계정으로 signIn + Apple credential link
       final userCredential = await loginService.phoneAuth(
         phoneCredential: phoneAuthResult.credential,
         snsCredential: appleCredential,
@@ -985,7 +985,6 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // phoneAuth 완료 후 Firebase currentUser가 있는 상태에서 토큰 획득
       await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
       final firebaseUser = userCredential.user!;
