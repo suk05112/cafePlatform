@@ -1009,16 +1009,14 @@ class _LoginPageState extends State<LoginPage> {
       final provider = "apple.com";
       final emailForCheck = email ?? "apple";
 
-      // 애플 로그인: email 여부로 회원가입 여부 판단 (API 호출하지 않음)
-      // email이 있으면 신규 유저 (회원가입 필요), email이 null이면 기존 유저 (로그인)
-      bool needPhoneAuth;
-      if (email != null) {
-        // email이 있으면 신규 유저로 간주 (회원가입 필요)
-        needPhoneAuth = true;
-      } else {
-        // email이 null이면 기존 유저로 간주 (로그인)
-        needPhoneAuth = false;
-      }
+      // 애플은 최초 1회만 email을 내려주므로, email 유무로 신규/기존 판단 불가
+      // 서버 API로 실제 등록 여부를 확인
+      await Api().setBaseClient(Api.BASE_URL);
+      final bool isRegistered = await loginService.isRegisteredUser(
+        email ?? "apple",
+        provider,
+      );
+      final bool needPhoneAuth = !isRegistered;
 
       if (needPhoneAuth) {
         // 폰 인증 페이지로 이동 (로딩은 계속 표시)
@@ -1031,6 +1029,7 @@ class _LoginPageState extends State<LoginPage> {
               builder: (_) => TermsAgreementPage(
                     isSocialLogin: true,
                     provider: provider,
+                    prefilledName: (name != null && name.isNotEmpty) ? name : null,
                   )),
         );
 

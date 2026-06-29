@@ -32,11 +32,13 @@ class PhoneAuthPage extends StatefulWidget {
     this.isSocialLogin = false,
     this.provider,
     this.agreements = const [],
+    this.prefilledName,
   });
 
   final bool isSocialLogin;
   final String? provider; // SNS provider 또는 "email"
   final List<TermAgreementItem> agreements;
+  final String? prefilledName;
 
   @override
   State<PhoneAuthPage> createState() => _PhoneAuthPageState();
@@ -56,6 +58,7 @@ class _PhoneAuthPageState extends State<PhoneAuthPage> {
           isSocialLogin: widget.isSocialLogin,
           provider: widget.provider,
           agreements: widget.agreements,
+          prefilledName: widget.prefilledName,
           successCallback: (credential) {
             if (credential != null && !_hasNavigated && mounted) {
               _hasNavigated = true;
@@ -82,6 +85,7 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
     this.provider,
     this.onLoadingChanged,
     this.agreements = const [],
+    this.prefilledName,
   });
 
   final Function(PhoneAuthResult?) successCallback;
@@ -91,6 +95,7 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
   final String? provider;
   final void Function(bool)? onLoadingChanged;
   final List<TermAgreementItem> agreements;
+  final String? prefilledName;
 
   @override
   State<PhoneNumberVerificationWidget> createState() =>
@@ -142,6 +147,9 @@ class _PhoneNumberVerificationWidgetState
   @override
   void initState() {
     super.initState();
+    if (widget.prefilledName != null && widget.prefilledName!.isNotEmpty) {
+      name = widget.prefilledName;
+    }
     // Firebase Auth 상태 변경 리스너 설정 (자동 인증 처리용)
     _authStateSubscription = _auth.authStateChanges().listen((User? user) {
       if (user != null &&
@@ -272,8 +280,8 @@ class _PhoneNumberVerificationWidgetState
                   mainAxisAlignment: MainAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 이름 입력 필드 (간편로그인일 때만 노출)
-                    if (widget.isSocialLogin) ...[
+                    // 이름 입력 필드 (간편로그인이면서 미리 받은 이름이 없을 때만 노출)
+                    if (widget.isSocialLogin && widget.prefilledName == null) ...[
                       InputInfoWidget(
                         title: "이름",
                         hintText: "이름을 입력해주세요",
@@ -611,6 +619,7 @@ class _PhoneNumberVerificationWidgetState
                       ? () async {
                           if (_formKey.currentState?.validate() ?? false) {
                             if (widget.isSocialLogin &&
+                                widget.prefilledName == null &&
                                 (name == null || name!.isEmpty)) {
                               ScaffoldMessenger.of(context).showUniqueSnackBar(
                                 SnackBar(content: Text("이름을 입력해주세요.")),
