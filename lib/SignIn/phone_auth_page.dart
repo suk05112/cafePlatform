@@ -184,12 +184,11 @@ class _PhoneNumberVerificationWidgetState
         return;
       }
 
-      // 전화번호로 이미 가입된 계정인지 확인 (회원가입 시에만 체크)
+      // 전화번호로 가입 여부 확인
+      bool isAlreadyRegistered = false;
       if (!widget.skipRegistrationCheck) {
         await Api().setBaseClient(Api.BASE_URL);
         String e164PhoneNumber = _formatToE164(phoneNumberController.text);
-
-        // provider 정보 가져오기: SNS 로그인일 경우 widget.provider, 이메일 가입일 경우 "email"
         final provider =
             widget.provider ?? (widget.isSocialLogin ? "" : "email");
 
@@ -239,6 +238,7 @@ class _PhoneNumberVerificationWidgetState
               phoneNumber: phoneNumberController.text,
               name: name,
               agreements: widget.agreements,
+              isAlreadyRegistered: isAlreadyRegistered,
             ),
           );
         }
@@ -501,6 +501,8 @@ class _PhoneNumberVerificationWidgetState
                                                       ),
                                                     );
                                                   }
+                                                  _handlingAutoVerification = false;
+                                                  _setLoading(false);
                                                   return;
                                                 }
                                               }
@@ -515,19 +517,17 @@ class _PhoneNumberVerificationWidgetState
                                                 final isAlreadyRegistered = widget.isSocialLogin &&
                                                     regStatus == RegistrationStatus.phoneExists;
 
+
                                                 widget.successCallback(
                                                   PhoneAuthResult(
                                                     credential: credential,
-                                                    phoneNumber:
-                                                        phoneNumberController
-                                                            .text,
+                                                    phoneNumber: phoneNumberController.text,
                                                     name: name,
                                                     agreements: widget.agreements,
                                                     isAlreadyRegistered: isAlreadyRegistered,
                                                   ),
                                                 );
 
-                                                // 인증 완료 후 로그아웃 (임시 인증이므로)
                                                 await _auth.signOut();
                                               }
                                             } on FirebaseAuthException catch (e) {
