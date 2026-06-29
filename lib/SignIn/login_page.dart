@@ -995,34 +995,18 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void appleLoginSuccess(credential, email, name) async {
-    // SNS 로그인 후 신규/기존 판단
-    fb.UserCredential? userCredential;
-
-    // 로딩 인디케이터 표시
+  void appleLoginSuccess(fb.UserCredential userCredential, String? email, String? name) async {
     setState(() {
       _loading = true;
     });
 
     try {
-      // Apple 로그인의 경우 provider는 "apple.com"
-      final provider = "apple.com";
+      const provider = "apple.com";
       final emailForCheck = email ?? "apple";
+      final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? true;
 
-      // 애플은 최초 1회만 email을 내려주므로, email 유무로 신규/기존 판단 불가
-      // 서버 API로 실제 등록 여부를 확인
-      await Api().setBaseClient(Api.BASE_URL);
-      final bool isRegistered = await loginService.isRegisteredUser(
-        email ?? "apple",
-        provider,
-      );
-      final bool needPhoneAuth = !isRegistered;
-
-      if (needPhoneAuth) {
-        // 폰 인증 페이지로 이동 (로딩은 계속 표시)
-        // 프로그레스바는 _loading이 true일 때 자동으로 표시됨
-
-        // 약관동의 페이지 먼저 보여주기 (약관동의 후 전화번호 인증까지 처리됨)
+      if (isNewUser) {
+        // 신규 유저: 약관동의 + 전화번호 인증
         PhoneAuthResult? phoneAuthResult = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -1034,383 +1018,168 @@ class _LoginPageState extends State<LoginPage> {
         );
 
         if (phoneAuthResult == null) {
-          // 약관동의를 취소한 경우
-          if (mounted) {
-            setState(() {
-              _loading = false;
-            });
-          }
+          // 약관동의 취소 시 Firebase 계정도 삭제
+          await userCredential.user?.delete();
+          if (mounted) setState(() => _loading = false);
           return;
         }
 
-        // 약관동의와 전화번호 인증이 완료됨
-        final finalPhoneAuthResult = phoneAuthResult;
-
-        userCredential = await loginService.phoneAuth(
-            phoneCredential: finalPhoneAuthResult.credential,
-            snsCredential: credential,
-            onError: (error) async {
-              final authError = await error;
-              if (mounted) {
-                setState(() {
-                  _loading = false;
-                });
-                ScaffoldMessenger.of(context).showUniqueSnackBar(
-                  SnackBar(
-                    content: Text(authError.message),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-              loginFail(authError);
-            });
-
-        if (userCredential == null) {
-          // phoneAuth 실패 시 로딩 해제하고 종료
+        final firebaseUser = userCredential.user;
+        if (firebaseUser == null) {
           if (mounted) {
-            setState(() {
-              _loading = false;
-            });
-          }
-          return;
-        }
-
-        if (userCredential.user == null) {
-          if (mounted) {
-            setState(() {
-              _loading = false;
-            });
+            setState(() => _loading = false);
             ScaffoldMessenger.of(context).showUniqueSnackBar(
-              const SnackBar(
-                content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
-                backgroundColor: Colors.red,
-              ),
+              const SnackBar(content: Text('로그인에 실패했습니다. 다시 시도해주세요.'), backgroundColor: Colors.red),
             );
           }
           return;
         }
 
-        // 이름은 TermsAgreementPage 또는 PhoneAuthPage에서 입력받은 이름을 사용
-        final userName = finalPhoneAuthResult.name ?? name ?? "사용자";
-        await userCredential.user?.updateDisplayName(userName);
+        final userName = phoneAuthResult.name ?? name ?? "사용자";
+        await firebaseUser.updateDisplayName(userName);
 
-        // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
         await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-        // 전화번호를 E.164 형식(+82)으로 변환
-        final formattedPhoneNumber =
-            _formatToE164(finalPhoneAuthResult.phoneNumber);
+        final formattedPhoneNumber = _formatToE164(phoneAuthResult.phoneNumber);
 
         final registerUser = my_app.User(
-          user_id: 0, // 회원가입 시에는 0으로 설정 (서버에서 생성)
+          user_id: 0,
           name: userName,
           email: emailForCheck,
           phone_number: formattedPhoneNumber,
-          uid: userCredential.user?.uid ?? "",
+          uid: firebaseUser.uid,
           provider: provider,
         );
 
-
-        // 회원가입 API 호출만 try-catch로 감싸기
         try {
-          final registerResponse =
-              await Api().client.registerUser(registerUser);
-        } on DioException catch (e) {
-          String errorMessage = '회원가입 중 오류가 발생했습니다.';
-          if (e.type == DioExceptionType.connectionTimeout ||
-              e.type == DioExceptionType.receiveTimeout ||
-              e.type == DioExceptionType.sendTimeout) {
-            errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
-          } else if (e.type == DioExceptionType.connectionError) {
-            errorMessage = '인터넷 연결을 확인해주세요.';
-          } else if (e.response != null) {
-            errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
-          }
-
-          if (mounted) {
-            setState(() {
-              _loading = false;
-            });
-            await showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  backgroundColor: Colors.white,
-                  title: Text('오류'),
-                  content: Text(errorMessage),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text('확인'),
-                    ),
-                  ],
-                );
-              },
-            );
-          }
-          return; // 회원가입 실패 시 함수 종료
+          await Api().client.registerUser(registerUser);
         } catch (e) {
+          // 회원가입 실패 시 Firebase 좀비계정 삭제
+          await firebaseUser.delete();
+
+          if (!mounted) return;
+          setState(() => _loading = false);
+
           String errorMessage = '회원가입 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
-          if (mounted) {
-            setState(() {
-              _loading = false;
-            });
-            await showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  backgroundColor: Colors.white,
-                  title: Text('오류'),
-                  content: Text(errorMessage),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text('확인'),
-                    ),
-                  ],
-                );
-              },
-            );
-          }
-          return; // 회원가입 실패 시 함수 종료
-        }
-
-        // 회원가입 성공 후 위젯이 여전히 mounted인지 확인
-        if (!mounted) {
-          return;
-        }
-
-        // 회원가입 후 바로 로그인 API 호출하여 사용자 정보 가져오기
-        try {
-          var loginResponse =
-              await Api().client.loginUser(emailForCheck, provider);
-
-          if (loginResponse.user_id != null) {
-            // userCredential과 uid 확인 (phoneAuth로 이미 연결된 credential 사용)
-            final uid = userCredential.user?.uid;
-
-            final user = my_app.User(
-              user_id: loginResponse.user_id ?? -1,
-              name: loginResponse.name ?? "name",
-              email: loginResponse.email ?? "email",
-              phone_number: loginResponse.phone_number ?? "",
-              uid: uid ?? "",
-            );
-
-
-            // 위젯이 여전히 mounted인지 다시 확인
-            if (!mounted) {
-              return;
-            }
-
-            Provider.of<UserProvider>(context, listen: false).setUser(user);
-
-            // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
-            _registerPushToken(loginResponse.user_id ?? -1).catchError((error) {
-            });
-
-            // 로그인 성공 시 처리
-            if (mounted) {
-              setState(() {
-                _loading = false;
-              });
-
-              // 딥링크로 들어온 기프티콘 등록이 있는지 확인
-              final prefs = await SharedPreferences.getInstance();
-              final pendingGifticonId = prefs.getInt('pending_gifticon_id');
-
-              if (pendingGifticonId != null) {
-                // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
-                await prefs.remove('pending_gifticon_id');
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        RegisterGifticonPage(gifticon_id: pendingGifticonId),
-                  ),
-                );
-              } else {
-                // returnToPrevious가 true면 이전 페이지로 돌아가기, false면 TabPage로 이동
-                if (widget.returnToPrevious && Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                } else {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const TabPage(initialIndex: 0)),
-                  );
-                }
-              }
-            }
-            return; // 회원가입 및 로그인 완료, 함수 종료
-          }
-        } catch (loginError) {
-          // 로그인 실패해도 계속 진행 (서버에서 회원가입은 완료되었으므로)
-          // 오류 다이얼로그를 표시하지 않고 계속 진행
-        }
-      } else {
-        // 기존 사용자: SNS credential로 직접 로그인 (재로그인 불필요)
-        userCredential = await _auth.signInWithCredential(credential);
-      }
-
-      if (userCredential.user == null) {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-          });
-          ScaffoldMessenger.of(context).showUniqueSnackBar(
-            const SnackBar(
-              content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-
-      try {
-        var response = await Api().client.loginUser(emailForCheck, provider);
-
-        if (response.user_id == null) {
-          if (mounted) {
-            setState(() {
-              _loading = false;
-            });
-            ScaffoldMessenger.of(context).showUniqueSnackBar(
-              SnackBar(
-                content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-
-        // 비동기 작업 후 위젯이 dispose되었는지 확인
-        if (!mounted) {
-          return;
-        }
-
-        // userCredential과 uid 확인
-        final uid = userCredential.user?.uid;
-        if (uid == null || uid.isEmpty) {
-        }
-
-        final user = my_app.User(
-          user_id: response.user_id ?? -1,
-          name: response.name ?? "name",
-          email: response.email ?? "email",
-          phone_number: response.phone_number ?? "",
-          uid: uid ?? "",
-        );
-
-
-        // context가 유효한지 확인 후 UserProvider 업데이트
-        if (!mounted) {
-          return;
-        }
-
-        Provider.of<UserProvider>(context, listen: false).setUser(user);
-
-        // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 로그인은 계속 진행)
-        _registerPushToken(response.user_id ?? -1).catchError((error) {
-        });
-
-        // 로그인 성공 시 처리
-        if (mounted) {
-          setState(() {
-            _loading = false;
-          });
-
-          // 딥링크로 들어온 기프티콘 등록이 있는지 확인
-          final prefs = await SharedPreferences.getInstance();
-          final pendingGifticonId = prefs.getInt('pending_gifticon_id');
-
-          if (pendingGifticonId != null) {
-            // 딥링크로 들어온 기프티콘 등록이 있으면 등록 페이지로 이동
-            await prefs.remove('pending_gifticon_id');
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    RegisterGifticonPage(gifticon_id: pendingGifticonId),
-              ),
-            );
-          } else {
-            // returnToPrevious가 true면 이전 페이지로 돌아가기, false면 TabPage로 이동
-            if (widget.returnToPrevious && Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const TabPage(initialIndex: 0)),
-              );
+          if (e is DioException) {
+            if (e.type == DioExceptionType.connectionTimeout ||
+                e.type == DioExceptionType.receiveTimeout ||
+                e.type == DioExceptionType.sendTimeout) {
+              errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+            } else if (e.type == DioExceptionType.connectionError) {
+              errorMessage = '인터넷 연결을 확인해주세요.';
+            } else if (e.response != null) {
+              errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
             }
           }
-        }
-      } on DioException catch (e) {
-        String errorMessage = '서버 오류가 발생했습니다.';
-        if (e.type == DioExceptionType.connectionTimeout ||
-            e.type == DioExceptionType.receiveTimeout ||
-            e.type == DioExceptionType.sendTimeout) {
-          errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
-        } else if (e.type == DioExceptionType.connectionError) {
-          errorMessage = '인터넷 연결을 확인해주세요.';
-        } else if (e.response != null) {
-          final statusCode = e.response?.statusCode;
-          if (statusCode == 500) {
-            errorMessage = '서버 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
-          } else if (statusCode == 404) {
-            errorMessage = '사용자를 찾을 수 없습니다.';
-          } else {
-            errorMessage = '서버 오류가 발생했습니다.\n($statusCode)';
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _loading = false;
-          });
           await showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                title: const Text('오류'),
-                content: Text(errorMessage),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('확인'),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-          });
-          ScaffoldMessenger.of(context).showUniqueSnackBar(
-            SnackBar(
-              content: Text('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
+            builder: (_) => AlertDialog(
+              backgroundColor: Colors.white,
+              title: const Text('오류'),
+              content: Text(errorMessage),
+              actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('확인'))],
             ),
           );
+          return;
         }
+
+        if (!mounted) return;
+        await _loginAndNavigate(emailForCheck, provider, firebaseUser.uid);
+      } else {
+        // 기존 유저: 약관 스킵하고 바로 서버 로그인
+        final firebaseUser = userCredential.user;
+        if (firebaseUser == null) {
+          if (mounted) {
+            setState(() => _loading = false);
+            ScaffoldMessenger.of(context).showUniqueSnackBar(
+              const SnackBar(content: Text('로그인에 실패했습니다. 다시 시도해주세요.'), backgroundColor: Colors.red),
+            );
+          }
+          return;
+        }
+
+        await Api().setBaseClient(Api.BASE_URL, quickStart: true);
+        if (!mounted) return;
+        await _loginAndNavigate(emailForCheck, provider, firebaseUser.uid);
       }
     } finally {
       if (mounted) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  Future<void> _loginAndNavigate(String emailForCheck, String provider, String uid) async {
+    try {
+      final response = await Api().client.loginUser(emailForCheck, provider);
+
+      if (!mounted) return;
+
+      if (response.user_id == null) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showUniqueSnackBar(
+          SnackBar(content: Text(response.msg ?? "로그인 정보를 가져오는데 실패했습니다."), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      final user = my_app.User(
+        user_id: response.user_id ?? -1,
+        name: response.name ?? "name",
+        email: response.email ?? "email",
+        phone_number: response.phone_number ?? "",
+        uid: uid,
+      );
+
+      if (!mounted) return;
+      Provider.of<UserProvider>(context, listen: false).setUser(user);
+      _registerPushToken(response.user_id ?? -1).catchError((_) {});
+
+      if (!mounted) return;
+      setState(() => _loading = false);
+
+      final prefs = await SharedPreferences.getInstance();
+      final pendingGifticonId = prefs.getInt('pending_gifticon_id');
+      if (!mounted) return;
+      if (pendingGifticonId != null) {
+        await prefs.remove('pending_gifticon_id');
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => RegisterGifticonPage(gifticon_id: pendingGifticonId)));
+      } else if (widget.returnToPrevious && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TabPage(initialIndex: 0)));
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      String errorMessage = '서버 오류가 발생했습니다.';
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMessage = '인터넷 연결을 확인해주세요.';
+      } else if (e.response != null) {
+        final statusCode = e.response?.statusCode;
+        errorMessage = statusCode == 404 ? '사용자를 찾을 수 없습니다.' : '서버 오류가 발생했습니다.\n($statusCode)';
+      }
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text('오류'),
+          content: Text(errorMessage),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('확인'))],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showUniqueSnackBar(
+        const SnackBar(content: Text('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'), backgroundColor: Colors.red),
+      );
     }
   }
 

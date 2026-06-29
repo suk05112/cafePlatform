@@ -2,16 +2,11 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
-import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/api/API.dart';
-import 'package:cafeplatform/provider/user_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:cafeplatform/model/user.dart' as my_app;
 
 class LoginService {
   static final LoginService _instance = LoginService._internal();
@@ -191,27 +186,27 @@ class LoginService {
   }
 
   Future<void> signInApple({
-    required Function(AuthCredential credential, String? email, String? name)
+    required Function(UserCredential userCredential, String? email, String? name)
         onSuccess,
     required Function(Future<AuthError> error) onError,
   }) async {
     try {
-      final credential = await SignInWithApple.getAppleIDCredential(
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
       );
 
-      // firebase를 이용한 로그인 정보 추출
       final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: credential.identityToken,
-        accessToken: credential.authorizationCode,
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
       );
 
-      final name = "${credential.familyName}${credential.givenName}";
+      final userCredential = await _auth.signInWithCredential(oauthCredential);
+      final name = "${appleCredential.familyName}${appleCredential.givenName}";
 
-      onSuccess(oauthCredential, credential.email, name);
+      onSuccess(userCredential, appleCredential.email, name);
     } catch (error) {
       onError(AuthErrorHandler.handle(error));
       return;
