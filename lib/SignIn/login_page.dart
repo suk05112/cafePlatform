@@ -946,10 +946,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // new / phone_exists: 임시 Apple 계정 삭제 후 전화번호 인증 플로우
-      // 전화번호 uid 사용, Apple credential을 전화번호 계정에 link
-      await tempCredential.user?.delete();
-
+      // new / phone_exists: Apple 계정 유지한 채 약관+전화번호 인증
       PhoneAuthResult? phoneAuthResult = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -962,14 +959,15 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (phoneAuthResult == null) {
+        // 약관 취소 시 임시 Apple 계정 삭제
+        await tempCredential.user?.delete();
         if (mounted) setState(() => _loading = false);
         return;
       }
 
-      // 전화번호 계정으로 signIn + Apple credential link
-      final userCredential = await loginService.phoneAuth(
+      // 전화번호 인증 완료 → Apple 계정에 전화번호 credential link (Apple uid 유지)
+      final firebaseUser = await loginService.linkPhoneToCurrentUser(
         phoneCredential: phoneAuthResult.credential,
-        snsCredential: appleCredential,
         onError: (error) async {
           final authError = await error;
           if (mounted) {
@@ -980,14 +978,12 @@ class _LoginPageState extends State<LoginPage> {
           }
         },
       );
-      if (userCredential == null || userCredential.user == null) {
+      if (firebaseUser == null) {
         if (mounted) setState(() => _loading = false);
         return;
       }
 
       await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-
-      final firebaseUser = userCredential.user!;
       final rawName = phoneAuthResult.name ?? name ?? "";
       final userName = rawName.isNotEmpty ? rawName : "사용자";
       await firebaseUser.updateDisplayName(userName);

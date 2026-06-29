@@ -55,6 +55,35 @@ class LoginService {
   }
 
 
+  // Apple 계정(currentUser)에 전화번호 credential link → Apple uid 유지
+  Future<User?> linkPhoneToCurrentUser(
+      {required AuthCredential phoneCredential,
+      required Function(Future<AuthError> error) onError}) async {
+    try {
+      final appleUser = _auth.currentUser;
+      if (appleUser == null) {
+        onError(Future.value(AuthError.firebase));
+        return null;
+      }
+      try {
+        await appleUser.linkWithCredential(phoneCredential);
+      } on FirebaseAuthException catch (linkError) {
+        if (linkError.code == 'provider-already-linked' ||
+            linkError.code == 'credential-already-in-use') {
+          // 이미 링크됨 → 무시하고 진행
+        } else {
+          rethrow;
+        }
+      }
+      return appleUser;
+    } on FirebaseAuthException catch (e) {
+      onError(Future.value(AuthError.firebase));
+    } catch (e) {
+      onError(AuthErrorHandler.handle(e));
+    }
+    return null;
+  }
+
   Future<bool> isRegistered(String email) async {
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
