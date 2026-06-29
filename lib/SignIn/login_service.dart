@@ -217,12 +217,13 @@ class LoginService {
   }
 
   Future<RegistrationStatus> isRegisteredUser(String? email, String provider,
-      {String? phone}) async {
+      {String? phone, String? uid}) async {
     try {
       final response = await Api().client.getIsRegisteredUser(
             email,
             provider,
             phone,
+            uid: uid,
           );
       return response.registrationStatus;
     } on DioException {
