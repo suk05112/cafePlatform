@@ -128,12 +128,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
                       SizedBox(height: 16),
                       Divider(height: 1, color: Colors.grey[200]),
                       SizedBox(height: 16),
-                      _buildInfoRow(
-                        "아이디",
-                        user?.email == "apple"
-                            ? "Apple로 로그인"
-                            : _formatEmailToId(user?.email),
-                      ),
+                      _buildInfoRow("아이디", _formatEmailToId(user?.email)),
                       SizedBox(height: 16),
                       Divider(height: 1, color: Colors.grey[200]),
                       SizedBox(height: 16),
