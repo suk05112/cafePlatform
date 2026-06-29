@@ -1,17 +1,49 @@
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
-import 'package:cafeplatform/SignIn/phone_auth_page.dart';
 import 'package:cafeplatform/api/API.dart';
-import 'package:cafeplatform/provider/user_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:cafeplatform/api/user_response.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:cafeplatform/model/user.dart' as my_app;
+
+class AppleSignInResult {
+  final OAuthCredential credential;
+  final String? email;
+  final String? name;
+  final String rawNonce;
+  final String identityToken;
+
+  AppleSignInResult({
+    required this.credential,
+    required this.email,
+    required this.name,
+    required this.rawNonce,
+    required this.identityToken,
+  });
+
+  /// identityToken(JWT)의 payload에서 `sub` 클레임을 추출한다.
+  /// Apple sub == Firebase에서 Apple 로그인 시 할당되는 uid
+  String? get appleUserId {
+    try {
+      final parts = identityToken.split('.');
+      if (parts.length < 2) return null;
+      // base64url → base64 패딩 추가
+      final payload = parts[1];
+      final normalized = base64.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final json = jsonDecode(decoded) as Map<String, dynamic>;
+      return json['sub'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+}
 
 class LoginService {
   static final LoginService _instance = LoginService._internal();
@@ -26,45 +58,45 @@ class LoginService {
     'https://www.googleapis.com/auth/userinfo.profile',
   ]);
 
+  // 전화번호로 signIn 후 SNS credential link
   Future<UserCredential?> phoneAuth(
       {required AuthCredential phoneCredential,
       required AuthCredential snsCredential,
       required Function(Future<AuthError> error) onError}) async {
     try {
+      debugPrint('[Firebase] 전화번호 signIn 시도');
       final phoneLogin = await _auth.signInWithCredential(phoneCredential);
-
       final fbUser = phoneLogin.user;
+      debugPrint('[Firebase] 전화번호 signIn 성공 - uid: ${fbUser?.uid}');
 
       if (fbUser != null) {
+        debugPrint('[Firebase] SNS credential link 시도 - provider: ${snsCredential.providerId}');
         try {
           await fbUser.linkWithCredential(snsCredential);
+          debugPrint('[Firebase] SNS link 성공');
         } on FirebaseAuthException catch (linkError) {
-          if (linkError.code == 'provider-already-linked') {
+          debugPrint('[Firebase] SNS link 실패: ${linkError.code}');
+          if (linkError.code == 'provider-already-linked' ||
+              linkError.code == 'credential-already-in-use') {
             return phoneLogin;
-          } else if (linkError.code == 'credential-already-in-use') {
-            // 이 애플 계정이 이미 다른 Firebase 유저에 연결된 경우:
-            // 전화 인증으로 만든 임시 계정을 삭제하고 애플 credential로 직접 로그인
-            try { await fbUser.delete(); } catch (_) {}
-            return await _auth.signInWithCredential(snsCredential);
           } else {
-            try { await fbUser.delete(); } catch (_) {}
             rethrow;
           }
         }
       }
 
       return phoneLogin;
-
-      // phoneLogin.credential = snsCredential;
-      // 3) 최종 로그인은 SNS로 다시 해야 provider가 SNS로 찍힘
     } on FirebaseAuthException catch (e) {
-      // Firebase 오류도 onError로 전달
+      debugPrint('[Firebase] phoneAuth 오류: ${e.code}');
       onError(Future.value(AuthError.firebase));
     } catch (e) {
+      debugPrint('[Firebase] phoneAuth 알 수 없는 오류: $e');
       onError(AuthErrorHandler.handle(e));
     }
     return null;
   }
+
+
 
   Future<bool> isRegistered(String email) async {
     try {
@@ -193,28 +225,51 @@ class LoginService {
     return;
   }
 
+  String _generateNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
   Future<void> signInApple({
-    required Function(AuthCredential credential, String? email, String? name)
-        onSuccess,
+    required Function(AppleSignInResult result) onSuccess,
     required Function(Future<AuthError> error) onError,
   }) async {
     try {
-      final credential = await SignInWithApple.getAppleIDCredential(
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        nonce: nonce,
       );
 
-      // firebase를 이용한 로그인 정보 추출
       final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: credential.identityToken,
-        accessToken: credential.authorizationCode,
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+        rawNonce: rawNonce,
       );
 
-      final name = "${credential.familyName}${credential.givenName}";
+      final familyName = appleCredential.familyName ?? "";
+      final givenName = appleCredential.givenName ?? "";
+      final name = (familyName + givenName).isNotEmpty ? familyName + givenName : null;
 
-      onSuccess(oauthCredential, credential.email, name);
+      onSuccess(AppleSignInResult(
+        credential: oauthCredential,
+        email: appleCredential.email,
+        name: name,
+        rawNonce: rawNonce,
+        identityToken: appleCredential.identityToken ?? '',
+      ));
     } catch (error) {
       onError(AuthErrorHandler.handle(error));
       return;
@@ -222,20 +277,20 @@ class LoginService {
     return;
   }
 
-  Future<bool> isRegisteredUser(String? email, String provider,
-      {String? phone}) async {
+  Future<RegistrationStatus> isRegisteredUser(String? email, String provider,
+      {String? phone, String? uid}) async {
     try {
-      // email이 null이면 query parameter로 전달하지 않음 (Retrofit이 자동 처리)
       final response = await Api().client.getIsRegisteredUser(
             email,
             provider,
             phone,
+            uid: uid,
           );
-      return response.isRegistered;
+      return response.registrationStatus;
     } on DioException {
       rethrow;
     } catch (e) {
-      return false;
+      return RegistrationStatus.newUser;
     }
   }
 }

@@ -21,6 +21,7 @@ import 'dart:convert';
 import 'package:cafeplatform/utils/kakao_share_helper.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -58,6 +59,8 @@ class _SettingPageState extends State<SettingPage> {
                     SizedBox(height: 24),
                     // 카카오 공유 테스트 버튼 (테스트용 - 주석처리로 쉽게 제거 가능)
                     // _buildKakaoShareTestButton(),
+                    // [테스트용] Apple unlink 버튼 - 테스트 후 아래 줄 주석처리
+                    _buildAppleUnlinkButton(),
                     SizedBox(height: 16),
                     getsettingListView(),
                     SizedBox(height: 20),
@@ -442,6 +445,83 @@ class _SettingPageState extends State<SettingPage> {
   Future<String> getVersion() async {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
     return packageInfo.version;
+  }
+
+  /// [테스트용] Apple 계정 unlink 버튼 - 테스트 후 주석처리로 제거
+  Widget _buildAppleUnlinkButton() {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.red[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red[200]!, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _unlinkApple,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.link_off, size: 20, color: Colors.red[800]),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '[테스트] Apple 계정 Unlink',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red[900],
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Firebase에서 apple.com provider 연결 해제',
+                        style: TextStyle(fontSize: 12, color: Colors.red[700]),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, size: 20, color: Colors.red[400]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _unlinkApple() async {
+    final user = fb.FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      Fluttertoast.showToast(msg: '로그인된 유저가 없습니다.', backgroundColor: Colors.red, textColor: Colors.white);
+      return;
+    }
+
+    final providers = user.providerData.map((p) => p.providerId).toList();
+    if (!providers.contains('apple.com')) {
+      Fluttertoast.showToast(msg: 'Apple 연결 없음 (providers: ${providers.join(", ")})', backgroundColor: Colors.orange, textColor: Colors.white);
+      return;
+    }
+
+    try {
+      await user.unlink('apple.com');
+      Fluttertoast.showToast(msg: 'Apple unlink 완료', backgroundColor: Colors.green, textColor: Colors.white);
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'unlink 실패: $e', backgroundColor: Colors.red, textColor: Colors.white);
+    }
   }
 
   /// 카카오 공유 테스트 버튼 위젯 (독립적으로 주석처리 가능)
