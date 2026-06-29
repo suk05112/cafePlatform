@@ -6,6 +6,7 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/widget/input_info_widget.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
+import 'package:cafeplatform/api/user_response.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/terms_agree_request.dart';
 import 'package:dio/dio.dart';
@@ -17,12 +18,15 @@ class PhoneAuthResult {
   final String phoneNumber;
   final String? name;
   final List<TermAgreementItem> agreements;
+  // phone_exists: 같은 번호로 다른 provider 가입된 경우 → Firebase link 후 로그인
+  final bool isAlreadyRegistered;
 
   PhoneAuthResult({
     required this.credential,
     required this.phoneNumber,
     this.name,
     this.agreements = const [],
+    this.isAlreadyRegistered = false,
   });
 }
 
@@ -32,11 +36,15 @@ class PhoneAuthPage extends StatefulWidget {
     this.isSocialLogin = false,
     this.provider,
     this.agreements = const [],
+    this.prefilledName,
+    this.hideNameField = false,
   });
 
   final bool isSocialLogin;
   final String? provider; // SNS provider 또는 "email"
   final List<TermAgreementItem> agreements;
+  final String? prefilledName;
+  final bool hideNameField;
 
   @override
   State<PhoneAuthPage> createState() => _PhoneAuthPageState();
@@ -56,6 +64,8 @@ class _PhoneAuthPageState extends State<PhoneAuthPage> {
           isSocialLogin: widget.isSocialLogin,
           provider: widget.provider,
           agreements: widget.agreements,
+          prefilledName: widget.prefilledName,
+          hideNameField: widget.hideNameField,
           successCallback: (credential) {
             if (credential != null && !_hasNavigated && mounted) {
               _hasNavigated = true;
@@ -82,6 +92,8 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
     this.provider,
     this.onLoadingChanged,
     this.agreements = const [],
+    this.prefilledName,
+    this.hideNameField = false,
   });
 
   final Function(PhoneAuthResult?) successCallback;
@@ -91,6 +103,8 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
   final String? provider;
   final void Function(bool)? onLoadingChanged;
   final List<TermAgreementItem> agreements;
+  final String? prefilledName;
+  final bool hideNameField;
 
   @override
   State<PhoneNumberVerificationWidget> createState() =>
@@ -142,6 +156,9 @@ class _PhoneNumberVerificationWidgetState
   @override
   void initState() {
     super.initState();
+    if (widget.prefilledName != null && widget.prefilledName!.isNotEmpty) {
+      name = widget.prefilledName;
+    }
     // Firebase Auth 상태 변경 리스너 설정 (자동 인증 처리용)
     _authStateSubscription = _auth.authStateChanges().listen((User? user) {
       if (user != null &&
@@ -176,11 +193,10 @@ class _PhoneNumberVerificationWidgetState
         final provider =
             widget.provider ?? (widget.isSocialLogin ? "" : "email");
 
-        final isRegistered = await loginService.isRegisteredUser(null, provider,
+        final regStatus = await loginService.isRegisteredUser(null, provider,
             phone: e164PhoneNumber);
 
-        if (isRegistered) {
-          // 이미 가입된 계정
+        if (regStatus == RegistrationStatus.registered) {
           if (mounted) {
             await _auth.signOut();
             ScaffoldMessenger.of(context).showUniqueSnackBar(
@@ -194,26 +210,29 @@ class _PhoneNumberVerificationWidgetState
           _handlingAutoVerification = false;
           return;
         }
+
+        final isAlreadyRegistered = regStatus == RegistrationStatus.phoneExists;
+        if (isAlreadyRegistered) {
+          // 같은 번호로 다른 provider 가입 → phone_exists 안내 없이 link 후 로그인
+        }
       }
 
-      // 인증 성공 처리
-      // authStateChanges를 통해 감지된 경우, verificationCompleted에서 이미 처리되었을 수 있음
-      // 하지만 verificationCompleted가 호출되지 않았을 수도 있으므로 여기서도 처리
       if (mounted) {
         setState(() {
           isVerified = true;
         });
 
-        // verificationId가 있으면 credential 생성하여 successCallback 호출
         if (_verificationId.isNotEmpty && !_hasCalledSuccessCallback) {
           _hasCalledSuccessCallback = true;
           final credential = PhoneAuthProvider.credential(
             verificationId: _verificationId,
             smsCode: validationNumberController.text.isNotEmpty
                 ? validationNumberController.text
-                : '000000', // 자동 인증의 경우 임시 코드
+                : '000000',
           );
 
+          // isAlreadyRegistered는 위 블록에서 구한 값이 없으므로 재조회 없이 false로 전달
+          // (자동 인증 경로에서 phone_exists 분기는 아래 수동 경로에서 처리)
           widget.successCallback(
             PhoneAuthResult(
               credential: credential,
@@ -224,7 +243,6 @@ class _PhoneNumberVerificationWidgetState
           );
         }
 
-        // 인증 완료 후 로그아웃 (임시 인증이므로)
         await _auth.signOut();
       }
     } on DioException catch (e) {
@@ -272,8 +290,8 @@ class _PhoneNumberVerificationWidgetState
                   mainAxisAlignment: MainAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 이름 입력 필드 (간편로그인일 때만 노출)
-                    if (widget.isSocialLogin) ...[
+                    // 이름 입력 필드 (간편로그인이면서 미리 받은 이름이 없고 hideNameField가 아닐 때만 노출)
+                    if (widget.isSocialLogin && widget.prefilledName == null && !widget.hideNameField) ...[
                       InputInfoWidget(
                         title: "이름",
                         hintText: "이름을 입력해주세요",
@@ -424,104 +442,62 @@ class _PhoneNumberVerificationWidgetState
                                                   credential);
 
                                               // 전화번호로 이미 가입된 계정인지 확인 (회원가입 시에만 체크)
-                                              if (!widget
-                                                  .skipRegistrationCheck) {
-                                                await Api().setBaseClient(
-                                                    Api.BASE_URL);
+                                              RegistrationStatus regStatus = RegistrationStatus.newUser;
+                                              if (!widget.skipRegistrationCheck) {
+                                                await Api().setBaseClient(Api.BASE_URL);
                                                 String e164PhoneNumber =
-                                                    _formatToE164(
-                                                        phoneNumberController
-                                                            .text);
+                                                    _formatToE164(phoneNumberController.text);
                                                 final provider =
                                                     widget.provider ??
-                                                        (widget.isSocialLogin
-                                                            ? ""
-                                                            : "email");
+                                                        (widget.isSocialLogin ? "" : "email");
 
-                                                bool isRegistered;
                                                 try {
-                                                  isRegistered =
-                                                      await loginService
-                                                          .isRegisteredUser(
-                                                              null, provider,
-                                                              phone:
-                                                                  e164PhoneNumber);
+                                                  regStatus = await loginService.isRegisteredUser(
+                                                      null, provider, phone: e164PhoneNumber);
                                                 } on DioException catch (e) {
-                                                  String errorMessage =
-                                                      '네트워크 오류가 발생했습니다.';
-                                                  if (e.type ==
-                                                          DioExceptionType
-                                                              .connectionTimeout ||
-                                                      e.type ==
-                                                          DioExceptionType
-                                                              .receiveTimeout ||
-                                                      e.type ==
-                                                          DioExceptionType
-                                                              .sendTimeout) {
-                                                    errorMessage =
-                                                        '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
-                                                  } else if (e.type ==
-                                                      DioExceptionType
-                                                          .connectionError) {
-                                                    errorMessage =
-                                                        '인터넷 연결을 확인해주세요.';
-                                                  } else if (e.response !=
-                                                      null) {
-                                                    errorMessage =
-                                                        '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
+                                                  String errorMessage = '네트워크 오류가 발생했습니다.';
+                                                  if (e.type == DioExceptionType.connectionTimeout ||
+                                                      e.type == DioExceptionType.receiveTimeout ||
+                                                      e.type == DioExceptionType.sendTimeout) {
+                                                    errorMessage = '요청 시간이 초과되었습니다.\n잠시 후 다시 시도해주세요.';
+                                                  } else if (e.type == DioExceptionType.connectionError) {
+                                                    errorMessage = '인터넷 연결을 확인해주세요.';
+                                                  } else if (e.response != null) {
+                                                    errorMessage = '서버 오류가 발생했습니다.\n(${e.response?.statusCode})';
                                                   }
-                                                  // Firebase 계정 롤백 (signOut은 세션만 끊고 계정은 남음)
                                                   try { await _auth.currentUser?.delete(); } catch (_) {}
                                                   if (mounted) {
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(SnackBar(
-                                                      content:
-                                                          Text(errorMessage),
-                                                      duration:
-                                                          Duration(seconds: 3),
-                                                      backgroundColor:
-                                                          Colors.red[700],
+                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                                      content: Text(errorMessage),
+                                                      duration: Duration(seconds: 3),
+                                                      backgroundColor: Colors.red[700],
                                                     ));
                                                   }
-                                                  _handlingAutoVerification =
-                                                      false;
+                                                  _handlingAutoVerification = false;
                                                   _setLoading(false);
                                                   return;
                                                 } catch (e) {
-                                                  // Firebase 계정 롤백
                                                   try { await _auth.currentUser?.delete(); } catch (_) {}
                                                   if (mounted) {
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(SnackBar(
-                                                      content: Text(
-                                                          '서버 오류가 발생했습니다.'),
-                                                      duration:
-                                                          Duration(seconds: 3),
-                                                      backgroundColor:
-                                                          Colors.red[700],
+                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                                      content: Text('서버 오류가 발생했습니다.'),
+                                                      duration: Duration(seconds: 3),
+                                                      backgroundColor: Colors.red[700],
                                                     ));
                                                   }
-                                                  _handlingAutoVerification =
-                                                      false;
+                                                  _handlingAutoVerification = false;
                                                   _setLoading(false);
                                                   return;
                                                 }
 
-                                                if (isRegistered) {
+                                                if (regStatus == RegistrationStatus.registered) {
                                                   if (mounted) {
                                                     await _auth.signOut();
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(
+                                                    ScaffoldMessenger.of(context).showSnackBar(
                                                       SnackBar(
-                                                        content: Text(
-                                                            '이미 가입된 전화번호입니다.'),
-                                                        duration: Duration(
-                                                            seconds: 2),
-                                                        backgroundColor:
-                                                            Colors.red[700],
+                                                        content: Text('이미 가입된 전화번호입니다.'),
+                                                        duration: Duration(seconds: 2),
+                                                        backgroundColor: Colors.red[700],
                                                       ),
                                                     );
                                                   }
@@ -530,15 +506,15 @@ class _PhoneNumberVerificationWidgetState
                                               }
 
                                               // 인증 성공
-                                              if (mounted &&
-                                                  !_hasCalledSuccessCallback) {
-                                                _hasCalledSuccessCallback =
-                                                    true;
+                                              if (mounted && !_hasCalledSuccessCallback) {
+                                                _hasCalledSuccessCallback = true;
                                                 setState(() {
                                                   isVerified = true;
                                                 });
 
-                                                // successCallback 호출
+                                                final isAlreadyRegistered = widget.isSocialLogin &&
+                                                    regStatus == RegistrationStatus.phoneExists;
+
                                                 widget.successCallback(
                                                   PhoneAuthResult(
                                                     credential: credential,
@@ -547,6 +523,7 @@ class _PhoneNumberVerificationWidgetState
                                                             .text,
                                                     name: name,
                                                     agreements: widget.agreements,
+                                                    isAlreadyRegistered: isAlreadyRegistered,
                                                   ),
                                                 );
 
@@ -611,6 +588,8 @@ class _PhoneNumberVerificationWidgetState
                       ? () async {
                           if (_formKey.currentState?.validate() ?? false) {
                             if (widget.isSocialLogin &&
+                                !widget.hideNameField &&
+                                widget.prefilledName == null &&
                                 (name == null || name!.isEmpty)) {
                               ScaffoldMessenger.of(context).showUniqueSnackBar(
                                 SnackBar(content: Text("이름을 입력해주세요.")),

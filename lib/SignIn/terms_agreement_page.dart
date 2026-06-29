@@ -22,10 +22,14 @@ class TermsAgreementPage extends StatefulWidget {
     super.key,
     this.isSocialLogin = false,
     this.provider,
+    this.prefilledName,
+    this.hideNameField = false,
   });
 
   final bool isSocialLogin;
   final String? provider; // SNS provider 또는 "email"
+  final String? prefilledName; // 애플 로그인 등에서 미리 받은 이름
+  final bool hideNameField;
 
   @override
   State<TermsAgreementPage> createState() => _TermsAgreementPageState();
@@ -134,6 +138,8 @@ class _TermsAgreementPageState extends State<TermsAgreementPage> {
                 isSocialLogin: widget.isSocialLogin,
                 provider: widget.provider,
                 agreements: agreements,
+                prefilledName: widget.prefilledName,
+                hideNameField: widget.hideNameField,
               )),
     );
     if (phoneAuthResult != null && mounted) {

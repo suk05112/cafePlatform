@@ -56,11 +56,24 @@ class LoginUserGetResponse {
   Map<String, dynamic> toJson() => _$LoginUserGetResponseToJson(this);
 }
 
+enum RegistrationStatus { newUser, phoneExists, registered }
+
 @JsonSerializable()
 class IsRegisteredUserGetResponse {
-  bool isRegistered;
+  String status;
 
-  IsRegisteredUserGetResponse({required this.isRegistered});
+  IsRegisteredUserGetResponse({required this.status});
+
+  RegistrationStatus get registrationStatus {
+    switch (status) {
+      case 'registered':
+        return RegistrationStatus.registered;
+      case 'phone_exists':
+        return RegistrationStatus.phoneExists;
+      default:
+        return RegistrationStatus.newUser;
+    }
+  }
 
   factory IsRegisteredUserGetResponse.fromJson(Map<String, dynamic> json) =>
       _$IsRegisteredUserGetResponseFromJson(json);

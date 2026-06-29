@@ -54,8 +54,9 @@ abstract class ApiClient {
   Future<IsRegisteredUserGetResponse> getIsRegisteredUser(
     @Query('email') String? email,
     @Query('provider') String provider,
-    @Query('phone') String? phone,
-  );
+    @Query('phone') String? phone, {
+    @Query('uid') String? uid,
+  });
 
   @GET("/store/info/{store_Id}")
   Future<StoreResponse> getStoreDetailInfo(

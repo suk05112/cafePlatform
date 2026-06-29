@@ -80,13 +80,15 @@ class _ApiClient implements ApiClient {
   Future<IsRegisteredUserGetResponse> getIsRegisteredUser(
     String? email,
     String provider,
-    String? phone,
-  ) async {
+    String? phone, {
+    String? uid,
+  }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
       r'email': email,
       r'provider': provider,
       r'phone': phone,
+      r'uid': uid,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
