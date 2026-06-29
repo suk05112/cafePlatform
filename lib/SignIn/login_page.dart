@@ -906,6 +906,7 @@ class _LoginPageState extends State<LoginPage> {
                   isSocialLogin: true,
                   provider: provider,
                   prefilledName: (name != null && name.isNotEmpty) ? name : null,
+                  hideNameField: true,
                 )),
       );
 

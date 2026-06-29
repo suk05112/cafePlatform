@@ -37,12 +37,14 @@ class PhoneAuthPage extends StatefulWidget {
     this.provider,
     this.agreements = const [],
     this.prefilledName,
+    this.hideNameField = false,
   });
 
   final bool isSocialLogin;
   final String? provider; // SNS provider 또는 "email"
   final List<TermAgreementItem> agreements;
   final String? prefilledName;
+  final bool hideNameField;
 
   @override
   State<PhoneAuthPage> createState() => _PhoneAuthPageState();
@@ -63,6 +65,7 @@ class _PhoneAuthPageState extends State<PhoneAuthPage> {
           provider: widget.provider,
           agreements: widget.agreements,
           prefilledName: widget.prefilledName,
+          hideNameField: widget.hideNameField,
           successCallback: (credential) {
             if (credential != null && !_hasNavigated && mounted) {
               _hasNavigated = true;
@@ -90,6 +93,7 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
     this.onLoadingChanged,
     this.agreements = const [],
     this.prefilledName,
+    this.hideNameField = false,
   });
 
   final Function(PhoneAuthResult?) successCallback;
@@ -100,6 +104,7 @@ class PhoneNumberVerificationWidget extends StatefulWidget {
   final void Function(bool)? onLoadingChanged;
   final List<TermAgreementItem> agreements;
   final String? prefilledName;
+  final bool hideNameField;
 
   @override
   State<PhoneNumberVerificationWidget> createState() =>
@@ -285,8 +290,8 @@ class _PhoneNumberVerificationWidgetState
                   mainAxisAlignment: MainAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 이름 입력 필드 (간편로그인이면서 미리 받은 이름이 없을 때만 노출)
-                    if (widget.isSocialLogin && widget.prefilledName == null) ...[
+                    // 이름 입력 필드 (간편로그인이면서 미리 받은 이름이 없고 hideNameField가 아닐 때만 노출)
+                    if (widget.isSocialLogin && widget.prefilledName == null && !widget.hideNameField) ...[
                       InputInfoWidget(
                         title: "이름",
                         hintText: "이름을 입력해주세요",
@@ -583,6 +588,7 @@ class _PhoneNumberVerificationWidgetState
                       ? () async {
                           if (_formKey.currentState?.validate() ?? false) {
                             if (widget.isSocialLogin &&
+                                !widget.hideNameField &&
                                 widget.prefilledName == null &&
                                 (name == null || name!.isEmpty)) {
                               ScaffoldMessenger.of(context).showUniqueSnackBar(
