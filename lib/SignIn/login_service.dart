@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -9,6 +11,39 @@ import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/user_response.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
+class AppleSignInResult {
+  final OAuthCredential credential;
+  final String? email;
+  final String? name;
+  final String rawNonce;
+  final String identityToken;
+
+  AppleSignInResult({
+    required this.credential,
+    required this.email,
+    required this.name,
+    required this.rawNonce,
+    required this.identityToken,
+  });
+
+  /// identityToken(JWT)의 payload에서 `sub` 클레임을 추출한다.
+  /// Apple sub == Firebase에서 Apple 로그인 시 할당되는 uid
+  String? get appleUserId {
+    try {
+      final parts = identityToken.split('.');
+      if (parts.length < 2) return null;
+      // base64url → base64 패딩 추가
+      final payload = parts[1];
+      final normalized = base64.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final json = jsonDecode(decoded) as Map<String, dynamic>;
+      return json['sub'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+}
 
 class LoginService {
   static final LoginService _instance = LoginService._internal();
@@ -190,29 +225,51 @@ class LoginService {
     return;
   }
 
+  String _generateNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
   Future<void> signInApple({
-    required Function(AuthCredential credential, String? email, String? name)
-        onSuccess,
+    required Function(AppleSignInResult result) onSuccess,
     required Function(Future<AuthError> error) onError,
   }) async {
     try {
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        nonce: nonce,
       );
 
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
         accessToken: appleCredential.authorizationCode,
+        rawNonce: rawNonce,
       );
 
       final familyName = appleCredential.familyName ?? "";
       final givenName = appleCredential.givenName ?? "";
       final name = (familyName + givenName).isNotEmpty ? familyName + givenName : null;
 
-      onSuccess(oauthCredential, appleCredential.email, name);
+      onSuccess(AppleSignInResult(
+        credential: oauthCredential,
+        email: appleCredential.email,
+        name: name,
+        rawNonce: rawNonce,
+        identityToken: appleCredential.identityToken ?? '',
+      ));
     } catch (error) {
       onError(AuthErrorHandler.handle(error));
       return;

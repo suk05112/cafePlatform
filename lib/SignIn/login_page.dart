@@ -891,20 +891,16 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void appleLoginSuccess(fb.AuthCredential appleCredential, String? email, String? name) async {
+  void appleLoginSuccess(AppleSignInResult appleResult) async {
     setState(() => _loading = true);
 
     try {
       const provider = "apple.com";
-      final emailForCheck = email ?? "apple";
+      final emailForCheck = appleResult.email ?? "apple";
 
-      // 1단계: Firebase signIn으로 uid 획득 (email 없이도 uid로 isRegistered 판단 가능)
-      final tempCredential = await _auth.signInWithCredential(appleCredential);
-      if (tempCredential.user == null) {
-        if (mounted) setState(() => _loading = false);
-        return;
-      }
-      final appleUid = tempCredential.user!.uid;
+      // 1단계: identityToken에서 Apple uid(sub) 추출 — Firebase signIn 없이
+      final appleUid = appleResult.appleUserId;
+      debugPrint('[Login] Apple uid(sub): $appleUid');
 
       // 2단계: uid + provider로 기존 유저 여부 확인
       debugPrint('[Login] isRegistered 요청 - uid: $appleUid, provider: $provider');
@@ -914,7 +910,6 @@ class _LoginPageState extends State<LoginPage> {
         regStatus = await loginService.isRegisteredUser(null, provider, uid: appleUid);
         debugPrint('[Login] isRegistered 응답 - status: $regStatus');
       } on DioException catch (e) {
-        await _auth.signOut();
         String errorMessage = '네트워크 오류가 발생했습니다.';
         if (e.type == DioExceptionType.connectionTimeout ||
             e.type == DioExceptionType.receiveTimeout ||
@@ -942,40 +937,41 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (regStatus == RegistrationStatus.registered) {
-        // 기존 유저: 이미 signIn된 상태로 바로 서버 로그인
-        debugPrint('[Login] registered → 바로 로그인, uid: $appleUid');
+        // 기존 유저: credential로 Firebase signIn 후 서버 로그인 (nonce 첫 사용)
+        debugPrint('[Login] registered → Firebase signIn 후 로그인');
+        final tempCred = await _auth.signInWithCredential(appleResult.credential);
+        final uid = tempCred.user?.uid ?? appleUid ?? '';
+        debugPrint('[Login] Firebase signIn 완료 - uid: $uid');
         if (!mounted) return;
-        await _loginAndNavigate(emailForCheck, provider, appleUid);
+        await _loginAndNavigate(emailForCheck, provider, uid);
         return;
       }
       debugPrint('[Login] $regStatus → 약관+전화번호 인증 플로우 진입');
 
-      // new / phone_exists: Apple 계정 유지한 채 약관+전화번호 인증
+      // new / phone_exists: 전화번호 인증 먼저 (Apple credential 아직 미사용)
       PhoneAuthResult? phoneAuthResult = await Navigator.push(
         context,
         MaterialPageRoute(
             builder: (_) => TermsAgreementPage(
                   isSocialLogin: true,
                   provider: provider,
-                  prefilledName: (name != null && name.isNotEmpty) ? name : null,
+                  prefilledName: (appleResult.name != null && appleResult.name!.isNotEmpty)
+                      ? appleResult.name
+                      : null,
                   hideNameField: true,
                 )),
       );
 
       if (phoneAuthResult == null) {
-        // 약관 취소 시 임시 Apple 세션 정리
-        await _auth.signOut();
         if (mounted) setState(() => _loading = false);
         return;
       }
 
-      // 임시 Apple 계정 signOut → 전화번호로 signIn 후 Apple credential link
-      await _auth.signOut();
-
+      // 전화번호로 signIn 후 Apple credential link (nonce 첫 사용)
       debugPrint('[Login] phoneAuth 시작 - regStatus: $regStatus');
       final userCredential = await loginService.phoneAuth(
         phoneCredential: phoneAuthResult.credential,
-        snsCredential: appleCredential,
+        snsCredential: appleResult.credential,
         onError: (error) async {
           final authError = await error;
           if (mounted) {
@@ -995,7 +991,7 @@ class _LoginPageState extends State<LoginPage> {
       debugPrint('[Login] Firebase link 완료 - uid: ${firebaseUser.uid}, providers: ${firebaseUser.providerData.map((p) => p.providerId).toList()}');
 
       await Api().setBaseClient(Api.BASE_URL, quickStart: true);
-      final rawName = phoneAuthResult.name ?? name ?? "";
+      final rawName = phoneAuthResult.name ?? appleResult.name ?? "";
       final userName = rawName.isNotEmpty ? rawName : "사용자";
       await firebaseUser.updateDisplayName(userName);
 
