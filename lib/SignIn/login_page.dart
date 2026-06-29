@@ -1009,18 +1009,8 @@ class _LoginPageState extends State<LoginPage> {
       final provider = "apple.com";
       final emailForCheck = email ?? "apple";
 
-      // 애플은 최초 1회만 email을 내려주므로, email 유무로 신규/기존 판단 불가
-      // 서버 API로 실제 등록 여부를 확인
-      await Api().setBaseClient(Api.BASE_URL);
-      final bool isRegistered = await loginService.isRegisteredUser(
-        email ?? "apple",
-        provider,
-      );
-      final bool needPhoneAuth = !isRegistered;
-
-      if (needPhoneAuth) {
-        // 폰 인증 페이지로 이동 (로딩은 계속 표시)
-        // 프로그레스바는 _loading이 true일 때 자동으로 표시됨
+      // 애플은 최초 1회만 email을 내려주므로 신규/기존 판단 불가 → 무조건 전화번호 인증 먼저 진행
+      // 실제 신규/기존 판단은 PhoneAuthPage에서 전화번호로 수행 후 isAlreadyRegistered로 반환
 
         // 약관동의 페이지 먼저 보여주기 (약관동의 후 전화번호 인증까지 처리됨)
         PhoneAuthResult? phoneAuthResult = await Navigator.push(
@@ -1094,8 +1084,48 @@ class _LoginPageState extends State<LoginPage> {
         final userName = finalPhoneAuthResult.name ?? name ?? "사용자";
         await userCredential.user?.updateDisplayName(userName);
 
-        // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
         await Api().setBaseClient(Api.BASE_URL, quickStart: true);
+
+        // 이미 가입된 유저면 회원가입 API 건너뛰고 바로 로그인
+        if (finalPhoneAuthResult.isAlreadyRegistered) {
+          try {
+            var loginResponse = await Api().client.loginUser(emailForCheck, provider);
+            if (loginResponse.user_id != null) {
+              final uid = userCredential.user?.uid;
+              final user = my_app.User(
+                user_id: loginResponse.user_id ?? -1,
+                name: loginResponse.name ?? "name",
+                email: loginResponse.email ?? "email",
+                phone_number: loginResponse.phone_number ?? "",
+                uid: uid ?? "",
+              );
+              if (!mounted) return;
+              Provider.of<UserProvider>(context, listen: false).setUser(user);
+              _registerPushToken(loginResponse.user_id ?? -1).catchError((_) {});
+              if (mounted) {
+                setState(() { _loading = false; });
+                final prefs = await SharedPreferences.getInstance();
+                final pendingGifticonId = prefs.getInt('pending_gifticon_id');
+                if (pendingGifticonId != null) {
+                  await prefs.remove('pending_gifticon_id');
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => RegisterGifticonPage(gifticon_id: pendingGifticonId)));
+                } else if (widget.returnToPrevious && Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TabPage(initialIndex: 0)));
+                }
+              }
+            }
+          } catch (e) {
+            if (mounted) {
+              setState(() { _loading = false; });
+              ScaffoldMessenger.of(context).showUniqueSnackBar(const SnackBar(content: Text('로그인에 실패했습니다. 다시 시도해주세요.'), backgroundColor: Colors.red));
+            }
+          }
+          return;
+        }
+
+        // 신규 유저: 회원가입 API 호출
         // 전화번호를 E.164 형식(+82)으로 변환
         final formattedPhoneNumber =
             _formatToE164(finalPhoneAuthResult.phoneNumber);
@@ -1247,14 +1277,9 @@ class _LoginPageState extends State<LoginPage> {
           }
         } catch (loginError) {
           // 로그인 실패해도 계속 진행 (서버에서 회원가입은 완료되었으므로)
-          // 오류 다이얼로그를 표시하지 않고 계속 진행
         }
-      } else {
-        // 기존 사용자: SNS credential로 직접 로그인 (재로그인 불필요)
-        userCredential = await _auth.signInWithCredential(credential);
-      }
 
-      if (userCredential.user == null) {
+      if (userCredential?.user == null) {
         if (mounted) {
           setState(() {
             _loading = false;
