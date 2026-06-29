@@ -907,10 +907,12 @@ class _LoginPageState extends State<LoginPage> {
       final appleUid = tempCredential.user!.uid;
 
       // 2단계: uid + provider로 기존 유저 여부 확인
+      debugPrint('[Login] isRegistered 요청 - uid: $appleUid, provider: $provider');
       RegistrationStatus regStatus;
       try {
         await Api().setBaseClient(Api.BASE_URL, quickStart: true);
         regStatus = await loginService.isRegisteredUser(null, provider, uid: appleUid);
+        debugPrint('[Login] isRegistered 응답 - status: $regStatus');
       } on DioException catch (e) {
         await _auth.signOut();
         String errorMessage = '네트워크 오류가 발생했습니다.';
@@ -941,10 +943,12 @@ class _LoginPageState extends State<LoginPage> {
 
       if (regStatus == RegistrationStatus.registered) {
         // 기존 유저: 이미 signIn된 상태로 바로 서버 로그인
+        debugPrint('[Login] registered → 바로 로그인, uid: $appleUid');
         if (!mounted) return;
         await _loginAndNavigate(emailForCheck, provider, appleUid);
         return;
       }
+      debugPrint('[Login] $regStatus → 약관+전화번호 인증 플로우 진입');
 
       // new / phone_exists: Apple 계정 유지한 채 약관+전화번호 인증
       PhoneAuthResult? phoneAuthResult = await Navigator.push(
@@ -965,9 +969,11 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // 전화번호 인증 완료 → Apple 계정에 전화번호 credential link (Apple uid 유지)
+      // 전화번호 인증 완료 → Apple 계정에 전화번호 link (new) 또는 전화번호 계정에 Apple link (phone_exists)
+      debugPrint('[Login] linkPhoneToCurrentUser 시작 - regStatus: $regStatus');
       final firebaseUser = await loginService.linkPhoneToCurrentUser(
         phoneCredential: phoneAuthResult.credential,
+        appleCredential: appleCredential,
         onError: (error) async {
           final authError = await error;
           if (mounted) {
@@ -979,9 +985,11 @@ class _LoginPageState extends State<LoginPage> {
         },
       );
       if (firebaseUser == null) {
+        debugPrint('[Login] linkPhoneToCurrentUser 실패 → 중단');
         if (mounted) setState(() => _loading = false);
         return;
       }
+      debugPrint('[Login] Firebase link 완료 - uid: ${firebaseUser.uid}, providers: ${firebaseUser.providerData.map((p) => p.providerId).toList()}');
 
       await Api().setBaseClient(Api.BASE_URL, quickStart: true);
       final rawName = phoneAuthResult.name ?? name ?? "";
@@ -997,9 +1005,12 @@ class _LoginPageState extends State<LoginPage> {
         provider: provider,
       );
 
+      debugPrint('[Login] 서버 회원가입 요청 - email: $emailForCheck, uid: ${firebaseUser.uid}, provider: $provider, phone: ${registerUser.phone_number}');
       try {
         await Api().client.registerUser(registerUser);
+        debugPrint('[Login] 서버 회원가입 성공');
       } catch (e) {
+        debugPrint('[Login] 서버 회원가입 실패: $e → Firebase 계정 삭제');
         // 회원가입 실패 시 Firebase 좀비계정 삭제
         await firebaseUser.delete();
         if (!mounted) return;
@@ -1038,8 +1049,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loginAndNavigate(String emailForCheck, String provider, String uid) async {
+    debugPrint('[Login] 서버 로그인 요청 - email: $emailForCheck, provider: $provider, uid: $uid');
     try {
       final response = await Api().client.loginUser(emailForCheck, provider);
+      debugPrint('[Login] 서버 로그인 응답 - user_id: ${response.user_id}, msg: ${response.msg}');
 
       if (!mounted) return;
 
