@@ -293,6 +293,13 @@ class CustomLogInterceptor extends Interceptor {
       final userAgent = await Api._getUserAgent();
       options.headers['User-Agent'] = userAgent;
     }
+    // App Check 토큰이 없으면 동적으로 주입
+    if (!options.headers.containsKey('X-Firebase-AppCheck')) {
+      final token = await Api._getAppCheckToken();
+      if (token != null && token.isNotEmpty) {
+        options.headers['X-Firebase-AppCheck'] = token;
+      }
+    }
     super.onRequest(options, handler);
   }
 
