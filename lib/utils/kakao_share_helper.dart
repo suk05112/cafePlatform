@@ -80,12 +80,17 @@ class KakaoShareHelper {
       profileImageUri = null;
     }
 
+    final Uri? menuImageUri =
+        (gifticon.menu_url != null && gifticon.menu_url!.isNotEmpty)
+            ? Uri.parse(gifticon.menu_url!)
+            : null;
+
     return FeedTemplate(
       content: Content(
         title: '${gifticon.sender}님으로부터 선물이 도착했어요!',
         description: '${gifticon.sender}님이 선물을 보냈어요. 앱에서 바로 확인해보세요!',
+        imageUrl: menuImageUri,
         link: Link(
-          // 메인 콘텐츠 링크 (선택적으로 앱 다운로드 페이지나 메인 페이지로 설정)
           webUrl: Uri.parse('https://www.502company.com'),
           mobileWebUrl: Uri.parse('https://www.502company.com'),
         ),
@@ -94,11 +99,6 @@ class KakaoShareHelper {
         profileText: 'Gifnut',
         // S3에서 가져온 presigned URL 사용, 없으면 null (카카오톡 기본 프로필 이미지 사용)
         profileImageUrl: profileImageUri,
-        // 메뉴 이미지가 있으면 사용, 없으면 null로 설정하여 표시하지 않음
-        titleImageUrl:
-            (gifticon.menu_url != null && gifticon.menu_url!.isNotEmpty)
-                ? Uri.parse(gifticon.menu_url!)
-                : null,
         // 메뉴 이름과 매장명 함께 표시
         titleImageText: gifticon.name,
         titleImageCategory:
