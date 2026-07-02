@@ -192,7 +192,15 @@ abstract class ApiClient {
   Future<LogoPresignedUrlResponse> getLogoPresignedUrl();
 
   @GET("/user/notice")
-  Future<UserNoticeListResponse> getUserNotice();
+  Future<UserNoticeListResponse> getUserNotice({
+    @Query('page') int? page,
+    @Query('limit') int? limit,
+  });
+
+  @GET("/user/notice/{notice_id}")
+  Future<UserNoticeDetailResponse> getUserNoticeDetail(
+    @Path('notice_id') int noticeId,
+  );
 
   @GET("/gifnut-image")
   Future<GifnutImageUrlResponse> getGifnutImageUrl({
