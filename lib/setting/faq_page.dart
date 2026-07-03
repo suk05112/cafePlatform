@@ -48,6 +48,7 @@ class _FAQPageState extends State<FAQPage> {
             debugPrint('WebView is loading (progress : $progress%)');
           },
           onPageStarted: (String url) {
+            if (!mounted) return;
             setState(() {
               _isLoading = true;
               _hasError = false;
@@ -56,12 +57,14 @@ class _FAQPageState extends State<FAQPage> {
             debugPrint('Page started loading: $url');
           },
           onPageFinished: (String url) {
+            if (!mounted) return;
             setState(() {
               _isLoading = false;
             });
             debugPrint('Page finished loading: $url');
           },
           onWebResourceError: (WebResourceError error) {
+            if (!mounted) return;
             setState(() {
               _isLoading = false;
               _hasError = true;

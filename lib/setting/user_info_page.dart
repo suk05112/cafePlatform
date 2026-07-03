@@ -518,7 +518,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
       //   (route) => false,
       // );
 
+      if (!mounted) return;
       Future.microtask(() {
+        if (!mounted) return;
         Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const TabPage(initialIndex: 0)),
           (route) => false,
