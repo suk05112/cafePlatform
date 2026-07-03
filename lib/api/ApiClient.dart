@@ -9,6 +9,7 @@ import 'package:cafeplatform/api/link_gifticon_request.dart';
 import 'package:cafeplatform/api/link_gifticon_response.dart';
 import 'package:cafeplatform/api/logo_presigned_url_response.dart';
 import 'package:cafeplatform/api/notice_response.dart';
+import 'package:cafeplatform/api/popup_response.dart';
 import 'package:cafeplatform/api/gifnut_image_url_response.dart';
 import 'package:cafeplatform/api/find_account_request.dart';
 import 'package:cafeplatform/api/find_account_response.dart';
@@ -220,4 +221,14 @@ abstract class ApiClient {
 
   @POST("/user/terms/agree")
   Future<TermsAgreeResponse> postTermsAgree(@Body() TermsAgreeRequest request);
+
+  @GET("/user/popups")
+  Future<PopupListResponse> getPopups({
+    @Query('user_id') int? userId,
+  });
+
+  @POST("/user/popups/hide")
+  Future<void> hidePopups(
+    @Query('user_id') int userId,
+  );
 }

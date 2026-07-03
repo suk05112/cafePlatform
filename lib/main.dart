@@ -40,6 +40,8 @@ import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:app_links/app_links.dart';
 import 'package:cafeplatform/widget/network_checker.dart';
+import 'package:cafeplatform/api/popup_response.dart';
+import 'package:cafeplatform/widget/popup_carousel_dialog.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -576,8 +578,56 @@ class _TabPageState extends State<TabPage> {
     super.initState();
     _selectedIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _showPopupsIfAny();
       await _requestPermissionsAndShowPrompts();
     });
+  }
+
+  Future<void> _showPopupsIfAny() async {
+    if (!mounted) return;
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userId = userProvider.user?.user_id;
+      final isLoggedIn = userId != null;
+
+      // 비로그인 유저: 로컬에 오늘 하루 숨기기 여부 확인
+      if (!isLoggedIn) {
+        final prefs = await SharedPreferences.getInstance();
+        final hiddenDate = prefs.getString('popup_hidden_date');
+        final today = DateTime.now();
+        final todayStr = '${today.year}-${today.month}-${today.day}';
+        if (hiddenDate == todayStr) return;
+      }
+
+      final response = await Api().client.getPopups(userId: userId);
+      final popups = response.data;
+      if (popups.isEmpty || !mounted) return;
+
+      popups.sort((PopupItem a, PopupItem b) => a.displayOrder.compareTo(b.displayOrder));
+
+      final nav = Navigator.of(context);
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => PopupCarouselDialog(
+          popups: popups,
+          onHideToday: () async {
+            nav.pop();
+            if (isLoggedIn) {
+              try {
+                await Api().client.hidePopups(userId!);
+              } catch (_) {}
+            } else {
+              final prefs = await SharedPreferences.getInstance();
+              final today = DateTime.now();
+              final todayStr = '${today.year}-${today.month}-${today.day}';
+              await prefs.setString('popup_hidden_date', todayStr);
+            }
+          },
+          onClose: nav.pop,
+        ),
+      );
+    } catch (_) {}
   }
 
   Future<void> _requestPermissionsAndShowPrompts() async {
