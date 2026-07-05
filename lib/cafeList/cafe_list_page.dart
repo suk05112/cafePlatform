@@ -37,12 +37,14 @@ class _CafeListState extends State<CafeList> {
   double _refLng = kDefaultReferenceLongitude;
   bool _hasLocationPermission = false;
 
-  List<RecommendMenu> _recommendMenus = [];
   bool _recommendLoading = false;
   bool _recommendTapping = false;
 
   // 지역 변경 감지용
   String? _previousRegionCode;
+
+  // 다음 페이지 프리로드 시작 임계값 (뷰포트 높이 기준으로 더 일찍 로드)
+  static const double _loadMoreThreshold = 600;
 
   @override
   void initState() {
@@ -78,25 +80,32 @@ class _CafeListState extends State<CafeList> {
     final position = _scrollController.position;
     if (!position.hasContentDimensions) return;
 
-    // 하단 200px 전에 도달하면 다음 페이지 로드
-    final threshold = position.maxScrollExtent - 200;
+    // 하단에 도달하기 한참 전에 미리 다음 페이지 로드 (끊김 방지)
+    final threshold = position.maxScrollExtent - _loadMoreThreshold;
     if (position.pixels >= threshold && position.pixels > 0) {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
 
-      // print(
-      //     '스크롤 감지: pixels=${position.pixels}, maxScrollExtent=${position.maxScrollExtent}, threshold=$threshold');
-      // print(
-      //     '페이지네이션 상태: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}, nextCursor=${storeProvider.nextCursor}');
-
       if (storeProvider.hasMore && !storeProvider.isLoadingMore) {
-        // print('다음 페이지 로드 시작');
-        storeProvider.loadMoreStores();
+        final prevCount = storeProvider.listViewStores?.length ?? 0;
+        storeProvider.loadMoreStores().then((_) {
+          _prefetchNewStoreImages(prevCount);
+        });
       }
-      // else {
-      //   print(
-      //       '다음 페이지 로드 스킵: hasMore=${storeProvider.hasMore}, isLoadingMore=${storeProvider.isLoadingMore}');
-      // }
     }
+  }
+
+  // 새로 추가된 매장 이미지를 화면에 그려지기 전에 백그라운드로 프리캐시
+  void _prefetchNewStoreImages(int fromIndex) {
+    if (!mounted) return;
+    final stores = Provider.of<StoreProvider>(context, listen: false)
+        .listViewStores ??
+        [];
+    if (fromIndex >= stores.length) return;
+    final urls = stores
+        .sublist(fromIndex)
+        .map(_CafeDiscoveryStoreRow._imageUrl)
+        .where((u) => u.isNotEmpty);
+    prefetchCachedImages(context, urls);
   }
 
   Future<void> _resolveLocation() async {
@@ -152,13 +161,9 @@ class _CafeListState extends State<CafeList> {
 
     setState(() => _recommendLoading = true);
     try {
-      await Api().setBaseClient(Api.BASE_URL);
-      final resp = await Api().client.getRecommendMenus(
-        districtCode: districtCode,
-        limit: 100,
-      );
-      if (!mounted) return;
-      setState(() => _recommendMenus = resp.menuList);
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      // provider가 district별 1시간 캐시를 처리 (중복 API 호출 방지)
+      await storeProvider.fetchRecommendMenus(districtCode: districtCode);
     } catch (_) {
     } finally {
       if (mounted) setState(() => _recommendLoading = false);
@@ -194,8 +199,10 @@ class _CafeListState extends State<CafeList> {
     final selectedRegionCode =
         storeProvider.selectedRegionCode ?? _selectedRegionCode;
 
-    // 지역 변경 감지: 이전 지역과 다르면 메뉴 추천 재호출
-    if (selectedRegionCode != null && selectedRegionCode != _previousRegionCode) {
+    // 지역 변경 감지: 이전 지역과 다르고, regions도 채워진 후에만 추천 호출
+    if (selectedRegionCode != null &&
+        selectedRegionCode != _previousRegionCode &&
+        storeProvider.availableRegions.isNotEmpty) {
       _previousRegionCode = selectedRegionCode;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _loadRecommendMenus();
@@ -297,6 +304,11 @@ class _CafeListState extends State<CafeList> {
                           hasLocationPermission: _hasLocationPermission,
                           buildImage: _buildStoreThumb,
                           onTap: () {
+                            // 상세 슬라이더에서 쓸 사진을 진입 전 백그라운드 프리캐시
+                            prefetchCachedImages(
+                              context,
+                              store.store_photo_urls.where((u) => u.isNotEmpty),
+                            );
                             Navigator.push(
                               context,
                               MaterialPageRoute<void>(
@@ -354,9 +366,10 @@ class _CafeListState extends State<CafeList> {
   }
 
   Widget _buildMenuRecommendationSection() {
-    final display = _recommendMenus.take(10).toList();
+    final recommendMenus = context.watch<StoreProvider>().recommendMenus;
+    final display = recommendMenus.take(10).toList();
 
-    if (!_recommendLoading && _recommendMenus.isEmpty) return const SizedBox.shrink();
+    if (!_recommendLoading && recommendMenus.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,7 +395,7 @@ class _CafeListState extends State<CafeList> {
                       context,
                       MaterialPageRoute<void>(
                         builder: (_) => _RecommendMenuListPage(
-                          menus: _recommendMenus,
+                          menus: recommendMenus,
                         ),
                       ),
                     );

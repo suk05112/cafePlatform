@@ -58,10 +58,7 @@ class _StorePageState extends State<StorePage> {
     setState(() => _storeLoading = true);
     try {
       final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-      final sw = Stopwatch()..start();
       final loaded = await storeProvider.fetchDetailStore(widget.storeId);
-      sw.stop();
-      debugPrint('[PERF] 매장 상세 전체 (API only): ${sw.elapsedMilliseconds}ms');
       if (!mounted) return;
       setState(() {
         store = loaded;
