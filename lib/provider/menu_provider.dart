@@ -60,10 +60,7 @@ class MenuProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      final sw = Stopwatch()..start();
       var response = await Api().client.getMenuList(storeId);
-      sw.stop();
-      debugPrint('[PERF] 메뉴 목록 API (storeId=$storeId): ${sw.elapsedMilliseconds}ms');
       var menuList = response.menuList ?? [];
       _menuCache[storeId] = (menus: menuList, cachedAt: DateTime.now());
       setMenuCard(menuList);

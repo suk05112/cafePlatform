@@ -10,6 +10,8 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cafeplatform/api/API.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/Payment/register_gifticon_page.dart';
+import 'package:cafeplatform/model/Store.dart';
+import 'package:cafeplatform/utils/cached_image.dart';
 import 'package:geolocator/geolocator.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -115,26 +117,54 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       } catch (_) {}
 
-      if (pos != null) {
-        // 위치 권한 있으면 위치 기반 매장 + 추천 메뉴
-        await Future.wait<void>([
-          storeProvider.fetchListViewStoresByDistrict("01", limit: 10),
-          Api().client
-              .getRecommendMenus(lat: pos.latitude, lng: pos.longitude, limit: 100)
-              .then<void>((_) {})
-              .catchError((_) {}),
-        ]);
-      } else {
-        // 위치 권한 없으면 기본 지역("01") 기반
-        await Future.wait<void>([
-          storeProvider.fetchListViewStoresByDistrict("01", limit: 10),
-          Api().client
-              .getRecommendMenus(districtCode: "01", limit: 100)
-              .then<void>((_) {})
-              .catchError((_) {}),
-        ]);
-      }
+      // 매장 목록 + 추천 메뉴를 병렬로 로드하고, 추천 메뉴 결과는 provider에 저장
+      await Future.wait<void>([
+        storeProvider.fetchListViewStoresByDistrict("01", limit: 10),
+        pos != null
+            ? storeProvider
+                .fetchRecommendMenus(lat: pos.latitude, lng: pos.longitude)
+                .then<void>((_) {})
+            : storeProvider
+                .fetchRecommendMenus(districtCode: "01")
+                .then<void>((_) {}),
+      ]);
+
+      // 첫 화면에 보일 이미지를 미리 다운로드해 홈 진입 시 프로그레스바를 없앤다.
+      // 첫 화면 분량(앞 6개)만 프리캐시하고, 과도한 대기를 막기 위해 상한을 둔다.
+      await _precacheFirstScreenImages(storeProvider);
     } catch (_) {}
+  }
+
+  Future<void> _precacheFirstScreenImages(StoreProvider storeProvider) async {
+    if (!mounted) return;
+    const prefetchCount = 6;
+
+    final storeUrls = (storeProvider.listViewStores ?? [])
+        .take(prefetchCount)
+        .map(_storeImageUrl)
+        .where((u) => u.isNotEmpty);
+    final menuUrls = storeProvider.recommendMenus
+        .take(prefetchCount)
+        .map((m) => m.menuPhoto ?? '')
+        .where((u) => u.isNotEmpty);
+
+    try {
+      await prefetchCachedImages(context, [...storeUrls, ...menuUrls])
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  // _CafeDiscoveryStoreRow._imageUrl과 동일 규칙: 로고 우선, 없으면 첫 사진
+  String _storeImageUrl(Store store) {
+    final logo = store.store_logo.trim();
+    if (logo.startsWith('http://') || logo.startsWith('https://')) return logo;
+    if (store.store_photo_urls.isNotEmpty) {
+      final photo = store.store_photo_urls[0].trim();
+      if (photo.startsWith('http://') || photo.startsWith('https://')) {
+        return photo;
+      }
+    }
+    return '';
   }
 
   @override

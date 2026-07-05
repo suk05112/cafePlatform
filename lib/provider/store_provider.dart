@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/dummyData.dart';
 import 'package:cafeplatform/model/Store.dart';
+import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/model/region.dart';
 
 class StoreProvider extends ChangeNotifier {
@@ -22,6 +23,10 @@ class StoreProvider extends ChangeNotifier {
   final Map<String, ({List<Store> stores, String? nextCursor, bool hasMore, DateTime cachedAt})> _listViewCache = {};
   static const Duration _listCacheTtl = Duration(hours: 1);
 
+  // 추천 메뉴 상태 + district별 1시간 캐시
+  List<RecommendMenu> _recommendMenus = [];
+  final Map<String, ({List<RecommendMenu> menus, DateTime cachedAt})> _recommendCache = {};
+
   // 지도 뷰용 상태
   List<Store>? _mapViewStores = [];
   String? _mapViewNextCursor;
@@ -32,6 +37,7 @@ class StoreProvider extends ChangeNotifier {
   Store? get store => _store;
   List<Region> get availableRegions => _availableRegions;
   String? get selectedRegionCode => _selectedRegionCode;
+  List<RecommendMenu> get recommendMenus => _recommendMenus;
 
   // 리스트 뷰 getters
   List<Store>? get listViewStores => _listViewStores;
@@ -172,12 +178,9 @@ class StoreProvider extends ChangeNotifier {
         notifyListeners();
       }
 
-      final sw = Stopwatch()..start();
       var response = await Api()
           .client
           .getStoreListByDistrict(districtCode, cursor, limit);
-      sw.stop();
-      debugPrint('[PERF] 홈 매장 목록 API (district=$districtCode, cursor=$cursor): ${sw.elapsedMilliseconds}ms');
       var storeList = response.store;
 
       final nextCursor = response.pagination?.next_cursor;
@@ -295,6 +298,43 @@ class StoreProvider extends ChangeNotifier {
     }
   }
 
+  // 추천 메뉴 조회 (district별 1시간 캐시). 결과를 상태에 저장하고 반환한다.
+  Future<List<RecommendMenu>> fetchRecommendMenus({
+    double? lat,
+    double? lng,
+    String? districtCode,
+    int limit = 100,
+  }) async {
+    // districtCode가 있으면 캐시 키로 사용 (위치 기반 호출은 캐시하지 않음)
+    if (districtCode != null && districtCode.isNotEmpty) {
+      final cached = _recommendCache[districtCode];
+      if (cached != null &&
+          DateTime.now().difference(cached.cachedAt) < _listCacheTtl) {
+        _recommendMenus = cached.menus;
+        notifyListeners();
+        return cached.menus;
+      }
+    }
+
+    try {
+      final resp = await Api().client.getRecommendMenus(
+            lat: lat,
+            lng: lng,
+            districtCode: districtCode,
+            limit: limit,
+          );
+      _recommendMenus = resp.menuList;
+      if (districtCode != null && districtCode.isNotEmpty) {
+        _recommendCache[districtCode] =
+            (menus: resp.menuList, cachedAt: DateTime.now());
+      }
+      notifyListeners();
+      return resp.menuList;
+    } catch (_) {
+      return _recommendMenus;
+    }
+  }
+
   Future<void> fetchAvailableRegions() async {
     if (_availableRegions.isNotEmpty) return;
     try {
@@ -333,10 +373,7 @@ class StoreProvider extends ChangeNotifier {
       return cached.store;
     }
 
-    final sw = Stopwatch()..start();
     var response = await Api().client.getStoreDetailInfo(storeId);
-    sw.stop();
-    debugPrint('[PERF] 매장 상세 API (storeId=$storeId): ${sw.elapsedMilliseconds}ms');
     _store = response.store;
     _detailCache[storeId] = (store: response.store, cachedAt: DateTime.now());
 
