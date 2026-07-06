@@ -44,6 +44,7 @@ import 'package:cafeplatform/api/popup_response.dart';
 import 'package:cafeplatform/widget/popup_carousel_dialog.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 
 const _kNotificationChannelId = 'default_channel';
 const _kNotificationChannelName = '기프넛 알림';
@@ -633,7 +634,17 @@ class _TabPageState extends State<TabPage> {
   Future<void> _requestPermissionsAndShowPrompts() async {
     if (!mounted) return;
 
-    // 1. 알림 시스템 권한 요청 (1회) + 결과를 service_push_enabled로 저장
+    // 1. iOS ATT 광고 추적 권한 요청 (1회)
+    if (Platform.isIOS) {
+      final trackingStatus = await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (trackingStatus == TrackingStatus.notDetermined) {
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      }
+    }
+
+    if (!mounted) return;
+
+    // 3. 알림 시스템 권한 요청 (1회) + 결과를 service_push_enabled로 저장
     final notificationSettings = await FirebaseMessaging.instance.getNotificationSettings();
     if (notificationSettings.authorizationStatus == AuthorizationStatus.notDetermined) {
       final result = await FirebaseMessaging.instance.requestPermission(
@@ -654,7 +665,7 @@ class _TabPageState extends State<TabPage> {
 
     if (!mounted) return;
 
-    // 2. 위치 시스템 권한 요청 (1회)
+    // 4. 위치 시스템 권한 요청 (1회)
     final locationStatus = await Permission.location.status;
     if (locationStatus == PermissionStatus.denied) {
       await Permission.location.request();
@@ -662,7 +673,7 @@ class _TabPageState extends State<TabPage> {
 
     if (!mounted) return;
 
-    // 3. 이벤트·할인 바텀시트 (1회)
+    // 5. 이벤트·할인 바텀시트 (1회)
     final prefs = await SharedPreferences.getInstance();
     final notificationPromptShown = prefs.getBool('notification_prompt_shown') ?? false;
     if (!notificationPromptShown && mounted) {

@@ -102,6 +102,8 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>기프넛은 고객님께 더 적합한 교환권 추천과 맞춤형 혜택, 이벤트 정보를 제공하기 위해 광고 추적 권한을 요청합니다.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>기프넛은 프로필 사진 촬영을 위해 카메라를 사용합니다.</string>
 	<key>NSContactsUsageDescription</key>
