@@ -10,6 +10,7 @@ import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/widget/store_map_page.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/utils/cached_image.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
@@ -43,6 +44,7 @@ class _StorePageState extends State<StorePage> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logScreenView('store_detail');
     if (widget.storeId < 0) {
       store = StoreDummyRepository.stores.firstWhere(
           (s) => s?.store_id == widget.storeId,

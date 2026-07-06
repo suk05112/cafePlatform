@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/gifticon_page.dart';
 import 'package:cafeplatform/main.dart';
@@ -31,6 +32,7 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logScreenView('gift_box');
     _tabController = TabController(length: 2, vsync: this);
   }
 

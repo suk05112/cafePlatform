@@ -1,5 +1,6 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 import 'package:cafeplatform/cafeList/cafe_list_map_view.dart';
 import 'package:cafeplatform/cafeList/region_picker_sheet.dart';
 import 'package:cafeplatform/cafeList/search_page.dart';
@@ -49,6 +50,7 @@ class _CafeListState extends State<CafeList> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logScreenView('cafe_list');
     _scrollController.addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
