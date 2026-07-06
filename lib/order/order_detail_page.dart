@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/Extension/datetime_extension.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/order_detail_response.dart';
@@ -29,6 +30,7 @@ class _OrderDetailPageState extends State<OrderDetailPage>
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logScreenView('order_detail');
   }
 
   Future<OrderDetailResponse> _fetchOrderDetail() async {

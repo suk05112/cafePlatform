@@ -20,6 +20,7 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 
 class LoginPage extends StatefulWidget {
   final bool returnToPrevious;
@@ -157,6 +158,8 @@ class _LoginPageState extends State<LoginPage> {
 
             // 푸시 토큰 등록
             _registerPushToken(response.user_id ?? -1);
+
+            AnalyticsService.instance.logLogin('email');
 
             // 딥링크로 들어온 기프티콘 등록이 있는지 확인
             final prefs = await SharedPreferences.getInstance();
@@ -818,6 +821,8 @@ class _LoginPageState extends State<LoginPage> {
             _loading = false;
           });
 
+          AnalyticsService.instance.logLogin(provider);
+
           // returnToPrevious가 true면 이전 페이지로 돌아가기, false면 TabPage로 이동
           if (widget.returnToPrevious && Navigator.canPop(context)) {
             Navigator.pop(context);
@@ -1077,6 +1082,8 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
       setState(() => _loading = false);
+
+      AnalyticsService.instance.logLogin(provider);
 
       final prefs = await SharedPreferences.getInstance();
       final pendingGifticonId = prefs.getInt('pending_gifticon_id');

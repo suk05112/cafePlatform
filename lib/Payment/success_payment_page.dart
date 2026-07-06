@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/home.dart';
 import 'package:cafeplatform/main.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 
 class SuccessPaymentPage extends StatefulWidget {
   const SuccessPaymentPage({super.key});
@@ -11,6 +12,12 @@ class SuccessPaymentPage extends StatefulWidget {
 }
 
 class _SuccessPaymentPageState extends State<SuccessPaymentPage> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.instance.logPurchase();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

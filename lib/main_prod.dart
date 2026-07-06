@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cafeplatform/firebase_options_prod.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -21,14 +20,6 @@ Future<void> main() async {
     );
   } catch (e) {
     debugPrint('Firebase already initialized: $e');
-  }
-
-  // Analytics GDT 백그라운드 업로드가 RunLoop를 블로킹하지 않도록
-  // 앱 시작 시점엔 비활성화하고, 이후 필요한 시점에 활성화할 것
-  try {
-    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(false);
-  } catch (e) {
-    debugPrint('Analytics 설정 오류: $e');
   }
 
   // App Check activate는 runApp을 막지 않음 (dev와 동일하게 unawaited 처리)

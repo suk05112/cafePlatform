@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
@@ -369,6 +370,8 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
 
           final registerResponse =
               await Api().client.registerUser(registerUser);
+
+          AnalyticsService.instance.logSignUp();
 
           // 약관 동의 저장 (실패해도 회원가입은 계속 진행)
           _postTermsAgree(registerResponse.userId).catchError((error) {});

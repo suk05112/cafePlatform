@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/Payment/select_gift_type_page.dart';
+import 'package:cafeplatform/utils/analytics_service.dart';
 import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/provider/menu_provider.dart';
 import 'package:cafeplatform/provider/store_provider.dart';
@@ -23,6 +24,7 @@ class _MenuPageState extends State<MenuPage>
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logScreenView('menu_detail');
     if (widget.storeId < 0) {
       // setState(() {
       //   store = StoreDummyRepository.stores[0];
