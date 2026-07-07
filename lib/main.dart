@@ -581,8 +581,10 @@ class _TabPageState extends State<TabPage> {
     super.initState();
     _selectedIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _showPopupsIfAny();
+      // ATT는 앱이 active 상태여야 팝업이 뜨므로 팝업 다이얼로그보다 먼저,
+      // 짧은 지연 후 요청 (지연·순서가 어긋나면 iOS가 조용히 무시함)
       await _requestPermissionsAndShowPrompts();
+      await _showPopupsIfAny();
     });
   }
 
@@ -639,9 +641,13 @@ class _TabPageState extends State<TabPage> {
     // 1. iOS ATT 광고 추적 권한 요청 (1회)
     if (Platform.isIOS) {
       var trackingStatus = await AppTrackingTransparency.trackingAuthorizationStatus;
+      debugPrint('[ATT] 초기 상태: $trackingStatus');
       if (trackingStatus == TrackingStatus.notDetermined) {
+        // 앱이 포그라운드 active 상태가 된 뒤 요청해야 팝업이 뜸
+        await Future.delayed(const Duration(milliseconds: 500));
         trackingStatus =
             await AppTrackingTransparency.requestTrackingAuthorization();
+        debugPrint('[ATT] 요청 후 상태: $trackingStatus');
       }
       // ATT 동의 결과를 Meta SDK에 전달 (미전달 시 이벤트 전송 보류됨)
       await FacebookAppEvents().setAdvertiserTracking(
