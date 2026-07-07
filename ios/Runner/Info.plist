@@ -28,6 +28,16 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
+			<string>facebook-app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fb1383855273660670</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
 			<string>com.gifnut.cafeplatform.dev</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
@@ -83,8 +93,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
+	<key>FacebookAppID</key>
+	<string>1383855273660670</string>
+	<key>FacebookClientToken</key>
+	<string>3190ac4572f209c578d8dbb3cd4de2d5</string>
+	<key>FacebookDisplayName</key>
+	<string>Gifnut</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
 		<string>kakao275e555cdb8196634a6aef161abe3f84</string>
 		<string>kakaoc1428635d1b36023f66bba9374fda4e8</string>
 		<string>kakaokompassauth</string>

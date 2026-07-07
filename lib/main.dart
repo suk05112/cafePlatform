@@ -45,6 +45,7 @@ import 'package:cafeplatform/widget/popup_carousel_dialog.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
+import 'package:facebook_app_events/facebook_app_events.dart';
 
 const _kNotificationChannelId = 'default_channel';
 const _kNotificationChannelName = '기프넛 알림';
@@ -191,6 +192,7 @@ Future<void> _initialize() async {
   // FCM·네이버맵은 백그라운드에서 진행 (스플래시/첫 화면을 막지 않음)
   unawaited(_initializeFCM());
   unawaited(_initNaverMapSdk());
+  unawaited(FacebookAppEvents().setAutoLogAppEventsEnabled(true));
 }
 
 void handleDeepLink(Uri uri) async {
