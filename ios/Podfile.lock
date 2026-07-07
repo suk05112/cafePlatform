@@ -21,8 +21,19 @@ PODS:
     - Flutter
   - device_info_plus (0.0.1):
     - Flutter
+  - facebook_app_events (0.0.1):
+    - FBAudienceNetwork (~> 6.9.0)
+    - FBSDKCoreKit (~> 13.1.0)
+    - Flutter
   - fast_contacts (0.0.1):
     - Flutter
+  - FBAEMKit (13.1.0):
+    - FBSDKCoreKit_Basics (= 13.1.0)
+  - FBAudienceNetwork (6.9.0)
+  - FBSDKCoreKit (13.1.0):
+    - FBAEMKit (= 13.1.0)
+    - FBSDKCoreKit_Basics (= 13.1.0)
+  - FBSDKCoreKit_Basics (13.1.0)
   - Firebase/Auth (12.15.0):
     - Firebase/CoreOnly
     - FirebaseAuth (~> 12.15.0)
@@ -284,6 +295,7 @@ DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
+  - facebook_app_events (from `.symlinks/plugins/facebook_app_events/ios`)
   - fast_contacts (from `.symlinks/plugins/fast_contacts/ios`)
   - firebase_analytics (from `.symlinks/plugins/firebase_analytics/ios`)
   - firebase_app_check (from `.symlinks/plugins/firebase_app_check/ios`)
@@ -319,6 +331,10 @@ SPEC REPOS:
   trunk:
     - AppAuth
     - AppCheckCore
+    - FBAEMKit
+    - FBAudienceNetwork
+    - FBSDKCoreKit
+    - FBSDKCoreKit_Basics
     - Firebase
     - FirebaseAnalytics
     - FirebaseAppCheck
@@ -359,6 +375,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/connectivity_plus/ios"
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
+  facebook_app_events:
+    :path: ".symlinks/plugins/facebook_app_events/ios"
   fast_contacts:
     :path: ".symlinks/plugins/fast_contacts/ios"
   firebase_analytics:
@@ -428,7 +446,12 @@ SPEC CHECKSUMS:
   camera_avfoundation: be3be85408cd4126f250386828e9b1dfa40ab436
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   device_info_plus: 335f3ce08d2e174b9fdc3db3db0f4e3b1f66bd89
+  facebook_app_events: 43ee223129419331740e6e91c82943afa85ee6d9
   fast_contacts: 85bd59ea48f7f26e9de6818da94171b29b006c3e
+  FBAEMKit: 3be32ffb79fe7c0603fed00d81742b23241e89a5
+  FBAudienceNetwork: 83096d73433759c10f9cf9b3bad5e5cff58694cb
+  FBSDKCoreKit: eff97dea778dbe6cc4498959cffb619c75675102
+  FBSDKCoreKit_Basics: c151609a1cf6976a5958febcf0043266a8fd5151
   Firebase: a8539b633d474fbeb654c7043f9c1649e274045b
   firebase_analytics: 5e356f558625ce2d8b21deff00946b56d6e8d0d5
   firebase_app_check: b140a524632115e950bd706a8d7a9d0633a25427
