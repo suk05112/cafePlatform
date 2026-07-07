@@ -11,6 +11,12 @@ class MetaAnalyticsService {
     debugPrint('[MetaAnalytics] $name ${params ?? ''}');
   }
 
+  /// 앱 최초 실행/활성화 (앱 시작 시 1회)
+  Future<void> logAppLaunch() async {
+    _log('fb_mobile_activate_app');
+    await _fb.logEvent(name: 'fb_mobile_activate_app');
+  }
+
   /// 매장/메뉴 검색
   Future<void> logSearch({required String searchString}) async {
     _log('fb_mobile_search', {'fb_search_string': searchString});

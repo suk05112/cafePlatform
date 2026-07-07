@@ -46,6 +46,7 @@ import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:facebook_app_events/facebook_app_events.dart';
+import 'package:cafeplatform/utils/meta_analytics_service.dart';
 
 const _kNotificationChannelId = 'default_channel';
 const _kNotificationChannelName = '기프넛 알림';
@@ -193,6 +194,7 @@ Future<void> _initialize() async {
   unawaited(_initializeFCM());
   unawaited(_initNaverMapSdk());
   unawaited(FacebookAppEvents().setAutoLogAppEventsEnabled(true));
+  unawaited(MetaAnalyticsService.instance.logAppLaunch());
 }
 
 void handleDeepLink(Uri uri) async {

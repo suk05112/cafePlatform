@@ -9,6 +9,7 @@ import 'package:cafeplatform/static/payment_guide_text.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
+import 'package:cafeplatform/utils/meta_analytics_service.dart';
 import 'package:provider/provider.dart';
 
 class SelectGiftPage extends StatefulWidget {
@@ -315,6 +316,11 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage(returnToPrevious: true)));
                               return;
                             }
+                            MetaAnalyticsService.instance.logInitiateCheckout(
+                              contentId: widget.menu.menu_id.toString(),
+                              contentType: 'product',
+                              value: widget.menu.price.toDouble(),
+                            );
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -370,6 +376,11 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage(returnToPrevious: true)));
                               return;
                             }
+                            MetaAnalyticsService.instance.logInitiateCheckout(
+                              contentId: widget.menu.menu_id.toString(),
+                              contentType: 'product',
+                              value: widget.menu.price.toDouble(),
+                            );
                             Navigator.push(
                               context,
                               MaterialPageRoute(
