@@ -638,10 +638,15 @@ class _TabPageState extends State<TabPage> {
 
     // 1. iOS ATT 광고 추적 권한 요청 (1회)
     if (Platform.isIOS) {
-      final trackingStatus = await AppTrackingTransparency.trackingAuthorizationStatus;
+      var trackingStatus = await AppTrackingTransparency.trackingAuthorizationStatus;
       if (trackingStatus == TrackingStatus.notDetermined) {
-        await AppTrackingTransparency.requestTrackingAuthorization();
+        trackingStatus =
+            await AppTrackingTransparency.requestTrackingAuthorization();
       }
+      // ATT 동의 결과를 Meta SDK에 전달 (미전달 시 이벤트 전송 보류됨)
+      await FacebookAppEvents().setAdvertiserTracking(
+        enabled: trackingStatus == TrackingStatus.authorized,
+      );
     }
 
     if (!mounted) return;
