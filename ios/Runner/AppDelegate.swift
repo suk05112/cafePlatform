@@ -5,6 +5,7 @@ import FirebaseCore
 import FirebaseAuth
 import FirebaseMessaging
 import FirebaseCrashlytics
+import FBSDKCoreKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -12,6 +13,8 @@ import FirebaseCrashlytics
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: launchOptions)
+
     FirebaseApp.configure()
     FirebaseConfiguration.shared.setLoggerLevel(.min)
     UNUserNotificationCenter.current().delegate = self
@@ -38,6 +41,9 @@ import FirebaseCrashlytics
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
+    if ApplicationDelegate.shared.application(app, open: url, sourceApplication: options[UIApplication.OpenURLOptionsKey.sourceApplication] as? String, annotation: options[UIApplication.OpenURLOptionsKey.annotation]) {
+      return true
+    }
     if super.application(app, open: url, options: options) {
       return true
     }

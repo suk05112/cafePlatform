@@ -1,4 +1,3 @@
-import 'package:cafeplatform/config/flavors.dart';
 import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:flutter/foundation.dart';
 
@@ -8,23 +7,17 @@ class MetaAnalyticsService {
 
   final _fb = FacebookAppEvents();
 
-  bool get _isProd => F.appFlavor == Flavor.prod;
-
   void _log(String name, [Map<String, dynamic>? params]) {
-    if (!_isProd) {
-      debugPrint('[MetaAnalytics] $name ${params ?? ''}');
-    }
+    debugPrint('[MetaAnalytics] $name ${params ?? ''}');
   }
 
   /// 매장/메뉴 검색
   Future<void> logSearch({required String searchString}) async {
     _log('fb_mobile_search', {'fb_search_string': searchString});
-    if (_isProd) {
-      await _fb.logEvent(
-        name: 'fb_mobile_search',
-        parameters: {'fb_search_string': searchString},
-      );
-    }
+    await _fb.logEvent(
+      name: 'fb_mobile_search',
+      parameters: {'fb_search_string': searchString},
+    );
   }
 
   /// 매장 상세 페이지 진입
@@ -36,15 +29,10 @@ class MetaAnalyticsService {
       'fb_content_id': contentId,
       'fb_content_type': contentType,
     });
-    if (_isProd) {
-      await _fb.logEvent(
-        name: 'fb_mobile_content_view',
-        parameters: {
-          'fb_content_id': contentId,
-          'fb_content_type': contentType,
-        },
-      );
-    }
+    await _fb.logViewContent(
+      id: contentId,
+      type: contentType,
+    );
   }
 
   /// 결제 시작 (결제하기 버튼 탭)
@@ -58,27 +46,20 @@ class MetaAnalyticsService {
       'fb_content_id': contentId,
       'fb_content_type': contentType,
       'fb_currency': currency,
-      'fb_purchase_value': value,
+      'totalPrice': value,
     });
-    if (_isProd) {
-      await _fb.logEvent(
-        name: 'fb_mobile_initiated_checkout',
-        parameters: {
-          'fb_content_id': contentId,
-          'fb_content_type': contentType,
-          'fb_currency': currency,
-          'fb_purchase_value': value,
-        },
-      );
-    }
+    await _fb.logInitiatedCheckout(
+      contentId: contentId,
+      contentType: contentType,
+      totalPrice: value,
+      currency: currency,
+    );
   }
 
   /// 회원가입 완료 (StartTrial)
   Future<void> logStartTrial() async {
     _log('StartTrial');
-    if (_isProd) {
-      await _fb.logEvent(name: 'StartTrial');
-    }
+    await _fb.logStartTrial(orderId: 'signup');
   }
 
   /// 결제 완료
@@ -89,24 +70,30 @@ class MetaAnalyticsService {
     String? contentType,
   }) async {
     _log('fb_mobile_purchase', {
+      'amount': amount,
+      'currency': currency,
       'fb_content_id': contentId,
       'fb_content_type': contentType,
-      'fb_currency': currency,
-      '_valueToSum': amount,
     });
-    if (_isProd) {
-      await _fb.logPurchase(amount: amount, currency: currency);
-    }
+    await _fb.logPurchase(
+      amount: amount,
+      currency: currency,
+      parameters: {
+        if (contentId != null) FacebookAppEvents.paramNameContentId: contentId,
+        if (contentType != null) FacebookAppEvents.paramNameContentType: contentType,
+      },
+    );
   }
 
   /// 결제수단 등록/선택
   Future<void> logAddPaymentInfo({bool success = true}) async {
-    _log('fb_mobile_add_payment_info', {'fb_success': success ? 1 : 0});
-    if (_isProd) {
-      await _fb.logEvent(
-        name: 'fb_mobile_add_payment_info',
-        parameters: {'fb_success': success ? 1 : 0},
-      );
-    }
+    _log('fb_mobile_add_payment_info', {'fb_success': success ? '1' : '0'});
+    await _fb.logEvent(
+      name: 'fb_mobile_add_payment_info',
+      parameters: {
+        FacebookAppEvents.paramNamePaymentInfoAvailable:
+            success ? FacebookAppEvents.paramValueYes : FacebookAppEvents.paramValueNo,
+      },
+    );
   }
 }

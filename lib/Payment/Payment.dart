@@ -557,6 +557,12 @@ class _PaymentState extends State<Payment> {
   Future<void> _submitCheckout() async {
     FocusScope.of(context).unfocus();
 
+    MetaAnalyticsService.instance.logInitiateCheckout(
+      contentId: widget.menu.menu_id.toString(),
+      contentType: 'product',
+      value: widget.menu.price.toDouble(),
+    );
+
     late final String paymentValue;
     if (_kUseFigmaPaymentUi) {
       // if (!_figmaTermsAgreed) {
@@ -600,11 +606,6 @@ if (_figmaPaymentLabel.isEmpty) {
       }
     }
 
-    MetaAnalyticsService.instance.logInitiateCheckout(
-      contentId: widget.menu.menu_id.toString(),
-      contentType: 'product',
-      value: widget.menu.price.toDouble(),
-    );
     MetaAnalyticsService.instance.logAddPaymentInfo(success: true);
 
     if (widget.type == 2) {
