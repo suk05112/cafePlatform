@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cafeplatform/utils/analytics_service.dart';
+import 'package:cafeplatform/utils/meta_analytics_service.dart';
 import 'package:cafeplatform/cafeList/cafe_list_map_view.dart';
 import 'package:cafeplatform/cafeList/region_picker_sheet.dart';
 import 'package:cafeplatform/store_page.dart';
@@ -235,6 +236,7 @@ class _SearchPageState extends State<SearchPage> {
 
   void _performSearch(String query) {
     AnalyticsService.instance.logSearch(query);
+    MetaAnalyticsService.instance.logSearch(searchString: query);
     setState(() {
       _isLoading = true;
       _hasSearched = true;

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/utils/analytics_service.dart';
+import 'package:cafeplatform/utils/meta_analytics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cafeplatform/SignIn/login_service.dart';
@@ -280,12 +281,10 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
 
   // 이메일과 비밀번호를 사용하여 Firebase Authentication에 새 사용자를 만듭니다.
   void signUpWithEmail(String email, String password) async {
+    debugPrint('[SignUp] signUpWithEmail 시작 email=$email phone=$phoneNumber name=$name');
     try {
-      // 이름과 전화번호 검증
       if (name == null || name!.isEmpty) {
-        setState(() {
-          _loading = false;
-        });
+        setState(() { _loading = false; });
         CommonDialog.show(
             context: context,
             title: "입력 오류",
@@ -296,9 +295,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
       }
 
       if (phoneNumber.isEmpty) {
-        setState(() {
-          _loading = false;
-        });
+        setState(() { _loading = false; });
         CommonDialog.show(
             context: context,
             title: "입력 오류",
@@ -312,17 +309,18 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
         email: email + "@gifnut.com",
         password: password,
       );
+      debugPrint('[SignUp] phoneCredential로 signInWithCredential 호출 전 currentUser=${FirebaseAuth.instance.currentUser?.uid}');
       final phoneLogin = await FirebaseAuth.instance.signInWithCredential(
         phoneCredential,
       );
+      debugPrint('[SignUp] signInWithCredential 완료 uid=${phoneLogin.user?.uid} phone=${phoneLogin.user?.phoneNumber} providers=${phoneLogin.user?.providerData.map((p) => p.providerId).toList()} isNew=${phoneLogin.additionalUserInfo?.isNewUser}');
 
       final fbUser = phoneLogin.user;
 
       if (fbUser == null) {
+        debugPrint('[SignUp] fbUser null → 전화번호 인증 실패');
         if (mounted) {
-          setState(() {
-            _loading = false;
-          });
+          setState(() { _loading = false; });
         }
         CommonDialog.show(
             context: context,
@@ -333,34 +331,32 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
         return;
       }
 
-      // 이메일 credential 연결 시도 (이미 연결되어 있으면 에러 발생)
       UserCredential? linkResult;
       User? linkedUser;
 
+      debugPrint('[SignUp] linkWithCredential(email) 시도 email=${email}@gifnut.com');
       try {
         linkResult = await fbUser.linkWithCredential(emailCredential);
         linkedUser = linkResult.user;
+        debugPrint('[SignUp] linkWithCredential 성공 uid=${linkedUser?.uid} providers=${linkedUser?.providerData.map((p) => p.providerId).toList()}');
       } on FirebaseAuthException catch (linkError) {
-        // 이미 이메일이 링크되어 있거나 다른 오류인 경우
+        debugPrint('[SignUp] linkWithCredential 실패 code=${linkError.code} msg=${linkError.message}');
         if (linkError.code == 'provider-already-linked') {
-          // 이미 이메일이 링크되어 있는 경우, 기존 사용자 사용
           linkedUser = fbUser;
+          debugPrint('[SignUp] provider-already-linked → 기존 fbUser 사용 uid=${fbUser.uid}');
         } else {
-          // 다른 오류인 경우 재throw
           rethrow;
         }
       }
 
       if (linkedUser != null) {
-        // 회원가입 API 호출 - 이름과 전화번호를 서버에 전달
+        debugPrint('[SignUp] registerUser API 호출 uid=${linkedUser.uid}');
         try {
-          // 전화번호를 E.164 형식(+82)으로 변환
           final formattedPhoneNumber = _formatToE164(phoneNumber);
-          // 이메일 뒤에 @gifnut.com 붙이기
           final emailWithDomain = email + "@gifnut.com";
 
           final registerUser = my_app.User(
-            user_id: 0, // 회원가입 시에는 0으로 설정 (서버에서 생성)
+            user_id: 0,
             name: name!,
             email: emailWithDomain,
             phone_number: formattedPhoneNumber,
@@ -370,19 +366,18 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
 
           final registerResponse =
               await Api().client.registerUser(registerUser);
+          debugPrint('[SignUp] registerUser 성공 userId=${registerResponse.userId}');
 
           AnalyticsService.instance.logSignUp();
+          MetaAnalyticsService.instance.logStartTrial();
 
-          // 약관 동의 저장 (실패해도 회원가입은 계속 진행)
-          _postTermsAgree(registerResponse.userId).catchError((error) {});
+          _postTermsAgree(registerResponse.userId).catchError((error) { debugPrint('[SignUp] postTermsAgree 실패: $error'); });
 
-          // 푸시 토큰 등록 (비동기로 실행하되, 실패해도 회원가입은 계속 진행)
-          // 회원가입 API 호출 후 바로 등록 (로그아웃 전)
-          _registerPushToken(registerResponse.userId).catchError((error) {
-          });
+          _registerPushToken(registerResponse.userId).catchError((error) { debugPrint('[SignUp] registerPushToken 실패: $error'); });
 
-          // 이메일 회원가입 성공 후 Firebase 로그아웃 (사용자가 다시 로그인하도록)
+          debugPrint('[SignUp] Firebase signOut 호출');
           await FirebaseAuth.instance.signOut();
+          debugPrint('[SignUp] Firebase signOut 완료');
 
           if (mounted) {
             setState(() {
@@ -439,8 +434,8 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             );
           }
         } on DioException catch (e) {
-          // 서버 회원가입 실패 시 Firebase 계정 롤백
-          try { await linkedUser!.delete(); } catch (_) {}
+          debugPrint('[SignUp] registerUser DioException: ${e.type} status=${e.response?.statusCode} body=${e.response?.data}');
+          try { await linkedUser!.delete(); debugPrint('[SignUp] Firebase 계정 rollback 완료'); } catch (de) { debugPrint('[SignUp] rollback 실패: $de'); }
           String errorMessage = "회원가입 중 서버 오류가 발생했습니다.";
           if (e.response != null) {
             final statusCode = e.response?.statusCode;
@@ -453,9 +448,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             }
           }
           if (mounted) {
-            setState(() {
-              _loading = false;
-            });
+            setState(() { _loading = false; });
             CommonDialog.show(
                 context: context,
                 title: "회원가입 오류",
@@ -464,12 +457,10 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
                 onPressed: () {});
           }
         } catch (e) {
-          // 서버 회원가입 실패 시 Firebase 계정 롤백
-          try { await linkedUser!.delete(); } catch (_) {}
+          debugPrint('[SignUp] registerUser 기타 예외: $e');
+          try { await linkedUser!.delete(); debugPrint('[SignUp] Firebase 계정 rollback 완료'); } catch (de) { debugPrint('[SignUp] rollback 실패: $de'); }
           if (mounted) {
-            setState(() {
-              _loading = false;
-            });
+            setState(() { _loading = false; });
             CommonDialog.show(
                 context: context,
                 title: "오류",
@@ -480,10 +471,9 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
         }
       }
     } on FirebaseAuthException catch (e) {
+      debugPrint('[SignUp] FirebaseAuthException code=${e.code} msg=${e.message}');
       if (mounted) {
-        setState(() {
-          _loading = false;
-        });
+        setState(() { _loading = false; });
       }
       String errorMessage = "회원가입 중 오류가 발생했습니다.";
       switch (e.code) {
@@ -527,10 +517,9 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
           buttonText: "확인",
           onPressed: () {});
     } catch (e) {
+      debugPrint('[SignUp] 최상단 catch 예외: $e');
       if (mounted) {
-        setState(() {
-          _loading = false;
-        });
+        setState(() { _loading = false; });
       }
       CommonDialog.show(
           context: context,

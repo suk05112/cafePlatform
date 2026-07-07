@@ -3,6 +3,7 @@ import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/home.dart';
 import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/utils/analytics_service.dart';
+import 'package:cafeplatform/utils/meta_analytics_service.dart';
 
 class SuccessPaymentPage extends StatefulWidget {
   const SuccessPaymentPage({super.key});
@@ -16,6 +17,11 @@ class _SuccessPaymentPageState extends State<SuccessPaymentPage> {
   void initState() {
     super.initState();
     AnalyticsService.instance.logPurchase();
+    MetaAnalyticsService.instance.logPurchase(
+      amount: 0,
+      currency: 'KRW',
+      contentType: 'product',
+    );
   }
 
   @override

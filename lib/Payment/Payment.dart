@@ -18,6 +18,7 @@ import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/terms/payment_terms.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:cafeplatform/Payment/figma_payment_method_section.dart';
+import 'package:cafeplatform/utils/meta_analytics_service.dart';
 import 'package:cafeplatform/Payment/payment_ui_tokens.dart';
 import 'package:provider/provider.dart';
 import 'package:tosspayments_widget_sdk_flutter/model/payment_widget_options.dart';
@@ -598,6 +599,13 @@ if (_figmaPaymentLabel.isEmpty) {
         paymentValue = selectedPaymentMethod.method ?? '기타';
       }
     }
+
+    MetaAnalyticsService.instance.logInitiateCheckout(
+      contentId: widget.menu.menu_id.toString(),
+      contentType: 'product',
+      value: widget.menu.price.toDouble(),
+    );
+    MetaAnalyticsService.instance.logAddPaymentInfo(success: true);
 
     if (widget.type == 2) {
       if (receiverPhoneNumber.trim().isEmpty) {
