@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cafeplatform/api/popup_response.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:cafeplatform/main.dart' show handleDeepLink;
+import 'package:cafeplatform/widget/common_webview_page.dart';
 
 class PopupCarouselDialog extends StatefulWidget {
   final List<PopupItem> popups;
@@ -29,12 +30,22 @@ class _PopupCarouselDialogState extends State<PopupCarouselDialog> {
     super.dispose();
   }
 
-  Future<void> _handleTap(PopupItem popup) async {
+  void _handleTap(PopupItem popup) {
     final url = popup.linkUrl;
     if (url == null || url.isEmpty) return;
     final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (uri == null) return;
+
+    Navigator.of(context).pop();
+
+    if (uri.scheme == 'http' || uri.scheme == 'https') {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CommonWebViewPage(url: url, title: popup.title),
+        ),
+      );
+    } else {
+      handleDeepLink(uri);
     }
   }
 
