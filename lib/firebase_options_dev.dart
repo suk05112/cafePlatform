@@ -50,19 +50,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAlX-7Src_cDoPT468x56GqOXu6yDaDWdc',
-    appId: '1:99431167510:android:3142d4ef8e4ea3936e6737',
-    messagingSenderId: '99431167510',
-    projectId: 'cafeplatform',
-    storageBucket: 'cafeplatform.firebasestorage.app',
+    apiKey: 'AIzaSyBk7jG-8E8vzTdvW2E-7yfR0pMzwAWfpDE',
+    appId: '1:867465811135:android:eb92820e67b7968255620a',
+    messagingSenderId: '867465811135',
+    projectId: 'gifnut-dev',
+    storageBucket: 'gifnut-dev.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAgXJvDB2WUpjjPJgX4qrtP0AaFA4NmhDw',
-    appId: '1:99431167510:ios:49d8c003e9d7f57c6e6737',
-    messagingSenderId: '99431167510',
-    projectId: 'cafeplatform',
-    storageBucket: 'cafeplatform.firebasestorage.app',
+    apiKey: 'AIzaSyCGo7DlLDkB8lR_vKp8JB6oqBzB6cHRJUI',
+    appId: '1:867465811135:ios:5639b8f0d22e633b55620a',
+    messagingSenderId: '867465811135',
+    projectId: 'gifnut-dev',
+    storageBucket: 'gifnut-dev.firebasestorage.app',
     iosBundleId: 'com.gifnut.cafeplatform.dev',
   );
 }
