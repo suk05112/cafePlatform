@@ -47,6 +47,33 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<PingUserResponse> pingUser(int userId) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{r'user_id': userId};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio
+        .fetch<Map<String, dynamic>>(_setStreamType<PingUserResponse>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/user/ping',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = PingUserResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
   Future<LoginUserGetResponse> loginUser(
     String email,
     String provider,

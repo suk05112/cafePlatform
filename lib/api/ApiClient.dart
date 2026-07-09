@@ -40,6 +40,11 @@ abstract class ApiClient {
   @POST("/user/register")
   Future<RegisterUserPostResponse> registerUser(@Body() User user);
 
+  @POST("/user/ping")
+  Future<PingUserResponse> pingUser(
+    @Query('user_id') int userId,
+  );
+
   // @GET("/user/login/{email}")
   // Future<LoginUserGetResponse> loginUser(
   //   @Path('email') String email,
