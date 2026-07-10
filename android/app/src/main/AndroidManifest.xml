@@ -90,8 +90,8 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher" />
         <!-- Meta (Facebook) SDK -->
-        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="1383855273660670"/>
-        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="3190ac4572f209c578d8dbb3cd4de2d5"/>
+        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="1386497860019161"/>
+        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="daacbe3d03593a47f5e9c81c156cef9c"/>
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

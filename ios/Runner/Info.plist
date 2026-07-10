@@ -31,7 +31,7 @@
 			<string>facebook-app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>fb1383855273660670</string>
+				<string>fb1386497860019161</string>
 			</array>
 		</dict>
 		<dict>
@@ -94,9 +94,9 @@
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
 	<key>FacebookAppID</key>
-	<string>1383855273660670</string>
+	<string>1386497860019161</string>
 	<key>FacebookClientToken</key>
-	<string>3190ac4572f209c578d8dbb3cd4de2d5</string>
+	<string>daacbe3d03593a47f5e9c81c156cef9c</string>
 	<key>FacebookDisplayName</key>
 	<string>Gifnut</string>
 	<key>LSApplicationQueriesSchemes</key>
