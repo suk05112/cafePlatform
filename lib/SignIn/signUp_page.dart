@@ -364,6 +364,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             provider: "email",
           );
 
+          await Api().setBaseClient(Api.BASE_URL);
           final registerResponse =
               await Api().client.registerUser(registerUser);
           debugPrint('[SignUp] registerUser 성공 userId=${registerResponse.userId}');

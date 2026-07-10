@@ -142,3 +142,14 @@ class DeleteUserResponse {
       _$DeleteUserResponseFromJson(json);
   Map<String, dynamic> toJson() => _$DeleteUserResponseToJson(this);
 }
+
+@JsonSerializable()
+class PingUserResponse {
+  String message;
+
+  PingUserResponse({required this.message});
+
+  factory PingUserResponse.fromJson(Map<String, dynamic> json) =>
+      _$PingUserResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$PingUserResponseToJson(this);
+}

@@ -97,3 +97,13 @@ Map<String, dynamic> _$DeleteUserResponseToJson(DeleteUserResponse instance) =>
       'user_id': instance.userId,
       'apple_revoked': instance.appleRevoked,
     };
+
+PingUserResponse _$PingUserResponseFromJson(Map<String, dynamic> json) =>
+    PingUserResponse(
+      message: json['message'] as String,
+    );
+
+Map<String, dynamic> _$PingUserResponseToJson(PingUserResponse instance) =>
+    <String, dynamic>{
+      'message': instance.message,
+    };

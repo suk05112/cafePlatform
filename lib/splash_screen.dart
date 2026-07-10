@@ -46,6 +46,12 @@ class _SplashScreenState extends State<SplashScreen> {
           await firebaseUser.getIdToken().timeout(const Duration(seconds: 8));
           await Api().setBaseClient(Api.BASE_URL, quickStart: true);
 
+          try {
+            await Api().client.pingUser(userProvider.user!.user_id);
+          } catch (e) {
+            debugPrint('[Ping] 실패(무시): $e');
+          }
+
           final prefs = await SharedPreferences.getInstance();
           final pendingGifticonId = prefs.getInt('pending_gifticon_id');
 
