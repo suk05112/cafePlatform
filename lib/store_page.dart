@@ -56,8 +56,11 @@ class _StorePageState extends State<StorePage> {
           orElse: () => StoreDummyRepository.stores[0]);
     } else {
       _loadStore();
-      Provider.of<MenuProvider>(context, listen: false)
-          .fetchMenuList(widget.storeId);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Provider.of<MenuProvider>(context, listen: false)
+            .fetchMenuList(widget.storeId);
+      });
     }
   }
 
