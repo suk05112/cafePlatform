@@ -10,8 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:dio/dio.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:get/get.dart';
-import 'package:cafeplatform/SignIn/login_page.dart';
 
 class UserInfoPage extends StatefulWidget {
   const UserInfoPage({super.key});
@@ -77,7 +75,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
   @override
   Widget build(BuildContext context) {
-    User? user = userProvider.user;
+    User? user = context.watch<UserProvider>().user;
 
     return Scaffold(
       appBar: const CommonAppBar(title: "내정보"),
@@ -772,8 +770,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
                 actions: [
                   TextButton(
                     onPressed: () {
-                      Navigator.of(successContext).pop();
-                      Get.offAll(() => LoginPage());
+                      final navigator = Navigator.of(successContext);
+                      navigator.pop(); // 탈퇴 완료 다이얼로그 닫기
+                      navigator.pop(); // UserInfoPage 닫고 더보기(SettingPage)로 복귀
                     },
                     child: const Text(
                       '확인',
@@ -788,10 +787,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
             },
           );
         } catch (dialogError) {
-          Get.offAll(() => LoginPage());
+          if (super.context.mounted) {
+            Navigator.of(super.context).pop();
+          }
         }
-      } else {
-        Get.offAll(() => LoginPage());
       }
     } catch (e, stackTrace) {
 
