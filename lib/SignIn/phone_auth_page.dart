@@ -18,12 +18,15 @@ class PhoneAuthResult {
   final String phoneNumber;
   final String? name;
   final List<TermAgreementItem> agreements;
+  // phone_exists: 같은 번호로 다른 provider 가입된 경우 → Firebase link 후 로그인
+  final bool isAlreadyRegistered;
 
   PhoneAuthResult({
     required this.credential,
     required this.phoneNumber,
     this.name,
     this.agreements = const [],
+    this.isAlreadyRegistered = false,
   });
 }
 
@@ -182,6 +185,7 @@ class _PhoneNumberVerificationWidgetState
       }
 
       // 전화번호로 가입 여부 확인
+      bool isAlreadyRegistered = false;
       if (!widget.skipRegistrationCheck) {
         await Api().setBaseClient(Api.BASE_URL);
         String e164PhoneNumber = _formatToE164(phoneNumberController.text);
@@ -191,15 +195,12 @@ class _PhoneNumberVerificationWidgetState
         final regStatus = await loginService.isRegisteredUser(null, provider,
             phone: e164PhoneNumber);
 
-        if (regStatus == RegistrationStatus.registered ||
-            regStatus == RegistrationStatus.phoneExists) {
+        if (regStatus == RegistrationStatus.registered) {
           if (mounted) {
             await _auth.signOut();
             ScaffoldMessenger.of(context).showUniqueSnackBar(
               SnackBar(
-                content: Text(regStatus == RegistrationStatus.registered
-                    ? '이미 가입된 전화번호입니다.'
-                    : '이미 다른 방식으로 가입된 전화번호입니다.'),
+                content: Text('이미 가입된 전화번호입니다.'),
                 duration: Duration(seconds: 2),
                 backgroundColor: Colors.red[700],
               ),
@@ -207,6 +208,11 @@ class _PhoneNumberVerificationWidgetState
           }
           _handlingAutoVerification = false;
           return;
+        }
+
+        final isAlreadyRegistered = regStatus == RegistrationStatus.phoneExists;
+        if (isAlreadyRegistered) {
+          // 같은 번호로 다른 provider 가입 → phone_exists 안내 없이 link 후 로그인
         }
       }
 
@@ -224,12 +230,15 @@ class _PhoneNumberVerificationWidgetState
                 : '000000',
           );
 
+          // isAlreadyRegistered는 위 블록에서 구한 값이 없으므로 재조회 없이 false로 전달
+          // (자동 인증 경로에서 phone_exists 분기는 아래 수동 경로에서 처리)
           widget.successCallback(
             PhoneAuthResult(
               credential: credential,
               phoneNumber: phoneNumberController.text,
               name: name,
               agreements: widget.agreements,
+              isAlreadyRegistered: isAlreadyRegistered,
             ),
           );
         }
@@ -481,15 +490,12 @@ class _PhoneNumberVerificationWidgetState
                                                   return;
                                                 }
 
-                                                if (regStatus == RegistrationStatus.registered ||
-                                                    regStatus == RegistrationStatus.phoneExists) {
+                                                if (regStatus == RegistrationStatus.registered) {
                                                   if (mounted) {
                                                     await _auth.signOut();
                                                     ScaffoldMessenger.of(context).showSnackBar(
                                                       SnackBar(
-                                                        content: Text(regStatus == RegistrationStatus.registered
-                                                            ? '이미 가입된 전화번호입니다.'
-                                                            : '이미 다른 방식으로 가입된 전화번호입니다.'),
+                                                        content: Text('이미 가입된 전화번호입니다.'),
                                                         duration: Duration(seconds: 2),
                                                         backgroundColor: Colors.red[700],
                                                       ),
@@ -508,12 +514,17 @@ class _PhoneNumberVerificationWidgetState
                                                   isVerified = true;
                                                 });
 
+                                                final isAlreadyRegistered = widget.isSocialLogin &&
+                                                    regStatus == RegistrationStatus.phoneExists;
+
+
                                                 widget.successCallback(
                                                   PhoneAuthResult(
                                                     credential: credential,
                                                     phoneNumber: phoneNumberController.text,
                                                     name: name,
                                                     agreements: widget.agreements,
+                                                    isAlreadyRegistered: isAlreadyRegistered,
                                                   ),
                                                 );
 
