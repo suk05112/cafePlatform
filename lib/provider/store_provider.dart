@@ -335,11 +335,19 @@ class StoreProvider extends ChangeNotifier {
     }
   }
 
+  // 지역 목록 캐시 시각 (1분 TTL)
+  DateTime? _regionsCachedAt;
+
   Future<void> fetchAvailableRegions() async {
-    if (_availableRegions.isNotEmpty) return;
+    if (_availableRegions.isNotEmpty &&
+        _regionsCachedAt != null &&
+        DateTime.now().difference(_regionsCachedAt!) < _listCacheTtl) {
+      return;
+    }
     try {
       var response = await Api().client.getAvailableRegions();
       _availableRegions = response.regions;
+      _regionsCachedAt = DateTime.now();
       notifyListeners();
     } catch (error) {
       _availableRegions = [];
