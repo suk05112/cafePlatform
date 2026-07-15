@@ -770,10 +770,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
                 actions: [
                   TextButton(
                     onPressed: () {
-                      Navigator.of(successContext).pop();
-                      if (super.context.mounted) {
-                        Navigator.of(super.context).pop();
-                      }
+                      final navigator = Navigator.of(successContext);
+                      navigator.pop(); // 탈퇴 완료 다이얼로그 닫기
+                      navigator.pop(); // UserInfoPage 닫고 더보기(SettingPage)로 복귀
                     },
                     child: const Text(
                       '확인',
