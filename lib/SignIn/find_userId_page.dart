@@ -203,7 +203,12 @@ class _FindUserIDPageState extends State<FindUserIDPage> {
     } on DioException catch (e) {
       String errorMsg = "오류가 발생했습니다.";
       if (e.response != null) {
-        if (e.response!.statusCode == 404 || e.response!.statusCode == 400) {
+        if (e.response!.statusCode == 400) {
+          final detail = e.response?.data?['detail'];
+          errorMsg = (detail is String && detail.isNotEmpty)
+              ? detail
+              : "입력하신 정보와 일치하는 계정을 찾을 수 없습니다.";
+        } else if (e.response!.statusCode == 404) {
           errorMsg = "입력하신 정보와 일치하는 계정을 찾을 수 없습니다.";
         } else if (e.response!.statusCode == 500) {
           errorMsg = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
