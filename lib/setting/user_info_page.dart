@@ -773,7 +773,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(successContext).pop();
-                      Get.offAll(() => LoginPage());
+                      Future.microtask(() => Get.offAll(() => LoginPage()));
                     },
                     child: const Text(
                       '확인',
@@ -788,10 +788,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
             },
           );
         } catch (dialogError) {
-          Get.offAll(() => LoginPage());
+          Future.microtask(() => Get.offAll(() => LoginPage()));
         }
       } else {
-        Get.offAll(() => LoginPage());
+        Future.microtask(() => Get.offAll(() => LoginPage()));
       }
     } catch (e, stackTrace) {
 
