@@ -12,7 +12,7 @@ class MenuProvider extends ChangeNotifier {
 
   // 메뉴 목록 메모리 캐시 (storeId → (menus, 캐시 시각))
   final Map<int, ({List<Menu> menus, DateTime cachedAt})> _menuCache = {};
-  static const Duration _cacheTtl = Duration(hours: 1);
+  static const Duration _cacheTtl = Duration(minutes: 1);
 
   void setSelectedMenu(Menu menu) {
     _selectedMenu = menu;
