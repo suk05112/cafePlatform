@@ -19,7 +19,8 @@ class UserInfoPage extends StatefulWidget {
 }
 
 class _UserInfoPageState extends State<UserInfoPage> {
-  late final UserProvider userProvider;
+  late UserProvider userProvider;
+  bool _userProviderInitialized = false;
 
   @override
   void initState() {
@@ -29,7 +30,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    userProvider = context.read<UserProvider>();
+    if (!_userProviderInitialized) {
+      userProvider = context.read<UserProvider>();
+      _userProviderInitialized = true;
+    }
   }
 
   String _formatPhoneNumber(String? phoneNumber) {
@@ -244,10 +248,11 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
   // 회원탈퇴 위젯
   void _showWithdrawalDialog() {
+    final BuildContext pageContext = context;
     TextEditingController inputController = TextEditingController();
     bool showingFail = false;
     showDialog(
-        context: context,
+        context: pageContext,
         barrierColor: Colors.black.withOpacity(0.5),
         builder: (context) {
           return StatefulBuilder(
@@ -461,7 +466,8 @@ class _UserInfoPageState extends State<UserInfoPage> {
                                 }
                                 if (!context.mounted) return;
                                 Navigator.of(context).pop();
-                                await _handleWithdrawal(context);
+                                if (!pageContext.mounted) return;
+                                await _handleWithdrawal(pageContext);
                               } else {
                                 setState(() {
                                   showingFail = true;
