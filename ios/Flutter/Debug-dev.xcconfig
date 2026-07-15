@@ -3,4 +3,4 @@
 #include "Debug.xcconfig"
 FLUTTER_BUILD_MODE=debug
 FLUTTER_TARGET=lib/main_dev.dart
-KAKAO_SCHEME=kakaoc1428635d1b36023f66bba9374fda4e8
+KAKAO_SCHEME=kakaoa34eda2697a2d72bdd88de695ea7f739

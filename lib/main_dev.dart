@@ -22,8 +22,8 @@ Future<void> main() async {
     debugPrint('Firebase already initialized: $e');
   }
 
-  var kakaoNative = 'c1428635d1b36023f66bba9374fda4e8';
-  var javaScriptAppKey = '16dd251b86287783606ea600a98c7131';
+  var kakaoNative = 'a34eda2697a2d72bdd88de695ea7f739';
+  var javaScriptAppKey = 'd1ffa7fb05453681f7b6553ba7b18ffe';
 
   KakaoSdk.init(
     nativeAppKey: kakaoNative,

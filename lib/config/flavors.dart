@@ -26,7 +26,7 @@ class F {
     switch (appFlavor) {
       case Flavor.dev:
       case Flavor.mock:
-        return 'c1428635d1b36023f66bba9374fda4e8';
+        return 'a34eda2697a2d72bdd88de695ea7f739';
       case Flavor.prod:
         return '275e555cdb8196634a6aef161abe3f84';
       default:
