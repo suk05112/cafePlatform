@@ -18,7 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/utils/fcm_token_util.dart';
 import 'package:cafeplatform/api/user_response.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
-import 'package:cafeplatform/api/terms_agree_request.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key, required this.phoneAuthResult});
@@ -362,6 +361,7 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
             phone_number: formattedPhoneNumber,
             uid: linkedUser.uid,
             provider: "email",
+            agreements: widget.phoneAuthResult.agreements,
           );
 
           await Api().setBaseClient(Api.BASE_URL);
@@ -371,8 +371,6 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
 
           AnalyticsService.instance.logSignUp();
           MetaAnalyticsService.instance.logStartTrial();
-
-          _postTermsAgree(registerResponse.userId).catchError((error) { debugPrint('[SignUp] postTermsAgree 실패: $error'); });
 
           _registerPushToken(registerResponse.userId).catchError((error) { debugPrint('[SignUp] registerPushToken 실패: $error'); });
 
@@ -569,13 +567,6 @@ class _BasicInfoFormWidgetState extends State<BasicInfoFormWidget> {
     } else {
       return '+82$digitsOnly';
     }
-  }
-
-  Future<void> _postTermsAgree(int userId) async {
-    final agreements = widget.phoneAuthResult.agreements;
-    if (agreements.isEmpty) return;
-    final request = TermsAgreeRequest(userId: userId, agreements: agreements);
-    await Api().client.postTermsAgree(request);
   }
 
   Future<void> _registerPushToken(int userId) async {
