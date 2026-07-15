@@ -771,6 +771,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(successContext).pop();
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
                     },
                     child: const Text(
                       '확인',
@@ -785,7 +788,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
             },
           );
         } catch (dialogError) {
-          // 다이얼로그 표시 실패 시에도 별도 처리 없이 현재 화면 유지
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
         }
       }
     } catch (e, stackTrace) {
