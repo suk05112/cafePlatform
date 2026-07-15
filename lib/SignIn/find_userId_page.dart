@@ -274,10 +274,7 @@ class _RegisterdIDPageState extends State<RegisterdIDPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text("아이디 찾기"),
-          centerTitle: true,
-        ),
+        appBar: const CommonAppBar(title: "아이디 찾기"),
         backgroundColor: Colors.white,
         body: Container(
           margin: EdgeInsets.fromLTRB(27, 0, 27, 21),
