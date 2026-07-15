@@ -19,11 +19,11 @@ class StoreProvider extends ChangeNotifier {
   bool _listViewIsLoadingMore = false;
   String? _listViewCurrentDistrictCode;
 
-  // 리스트 뷰 캐시 (지역 코드 기준 1시간)
+  // 리스트 뷰 캐시 (지역 코드 기준 1분)
   final Map<String, ({List<Store> stores, String? nextCursor, bool hasMore, DateTime cachedAt})> _listViewCache = {};
-  static const Duration _listCacheTtl = Duration(hours: 1);
+  static const Duration _listCacheTtl = Duration(minutes: 1);
 
-  // 추천 메뉴 상태 + district별 1시간 캐시
+  // 추천 메뉴 상태 + district별 1분 캐시
   List<RecommendMenu> _recommendMenus = [];
   final Map<String, ({List<RecommendMenu> menus, DateTime cachedAt})> _recommendCache = {};
 
@@ -362,9 +362,9 @@ class StoreProvider extends ChangeNotifier {
   //   return response.body.store;
   // }
 
-  // 매장 상세 메모리 캐시 (storeId → (store, 캐시 시각))
+  // 매장 상세 메모리 캐시 (storeId → (store, 캐시 시각), 1분)
   final Map<int, ({Store store, DateTime cachedAt})> _detailCache = {};
-  static const Duration _cacheTtl = Duration(hours: 1);
+  static const Duration _cacheTtl = Duration(minutes: 1);
 
   Future<Store> fetchDetailStore(int storeId) async {
     final cached = _detailCache[storeId];
