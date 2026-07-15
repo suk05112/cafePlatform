@@ -771,8 +771,8 @@ class _UserInfoPageState extends State<UserInfoPage> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(successContext).pop();
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
+                      if (super.context.mounted) {
+                        Navigator.of(super.context).pop();
                       }
                     },
                     child: const Text(
@@ -788,8 +788,8 @@ class _UserInfoPageState extends State<UserInfoPage> {
             },
           );
         } catch (dialogError) {
-          if (context.mounted) {
-            Navigator.of(context).pop();
+          if (super.context.mounted) {
+            Navigator.of(super.context).pop();
           }
         }
       }
