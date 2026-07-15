@@ -1042,34 +1042,6 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<TermsAgreeResponse> postTermsAgree(TermsAgreeRequest request) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    final _data = <String, dynamic>{};
-    _data.addAll(request.toJson());
-    final _result = await _dio
-        .fetch<Map<String, dynamic>>(_setStreamType<TermsAgreeResponse>(Options(
-      method: 'POST',
-      headers: _headers,
-      extra: _extra,
-    )
-            .compose(
-              _dio.options,
-              '/user/terms/agree',
-              queryParameters: queryParameters,
-              data: _data,
-            )
-            .copyWith(
-                baseUrl: _combineBaseUrls(
-              _dio.options.baseUrl,
-              baseUrl,
-            ))));
-    final _value = TermsAgreeResponse.fromJson(_result.data!);
-    return _value;
-  }
-
-  @override
   Future<PopupListResponse> getPopups({int? userId}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{r'user_id': userId};

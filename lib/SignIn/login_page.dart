@@ -697,6 +697,7 @@ class _LoginPageState extends State<LoginPage> {
             phone_number: formattedPhoneNumber,
             uid: userCredential.user?.uid ?? "",
             provider: provider,
+            agreements: finalPhoneAuthResult.agreements,
           );
           await Api().client.registerUser(registerUser);
         } on DioException catch (e) {
@@ -1007,6 +1008,7 @@ class _LoginPageState extends State<LoginPage> {
         phone_number: _formatToE164(phoneAuthResult.phoneNumber),
         uid: firebaseUser.uid,
         provider: provider,
+        agreements: phoneAuthResult.agreements,
       );
 
       debugPrint('[Login] 서버 회원가입 요청 - email: $emailForCheck, uid: ${firebaseUser.uid}, provider: $provider, phone: ${registerUser.phone_number}');

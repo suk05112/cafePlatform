@@ -15,18 +15,3 @@ class TermAgreementItem {
         'agreed': agreed,
       };
 }
-
-class TermsAgreeRequest {
-  final int userId;
-  final List<TermAgreementItem> agreements;
-
-  TermsAgreeRequest({
-    required this.userId,
-    required this.agreements,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'user_id': userId,
-        'agreements': agreements.map((e) => e.toJson()).toList(),
-      };
-}
