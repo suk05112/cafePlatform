@@ -73,13 +73,13 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
     final now = DateTime.now();
     final used = gifticonList.where((g) {
       final s = g.status?.toUpperCase();
-      return s == 'USED' || s == 'EXPIRED' || s == 'CANCELED' ||
-          (g.validity != null && g.validity!.isBefore(now));
+      final isExpiredByDate = g.validity != null && g.validity!.isBefore(now);
+      return (s != 'PENDING' && s != 'UNKNOWN' && s != 'UNUSED') || isExpiredByDate;
     }).toList();
     final unused = gifticonList.where((g) {
       final s = g.status?.toUpperCase();
       final isExpiredByDate = g.validity != null && g.validity!.isBefore(now);
-      return (s == 'UNUSED' || s == 'PENDING') && !isExpiredByDate;
+      return s == 'UNUSED' && !isExpiredByDate;
     }).toList();
     setState(() {
       usedGifticons = used;
@@ -183,10 +183,12 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
                   _GifticonListView(
                     gifticonList: unusedGifticons,
                     currentUserName: _currentUserName,
+                    onRefreshNeeded: () => fetchGifticons(forceRefresh: true),
                   ),
                   _GifticonListView(
                     gifticonList: usedGifticons,
                     currentUserName: _currentUserName,
+                    onRefreshNeeded: () => fetchGifticons(forceRefresh: true),
                   ),
                 ],
               ),
@@ -198,10 +200,12 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
 class _GifticonListView extends StatelessWidget {
   final List<Gifticon> gifticonList;
   final String? currentUserName;
+  final VoidCallback onRefreshNeeded;
 
   const _GifticonListView({
     required this.gifticonList,
     required this.currentUserName,
+    required this.onRefreshNeeded,
   });
 
   @override
@@ -234,6 +238,7 @@ class _GifticonListView extends StatelessWidget {
         return _GifticonRow(
           gifticon: gifticonList[index],
           currentUserName: currentUserName,
+          onRefreshNeeded: onRefreshNeeded,
         );
       },
     );
@@ -243,13 +248,17 @@ class _GifticonListView extends StatelessWidget {
 class _GifticonRow extends StatelessWidget {
   final Gifticon gifticon;
   final String? currentUserName;
+  final VoidCallback onRefreshNeeded;
 
-  const _GifticonRow({required this.gifticon, required this.currentUserName});
+  const _GifticonRow({
+    required this.gifticon,
+    required this.currentUserName,
+    required this.onRefreshNeeded,
+  });
 
   bool get _isUsed {
-    return gifticon.status == 'USED' ||
-        gifticon.status == 'EXPIRED' ||
-        gifticon.status == 'CANCELED' ||
+    final s = gifticon.status?.toUpperCase();
+    return (s != 'PENDING' && s != 'UNKNOWN' && s != 'UNUSED') ||
         (gifticon.validity != null && gifticon.validity!.isBefore(DateTime.now()));
   }
 
@@ -277,13 +286,16 @@ class _GifticonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final used = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
             builder: (context) => GifticonPage(gifticon_id: gifticon.gifticon_id),
           ),
         );
+        if (used == true) {
+          onRefreshNeeded();
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: Opacity(
