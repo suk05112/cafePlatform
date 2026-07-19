@@ -73,13 +73,13 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
     final now = DateTime.now();
     final used = gifticonList.where((g) {
       final s = g.status?.toUpperCase();
-      return s == 'USED' || s == 'EXPIRED' || s == 'CANCELED' ||
-          (g.validity != null && g.validity!.isBefore(now));
+      final isExpiredByDate = g.validity != null && g.validity!.isBefore(now);
+      return (s != 'PENDING' && s != 'UNKNOWN' && s != 'UNUSED') || isExpiredByDate;
     }).toList();
     final unused = gifticonList.where((g) {
       final s = g.status?.toUpperCase();
       final isExpiredByDate = g.validity != null && g.validity!.isBefore(now);
-      return (s == 'UNUSED' || s == 'PENDING') && !isExpiredByDate;
+      return s == 'UNUSED' && !isExpiredByDate;
     }).toList();
     setState(() {
       usedGifticons = used;
@@ -247,9 +247,8 @@ class _GifticonRow extends StatelessWidget {
   const _GifticonRow({required this.gifticon, required this.currentUserName});
 
   bool get _isUsed {
-    return gifticon.status == 'USED' ||
-        gifticon.status == 'EXPIRED' ||
-        gifticon.status == 'CANCELED' ||
+    final s = gifticon.status?.toUpperCase();
+    return (s != 'PENDING' && s != 'UNKNOWN' && s != 'UNUSED') ||
         (gifticon.validity != null && gifticon.validity!.isBefore(DateTime.now()));
   }
 
