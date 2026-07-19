@@ -183,10 +183,12 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
                   _GifticonListView(
                     gifticonList: unusedGifticons,
                     currentUserName: _currentUserName,
+                    onRefreshNeeded: () => fetchGifticons(forceRefresh: true),
                   ),
                   _GifticonListView(
                     gifticonList: usedGifticons,
                     currentUserName: _currentUserName,
+                    onRefreshNeeded: () => fetchGifticons(forceRefresh: true),
                   ),
                 ],
               ),
@@ -198,10 +200,12 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
 class _GifticonListView extends StatelessWidget {
   final List<Gifticon> gifticonList;
   final String? currentUserName;
+  final VoidCallback onRefreshNeeded;
 
   const _GifticonListView({
     required this.gifticonList,
     required this.currentUserName,
+    required this.onRefreshNeeded,
   });
 
   @override
@@ -234,6 +238,7 @@ class _GifticonListView extends StatelessWidget {
         return _GifticonRow(
           gifticon: gifticonList[index],
           currentUserName: currentUserName,
+          onRefreshNeeded: onRefreshNeeded,
         );
       },
     );
@@ -243,8 +248,13 @@ class _GifticonListView extends StatelessWidget {
 class _GifticonRow extends StatelessWidget {
   final Gifticon gifticon;
   final String? currentUserName;
+  final VoidCallback onRefreshNeeded;
 
-  const _GifticonRow({required this.gifticon, required this.currentUserName});
+  const _GifticonRow({
+    required this.gifticon,
+    required this.currentUserName,
+    required this.onRefreshNeeded,
+  });
 
   bool get _isUsed {
     final s = gifticon.status?.toUpperCase();
@@ -276,13 +286,16 @@ class _GifticonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final used = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
             builder: (context) => GifticonPage(gifticon_id: gifticon.gifticon_id),
           ),
         );
+        if (used == true) {
+          onRefreshNeeded();
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: Opacity(

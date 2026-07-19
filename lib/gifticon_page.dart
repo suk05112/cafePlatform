@@ -57,6 +57,7 @@ class _GifticonPageState extends State<GifticonPage>
   late bool showFront;
   late Future<Gifticon?> futureGifticon;
   late TabController _tabController;
+  bool _didUseGifticon = false;
 
   @override
   void initState() {
@@ -70,7 +71,13 @@ class _GifticonPageState extends State<GifticonPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.pop(context, _didUseGifticon);
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           toolbarHeight: 44,
@@ -223,7 +230,8 @@ class _GifticonPageState extends State<GifticonPage>
                       ),
                     );
                   }
-                })));
+                }))),
+      );
   }
 
   Widget showSender(gifticon) {
@@ -594,12 +602,16 @@ class _GifticonPageState extends State<GifticonPage>
             ? null
             : () async {
                 await ShowQR(gifticon.gifticon_id, gifticon.store_id!);
-                if (mounted) {
-                  Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
-                  setState(() {
-                    futureGifticon = GifticonPage.fetchGifticon(widget.gifticon_id);
-                  });
+                if (!mounted) return;
+                Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
+                final refreshed = await GifticonPage.fetchGifticon(widget.gifticon_id);
+                if (!mounted) return;
+                if (refreshed?.status != gifticon.status) {
+                  _didUseGifticon = true;
                 }
+                setState(() {
+                  futureGifticon = Future.value(refreshed);
+                });
               },
         child: Text(
           '사용하기',
