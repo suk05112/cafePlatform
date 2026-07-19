@@ -718,10 +718,13 @@ class _OrderDetailPageState extends State<OrderDetailPage>
 
       if (e.response != null) {
         final statusCode = e.response!.statusCode;
-        if (statusCode == 404) {
+        final serverDetail = e.response?.data is Map
+            ? e.response?.data['detail'] as String?
+            : null;
+        if (serverDetail != null && serverDetail.isNotEmpty) {
+          errorMessage = serverDetail;
+        } else if (statusCode == 404) {
           errorMessage = "주문을 찾을 수 없습니다.";
-        } else if (statusCode == 400) {
-          errorMessage = "이미 취소된 주문이거나 환불할 수 없는 주문입니다.";
         } else if (statusCode == 500) {
           errorMessage = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
         }
