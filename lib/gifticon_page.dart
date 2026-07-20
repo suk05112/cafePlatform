@@ -591,7 +591,7 @@ class _GifticonPageState extends State<GifticonPage>
     final createdTime = gifticon.created_time;
     if (createdTime == null) return false;
     final cutoff = DateTime(createdTime.year, createdTime.month, createdTime.day)
-        .add(Duration(days: 7));
+        .add(Duration(days: 60));
     return !DateTime.now().isBefore(cutoff);
   }
 
