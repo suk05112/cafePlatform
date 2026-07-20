@@ -16,6 +16,8 @@ class Gifticon {
   int total_price;
   String description;
   DateTime? validity; // 1: 유효기간 만료, 2:
+  @JsonKey(name: 'refund_deadline')
+  DateTime? refundDeadline; // 구매자 100% 환불 마감일 (발급 시점 정책 고정값, null=환불불가)
   String sender;
   String receiver;
   String? menu_url;
@@ -53,6 +55,7 @@ class Gifticon {
       this.type,
       this.store_id,
       this.validity,
+      this.refundDeadline,
       this.payment,
       this.msg,
       this.created_time,

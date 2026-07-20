@@ -588,11 +588,9 @@ class _GifticonPageState extends State<GifticonPage>
     if (gifticon.validity != null && gifticon.validity!.isBefore(DateTime.now())) {
       return false;
     }
-    final createdTime = gifticon.created_time;
-    if (createdTime == null) return false;
-    final cutoff = DateTime(createdTime.year, createdTime.month, createdTime.day)
-        .add(Duration(days: 60));
-    return !DateTime.now().isBefore(cutoff);
+    final refundDeadline = gifticon.refundDeadline;
+    if (refundDeadline == null) return false;
+    return !DateTime.now().isBefore(refundDeadline);
   }
 
   Widget refundRequestButton(gifticon) {
