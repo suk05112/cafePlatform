@@ -588,9 +588,9 @@ class _GifticonPageState extends State<GifticonPage>
     if (gifticon.validity != null && gifticon.validity!.isBefore(DateTime.now())) {
       return false;
     }
-    final refundDeadline = gifticon.refundDeadline;
-    if (refundDeadline == null) return false;
-    return !DateTime.now().isBefore(refundDeadline);
+    final purchaserRefundDeadline = gifticon.purchaserRefundDeadline;
+    if (purchaserRefundDeadline == null) return false;
+    return !DateTime.now().isBefore(purchaserRefundDeadline);
   }
 
   Widget refundRequestButton(gifticon) {

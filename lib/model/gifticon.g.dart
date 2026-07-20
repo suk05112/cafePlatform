@@ -25,9 +25,9 @@ Gifticon _$GifticonFromJson(Map<String, dynamic> json) => Gifticon(
       validity: json['validity'] == null
           ? null
           : DateTime.parse(json['validity'] as String),
-      refundDeadline: json['refund_deadline'] == null
+      purchaserRefundDeadline: json['purchaser_refund_deadline'] == null
           ? null
-          : DateTime.parse(json['refund_deadline'] as String),
+          : DateTime.parse(json['purchaser_refund_deadline'] as String),
       payment: json['payment'] as String?,
       msg: json['msg'] as String?,
       created_time: json['created_time'] == null
@@ -49,7 +49,8 @@ Map<String, dynamic> _$GifticonToJson(Gifticon instance) => <String, dynamic>{
       'total_price': instance.total_price,
       'description': instance.description,
       'validity': instance.validity?.toIso8601String(),
-      'refund_deadline': instance.refundDeadline?.toIso8601String(),
+      'purchaser_refund_deadline':
+          instance.purchaserRefundDeadline?.toIso8601String(),
       'sender': instance.sender,
       'receiver': instance.receiver,
       'menu_url': instance.menu_url,
