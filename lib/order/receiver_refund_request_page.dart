@@ -19,8 +19,7 @@ class ReceiverRefundRequestPage extends StatefulWidget {
       _ReceiverRefundRequestPageState();
 }
 
-class _ReceiverRefundRequestPageState
-    extends State<ReceiverRefundRequestPage> {
+class _ReceiverRefundRequestPageState extends State<ReceiverRefundRequestPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _accountController = TextEditingController();
@@ -145,174 +144,181 @@ class _ReceiverRefundRequestPageState
       child: Scaffold(
         appBar: const CommonAppBar(title: "환불 신청"),
         backgroundColor: Colors.white,
-        body: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          "환불 시 구매 금액의 90%가 환불됩니다.\n"
-                          "환불은 매주 화요일 일괄 처리됩니다.",
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      _buildLabel("예금주"),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: _inputDecoration.copyWith(
-                          hintText: "예금주명을 입력해주세요",
-                        ),
-                        style: const TextStyle(fontSize: 14, color: Colors.black87),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return '예금주명을 입력해주세요';
-                          }
-                          if (value.trim().length < 2) {
-                            return '예금주명은 2자 이상 입력해주세요';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      _buildLabel("은행선택"),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () {
-                          showBankSelectorSheet(
-                            context,
-                            onSelected: (name, code) {
-                              setState(() {
-                                _selectedBankName = name;
-                                _selectedBankCode = code;
-                                _accountController.clear();
-                              });
-                            },
-                          );
-                        },
-                        child: Container(
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
                           width: double.infinity,
-                          height: 48,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.grey[50],
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE6E6E6), width: 1),
                           ),
-                          child: Row(
-                            children: [
-                              Text(
-                                _selectedBankName,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: _selectedBankName == "은행선택"
-                                      ? Colors.grey[400]
-                                      : Colors.black87,
+                          child: Text(
+                            "환불 시 구매 금액의 90%가 환불됩니다.\n"
+                            "환불은 매주 화요일 일괄 처리됩니다.",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[700],
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildLabel("예금주"),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: _inputDecoration.copyWith(
+                            hintText: "예금주명을 입력해주세요",
+                          ),
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.black87),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return '예금주명을 입력해주세요';
+                            }
+                            if (value.trim().length < 2) {
+                              return '예금주명은 2자 이상 입력해주세요';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        _buildLabel("은행선택"),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () {
+                            showBankSelectorSheet(
+                              context,
+                              onSelected: (name, code) {
+                                setState(() {
+                                  _selectedBankName = name;
+                                  _selectedBankCode = code;
+                                  _accountController.clear();
+                                });
+                              },
+                            );
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: const Color(0xFFE6E6E6), width: 1),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  _selectedBankName,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: _selectedBankName == "은행선택"
+                                        ? Colors.grey[400]
+                                        : Colors.black87,
+                                  ),
                                 ),
-                              ),
-                              const Spacer(),
-                              Icon(Icons.keyboard_arrow_down, color: Colors.grey[400]),
-                            ],
+                                const Spacer(),
+                                Icon(Icons.keyboard_arrow_down,
+                                    color: Colors.grey[400]),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      _buildLabel("계좌번호"),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _accountController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          AccountNumberFormatter(bankCode: _selectedBankCode),
-                          LengthLimitingTextInputFormatter(19),
-                        ],
-                        decoration: _inputDecoration.copyWith(
-                          hintText: _selectedBankCode.isEmpty
-                              ? "은행 선택 후 입력해주세요"
-                              : "계좌번호를 입력해주세요",
+                        const SizedBox(height: 24),
+                        _buildLabel("계좌번호"),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _accountController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            AccountNumberFormatter(bankCode: _selectedBankCode),
+                            LengthLimitingTextInputFormatter(19),
+                          ],
+                          decoration: _inputDecoration.copyWith(
+                            hintText: _selectedBankCode.isEmpty
+                                ? "은행 선택 후 입력해주세요"
+                                : "계좌번호를 입력해주세요",
+                          ),
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.black87),
+                          validator: (value) {
+                            if (value == null || value.isEmpty)
+                              return '계좌번호를 입력해주세요';
+                            final digits = value.replaceAll('-', '');
+                            if (!RegExp(r'^\d{10,14}$').hasMatch(digits)) {
+                              return '계좌번호는 10~14자리 숫자입니다';
+                            }
+                            return null;
+                          },
                         ),
-                        style: const TextStyle(fontSize: 14, color: Colors.black87),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return '계좌번호를 입력해주세요';
-                          final digits = value.replaceAll('-', '');
-                          if (!RegExp(r'^\d{10,14}$').hasMatch(digits)) {
-                            return '계좌번호는 10~14자리 숫자입니다';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      _buildLabel("환불 사유 (선택)"),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _reasonController,
-                        maxLines: 3,
-                        maxLength: 500,
-                        decoration: _inputDecoration.copyWith(
-                          hintText: "환불 사유를 입력해주세요",
+                        const SizedBox(height: 24),
+                        _buildLabel("환불 사유 (선택)"),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _reasonController,
+                          maxLines: 3,
+                          maxLength: 500,
+                          decoration: _inputDecoration.copyWith(
+                            hintText: "환불 사유를 입력해주세요",
+                          ),
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.black87),
                         ),
-                        style: const TextStyle(fontSize: 14, color: Colors.black87),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(color: Colors.white),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ColorAssset.mainColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(color: Colors.white),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ColorAssset.mainColor,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    onPressed: _isSubmitting ? null : _submit,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            '신청하기',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
-                  onPressed: _isSubmitting ? null : _submit,
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          '신청하기',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
