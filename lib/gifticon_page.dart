@@ -584,10 +584,7 @@ class _GifticonPageState extends State<GifticonPage>
   }
 
   bool _canRequestReceiverRefund(gifticon) {
-    if (gifticon.status != 'UNUSED') return false;
-    if (gifticon.validity != null && gifticon.validity!.isBefore(DateTime.now())) {
-      return false;
-    }
+    if (gifticon.status != 'UNUSED' && gifticon.status != 'EXPIRED') return false;
     final purchaserRefundDeadline = gifticon.purchaserRefundDeadline;
     if (purchaserRefundDeadline == null) return false;
     return !DateTime.now().isBefore(purchaserRefundDeadline);
