@@ -15,6 +15,7 @@ import 'package:cafeplatform/api/find_account_request.dart';
 import 'package:cafeplatform/api/find_account_response.dart';
 import 'package:cafeplatform/api/terms_content_response.dart';
 import 'package:cafeplatform/api/terms_current_response.dart';
+import 'package:cafeplatform/api/receiver_refund_request.dart';
 import 'package:cafeplatform/model/Inquiry.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/model/gifticon.dart';
@@ -133,6 +134,12 @@ abstract class ApiClient {
   @POST("/order/refund/{order_id}")
   Future<void> refundGifticon(
     @Path('order_id') int orderId,
+  );
+
+  @POST("/order/refund-request/{order_id}")
+  Future<void> requestReceiverRefund(
+    @Path('order_id') int orderId,
+    @Body() ReceiverRefundRequest body,
   );
 
   @GET("/order/list/{user_id}")

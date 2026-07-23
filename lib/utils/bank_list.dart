@@ -1,0 +1,30 @@
+/// 은행 목록 — 수신자 환불 계좌 입력 화면에서 사용
+class BankList {
+  static const List<Map<String, String>> banks = [
+    {'name': 'NH농협은행', 'code': '011'},
+    {'name': '지역농축협', 'code': '012'},
+    {'name': '카카오뱅크', 'code': '090'},
+    {'name': 'KB국민', 'code': '004'},
+    {'name': '토스뱅크', 'code': '092'},
+    {'name': '신한', 'code': '088'},
+    {'name': 'IBK기업', 'code': '003'},
+    {'name': '하나', 'code': '081'},
+    {'name': '새마을', 'code': '045'},
+    {'name': '부산', 'code': '032'},
+    {'name': 'iM뱅크(대구)', 'code': '031'},
+    {'name': '케이뱅크', 'code': '089'},
+    {'name': '신협', 'code': '048'},
+    {'name': '우체국', 'code': '071'},
+    {'name': 'SC제일', 'code': '023'},
+    {'name': '경남', 'code': '039'},
+    {'name': '광주', 'code': '034'},
+    {'name': '수협', 'code': '1007'},
+    {'name': '전북', 'code': '037'},
+    {'name': '저축은행', 'code': '050'},
+    {'name': '제주', 'code': '035'},
+    {'name': '씨티', 'code': '027'},
+    {'name': 'KDB산업', 'code': '002'},
+    {'name': '산림조합', 'code': '064'},
+    {'name': 'SBI저축은행', 'code': '103'},
+  ];
+}

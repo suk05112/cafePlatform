@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cafeplatform/order/order_detail_page.dart';
+import 'package:cafeplatform/order/receiver_refund_request_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
@@ -582,10 +583,54 @@ class _GifticonPageState extends State<GifticonPage>
     }
   }
 
+  bool _canRequestReceiverRefund(gifticon) {
+    if (gifticon.status != 'UNUSED' && gifticon.status != 'EXPIRED') return false;
+    final purchaserRefundDeadline = gifticon.purchaserRefundDeadline;
+    if (purchaserRefundDeadline == null) return false;
+    return !DateTime.now().isBefore(purchaserRefundDeadline);
+  }
+
+  Widget refundRequestButton(gifticon) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          side: BorderSide(color: Colors.grey[300]!),
+        ),
+        onPressed: () async {
+          final requested = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  ReceiverRefundRequestPage(orderId: gifticon.order_id),
+            ),
+          );
+          if (requested == true && mounted) {
+            _didUseGifticon = true;
+            Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
+            Navigator.pop(context, true);
+          }
+        },
+        child: Text(
+          '환불 신청',
+          style: TextStyle(
+            color: Colors.grey[800],
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget useButton(gifticon) {
     String statusText = gifticonStatus(gifticon?.status, gifticon.validity);
     bool available = statusText == "사용가능" && gifticon.store_id != null;
-    return SizedBox(
+    Widget useElevatedButton = SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
@@ -622,6 +667,18 @@ class _GifticonPageState extends State<GifticonPage>
           ),
         ),
       ),
+    );
+
+    if (!_canRequestReceiverRefund(gifticon)) {
+      return useElevatedButton;
+    }
+
+    return Row(
+      children: [
+        Expanded(flex: 1, child: refundRequestButton(gifticon)),
+        SizedBox(width: 8),
+        Expanded(flex: 2, child: useElevatedButton),
+      ],
     );
   }
 

@@ -529,6 +529,34 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<void> requestReceiverRefund(
+    int orderId,
+    ReceiverRefundRequest body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    await _dio.fetch<void>(_setStreamType<void>(Options(
+      method: 'POST',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/order/refund-request/${orderId}',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        ))));
+  }
+
+  @override
   Future<OrderListResponse> getOrderList(int userId) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
