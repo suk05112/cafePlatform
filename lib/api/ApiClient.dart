@@ -23,6 +23,7 @@ import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/model/region.dart';
 import 'package:cafeplatform/api/order_response.dart';
+import 'package:cafeplatform/api/order_status_response.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:dio/dio.dart';
 
@@ -149,6 +150,11 @@ abstract class ApiClient {
 
   @GET("/order/detail/{order_id}")
   Future<GetOrderDetailResponse> getOrderDetail(
+    @Path('order_id') int orderId,
+  );
+
+  @GET("/order/{order_id}/status")
+  Future<OrderStatusResponse> getOrderStatus(
     @Path('order_id') int orderId,
   );
 

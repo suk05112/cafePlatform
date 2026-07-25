@@ -611,6 +611,33 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<OrderStatusResponse> getOrderStatus(int orderId) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<OrderStatusResponse>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/order/${orderId}/status',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = OrderStatusResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
   Future<InquiryPostResponse> subjectInquiry(
     int userId,
     Inquiry inquiry,

@@ -7,6 +7,7 @@ import 'package:cafeplatform/Extension/scaffold_messenger_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/Payment/CompletePayment.dart';
 import 'package:cafeplatform/Payment/payletter_webview_page.dart';
+import 'package:cafeplatform/Payment/payment_fail_page.dart';
 import 'package:cafeplatform/api/payment_url_request.dart';
 import 'package:cafeplatform/api/payment_url_response.dart';
 import 'package:cafeplatform/utils/kakao_share_helper.dart';
@@ -678,6 +679,20 @@ if (_figmaPaymentLabel.isEmpty) {
       if (!mounted) return;
 
       if (resultData?.result == PayletterResult.success) {
+        // 페이레터 웹뷰가 성공으로 복귀해도, 실제 서버 콜백(/payment/result) 처리가
+        // 완료되어 order가 COMPLETED로 바뀌었는지 재확인 후에만 공유 화면으로 진입한다.
+        setState(() => _isSubmitting = true);
+        final isCompleted = await _waitForOrderCompleted(paymentUrlResponse.orderId);
+        if (!mounted) return;
+        setState(() => _isSubmitting = false);
+
+        if (!isCompleted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const PaymentFailPage()),
+          );
+          return;
+        }
+
         final gifticon = Gifticon()
           ..gifticon_id = paymentUrlResponse.gifticonId
           ..order_id = paymentUrlResponse.orderId
@@ -727,6 +742,22 @@ if (_figmaPaymentLabel.isEmpty) {
       if (mounted) setState(() => _isSubmitting = false);
       _showToast('결제 중 오류가 발생했습니다.');
     }
+  }
+
+  /// 결제 웹뷰가 성공으로 복귀한 뒤, 서버의 /payment/result 콜백 처리가
+  /// 완료되어 order 상태가 COMPLETED로 바뀌었는지 폴링으로 확인한다.
+  /// 카카오페이 등 일부 결제수단은 서버 콜백 도착이 약간 지연될 수 있어
+  /// 0.5초 간격으로 최대 5초까지 재조회한다.
+  Future<bool> _waitForOrderCompleted(int orderId) async {
+    for (var i = 0; i < 10; i++) {
+      try {
+        await Api().setBaseClient(Api.BASE_URL);
+        final response = await Api().client.getOrderStatus(orderId);
+        if (response.status == 'COMPLETED') return true;
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    return false;
   }
 
   String _toPgcode(String label) {
