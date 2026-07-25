@@ -124,7 +124,9 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
         final tid = uri.queryParameters['tid'];
         final message = uri.queryParameters['message'];
 
-        final isSuccess = code == null || code == '0';
+        // 페이레터 PPAY 규격상 결제 성공은 반드시 code=0.
+        // code가 없거나 0이 아니면 실패로 처리 (성공 오판 방지)
+        final isSuccess = code == '0';
         _popWithResult(PayletterResultData(
           result: isSuccess ? PayletterResult.success : PayletterResult.fail,
           orderNo: orderNo,
@@ -154,8 +156,9 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
     final message = params['message'];
 
     // 백엔드가 이 URL을 gifnut://payment/result?{params} 로 302 포워딩하므로
-    // 동일한 기준으로 처리: code가 없거나 '0'이면 성공
-    final isSuccess = code == null || code == '0';
+    // 동일한 기준으로 처리: 페이레터 PPAY 규격상 결제 성공은 반드시 code=0.
+    // code가 없거나 0이 아니면 실패로 처리 (성공 오판 방지)
+    final isSuccess = code == '0';
     _popWithResult(PayletterResultData(
       result: isSuccess ? PayletterResult.success : PayletterResult.fail,
       orderNo: orderNo,
@@ -169,7 +172,9 @@ class _PayletterWebViewPageState extends State<PayletterWebViewPage> {
 
     if (uri.path == '/result') {
       final code = uri.queryParameters['code'];
-      final isSuccess = code == null || code == '0';
+      // 페이레터 PPAY 규격상 결제 성공은 반드시 code=0.
+      // code가 없거나 0이 아니면 실패로 처리 (성공 오판 방지)
+      final isSuccess = code == '0';
       _popWithResult(PayletterResultData(
         result: isSuccess ? PayletterResult.success : PayletterResult.fail,
         orderNo: uri.queryParameters['order_no'],

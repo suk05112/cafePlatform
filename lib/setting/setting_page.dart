@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
-import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/business_info_response.dart';
+import 'package:cafeplatform/utils/business_info_helper.dart';
 import 'package:cafeplatform/setting/inquiry_page.dart';
 import 'package:cafeplatform/SignIn/login_page.dart';
 import 'package:cafeplatform/model/user.dart';
@@ -16,8 +16,6 @@ import 'package:provider/provider.dart';
 import 'package:cafeplatform/setting/oss_licenses.dart';
 import 'package:cafeplatform/setting/notification_setting_page.dart';
 import 'package:cafeplatform/setting/terms_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:cafeplatform/utils/kakao_share_helper.dart';
 import 'package:cafeplatform/model/gifticon.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -562,64 +560,8 @@ class _SettingPageState extends State<SettingPage> {
     );
   }
 
-  Future<BusinessInfoResponse> getBusinessInfo() async {
-    try {
-      // SharedPreferences에서 캐시된 데이터와 마지막 업데이트 시간 확인
-      final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString('business_info_cache');
-      final lastUpdateTimeStr = prefs.getString('business_info_last_update');
-
-      // 캐시가 있고 오늘 날짜면 캐시된 데이터 반환
-      if (cachedJson != null && lastUpdateTimeStr != null) {
-        try {
-          final lastUpdateTime = DateTime.parse(lastUpdateTimeStr);
-          final now = DateTime.now();
-
-          // 같은 날이면 캐시된 데이터 반환
-          if (lastUpdateTime.year == now.year &&
-              lastUpdateTime.month == now.month &&
-              lastUpdateTime.day == now.day) {
-            final jsonMap = jsonDecode(cachedJson) as Map<String, dynamic>;
-            return BusinessInfoResponse.fromJson(jsonMap);
-          } else {
-          }
-        } catch (e) {
-        }
-      }
-
-      // 캐시가 없거나 오래되었으면 API 호출
-      await Api().setBaseClient(Api.BASE_URL);
-      var response = await Api().client.getBusinessInfo();
-
-      // 캐시에 저장 (JSON으로 직렬화)
-      final now = DateTime.now();
-      await prefs.setString('business_info_last_update', now.toIso8601String());
-      await prefs.setString(
-          'business_info_cache', jsonEncode(response.toJson()));
-
-      return response;
-    } catch (error) {
-
-      // 에러 발생 시 캐시된 데이터가 있으면 사용
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final cachedJson = prefs.getString('business_info_cache');
-        if (cachedJson != null && cachedJson.isNotEmpty) {
-          final jsonMap = jsonDecode(cachedJson) as Map<String, dynamic>;
-          return BusinessInfoResponse.fromJson(jsonMap);
-        }
-      } catch (e) {
-      }
-
-      // 캐시도 없으면 기본값 반환
-      return BusinessInfoResponse(
-        business_number: '479-03-03427',
-        online_sales_number: '2025-서울강서-3226',
-        address: '서울특별시 강서구 공항대로 543',
-        telephone: '02-1111-1111',
-      );
-    }
-  }
+  Future<BusinessInfoResponse> getBusinessInfo() =>
+      BusinessInfoHelper.getBusinessInfo();
 
   Widget businessInformation() {
     return FutureBuilder<BusinessInfoResponse>(

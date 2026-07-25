@@ -76,6 +76,12 @@ class _GifticonPageState extends State<GifticonPage>
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+        // 카카오 딥링크로 진입한 경우 네비게이션 스택에 이 페이지만 있어
+        // pop하면 검은 화면이 되므로 홈(선물함)으로 이동
+        if (widget.fromKakao) {
+          Get.offAll(() => const TabPage(initialIndex: 1));
+          return;
+        }
         Navigator.pop(context, _didUseGifticon);
       },
       child: Scaffold(
@@ -567,8 +573,8 @@ class _GifticonPageState extends State<GifticonPage>
     ]);
   }
 
-  String gifticonStatus(String status, validity) {
-    if (validity!.isBefore(DateTime.now())) {
+  String gifticonStatus(String status, DateTime? validity) {
+    if (validity != null && validity.isBefore(DateTime.now())) {
       return "기간만료";
     } else if (status == 'UNUSED') {
       return "사용가능";
@@ -628,7 +634,7 @@ class _GifticonPageState extends State<GifticonPage>
   }
 
   Widget useButton(gifticon) {
-    String statusText = gifticonStatus(gifticon?.status, gifticon.validity);
+    String statusText = gifticonStatus(gifticon?.status ?? "", gifticon.validity);
     bool available = statusText == "사용가능" && gifticon.store_id != null;
     Widget useElevatedButton = SizedBox(
       width: double.infinity,
