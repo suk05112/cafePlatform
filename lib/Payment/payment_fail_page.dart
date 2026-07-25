@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:cafeplatform/store_page.dart';
+import 'package:cafeplatform/main.dart';
 import 'package:cafeplatform/utils/business_info_helper.dart';
 
 class PaymentFailPage extends StatefulWidget {
-  const PaymentFailPage({super.key});
+  const PaymentFailPage({super.key, this.storeId, this.storeName});
+
+  /// 확인 버튼 클릭 시 이동할 매장 상세 정보. storeId가 없으면 홈으로 이동.
+  final int? storeId;
+  final String? storeName;
 
   @override
   State<PaymentFailPage> createState() => _PaymentFailPageState();
@@ -29,13 +35,25 @@ class _PaymentFailPageState extends State<PaymentFailPage> {
     } catch (_) {}
   }
 
-  /// 이 페이지(실패 안내) + Payment + SelectGiftPage 3단계를 pop하여
-  /// 메뉴 상세 화면(진입 경로 무관)으로 리턴
-  void _returnToMenuDetail() {
-    final navigator = Navigator.of(context);
-    navigator.pop();
-    navigator.pop();
-    navigator.pop();
+  /// 결제 화면까지 쌓인 스택(진입 경로에 따라 깊이가 다름)을 모두 제거하고
+  /// 매장 상세 화면으로 새로 이동. storeId가 없으면 홈으로 이동.
+  void _returnToStore() {
+    if (widget.storeId != null) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => StorePage(
+            storeId: widget.storeId!,
+            storeName: widget.storeName ?? '',
+          ),
+        ),
+        (route) => false,
+      );
+    } else {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const TabPage()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -123,7 +141,7 @@ class _PaymentFailPageState extends State<PaymentFailPage> {
                       backgroundColor: ColorAssset.mainColor,
                       elevation: 0,
                     ),
-                    onPressed: _returnToMenuDetail,
+                    onPressed: _returnToStore,
                     child: const Text(
                       '확인',
                       style: TextStyle(

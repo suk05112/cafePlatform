@@ -688,7 +688,12 @@ if (_figmaPaymentLabel.isEmpty) {
 
         if (!isCompleted) {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const PaymentFailPage()),
+            MaterialPageRoute(
+              builder: (_) => PaymentFailPage(
+                storeId: storeId,
+                storeName: widget.storeDisplayName,
+              ),
+            ),
           );
           return;
         }
