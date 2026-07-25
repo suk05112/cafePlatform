@@ -1,3 +1,11 @@
+// 페이레터 결제 연동 공식 문서: https://www.payletter.com/ko/technical/index#payment-integration
+//
+// - callback_url(서버-서버 콜백)의 code: 성공=0, 실패=0이 아닌 값 (문서에 명시된 규격)
+// - return_url(웹뷰 리다이렉트)의 code: 문서에 구체적 값 체계가 명시되어 있지 않음("결과"로만 표기)
+//   실기기 테스트(카카오페이, 2026-07) 결과, 정상 결제 성공 시에도 return_url의 code가
+//   '0'이 아니거나 비어있는 경우가 있었음 → 그래서 이 파일은 code == null 도 성공으로 간주함.
+//   이 조건을 "code == '0'"으로만 엄격화하면 정상 결제가 실패로 오판됨 (실측 확인됨).
+//   원인 재조사가 필요하면 아래 _handlePayletterReturnUrl의 debugPrint로 실제 반환 URL을 확인할 것.
 import 'dart:async';
 import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:flutter/material.dart';
