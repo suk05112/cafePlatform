@@ -3,21 +3,23 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>867465811135-okqh7nq5hpu8fe7vvga37haljh833nqn.apps.googleusercontent.com</string>
+	<string>99431167510-a9kdk5jks00cjmj3s76hlgod9q1lfr23.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.867465811135-okqh7nq5hpu8fe7vvga37haljh833nqn</string>
+	<string>com.googleusercontent.apps.99431167510-a9kdk5jks00cjmj3s76hlgod9q1lfr23</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>99431167510-2glo5lec2sg8rtgemfs6j12su6jvn3cj.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyCGo7DlLDkB8lR_vKp8JB6oqBzB6cHRJUI</string>
+	<string>AIzaSyAgXJvDB2WUpjjPJgX4qrtP0AaFA4NmhDw</string>
 	<key>GCM_SENDER_ID</key>
-	<string>867465811135</string>
+	<string>99431167510</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.gifnut.cafeplatform.dev</string>
+	<string>com.gifnut.cafeplatform</string>
 	<key>PROJECT_ID</key>
-	<string>gifnut-dev</string>
+	<string>cafeplatform</string>
 	<key>STORAGE_BUCKET</key>
-	<string>gifnut-dev.firebasestorage.app</string>
+	<string>cafeplatform.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:867465811135:ios:5639b8f0d22e633b55620a</string>
+	<string>1:99431167510:ios:49d8c003e9d7f57c6e6737</string>
 </dict>
 </plist>

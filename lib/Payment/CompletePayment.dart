@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/utils/kakao_share_helper.dart';
 
 class CompletePayment extends StatefulWidget {
-  final int? giftType; // 0: 나에게 선물하기, 1: 선물하기
+  final int? giftType; // 1: 나에게 선물하기, 2: 선물하기
   final Gifticon? gifticon;
 
   const CompletePayment({super.key, this.giftType, this.gifticon});
@@ -63,7 +63,7 @@ class _CompletePaymentState extends State<CompletePayment>
   }
 
   Future<void> _checkSharingComplete() async {
-    if (widget.giftType != 1 || widget.gifticon == null) return;
+    if (widget.giftType != 2 || widget.gifticon == null) return;
 
     final prefs = await SharedPreferences.getInstance();
     final sharingInProgress = prefs.getBool('sharing_in_progress') ?? false;

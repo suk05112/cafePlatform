@@ -325,7 +325,7 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => Payment(
-                                  type: 0,
+                                  type: 1,
                                   menu: widget.menu,
                                   storeDisplayName: _exchangePlaceName,
                                   contextStoreId: widget.contextStoreId ?? widget.loadStoreId ??
