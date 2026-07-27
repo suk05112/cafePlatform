@@ -927,7 +927,9 @@ class _NotificationPermissionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SafeArea(
+      top: false,
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -999,6 +1001,7 @@ class _NotificationPermissionSheet extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }
