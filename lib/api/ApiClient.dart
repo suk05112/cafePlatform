@@ -249,5 +249,6 @@ abstract class ApiClient {
   @GET("/common/app-version")
   Future<AppVersionResponse> getAppVersion(
     @Query('platform') String platform,
+    @Query('app_type') String appType,
   );
 }

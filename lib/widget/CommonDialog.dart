@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class CommonDialog {
   static void show({
@@ -10,6 +11,7 @@ class CommonDialog {
     bool cancel = false,
     bool barrierDismissible = false,
     bool preventPop = false, // true면 뒤로가기/확인 클릭으로 다이얼로그가 닫히지 않음
+    bool filledButton = false, // true면 확인 버튼을 mainColor 필박스 스타일로 표시
   }) {
     showDialog(
       context: context,
@@ -32,9 +34,14 @@ class CommonDialog {
               Text(content),
             ],
           ),
+          actionsPadding: filledButton
+              ? const EdgeInsets.fromLTRB(24, 0, 24, 20)
+              : null,
           actions: <Widget>[
             if (cancel)
               WithCancelBtn(context, onPressed)
+            else if (filledButton)
+              FilledOKBtn(context, onPressed, preventPop)
             else
               OKBtn(context, onPressed, preventPop)
           ],
@@ -57,6 +64,29 @@ class CommonDialog {
           Navigator.pop(context);
         }
       },
+    );
+  }
+
+  static Widget FilledOKBtn(context, onPressed, [bool preventPop = false]) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: ColorAssset.mainColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30.0),
+          ),
+        ),
+        onPressed: () {
+          onPressed();
+          if (!preventPop) {
+            Navigator.pop(context);
+          }
+        },
+        child: const Text('확인'),
+      ),
     );
   }
 

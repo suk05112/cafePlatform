@@ -114,10 +114,15 @@ class _SplashScreenState extends State<SplashScreen> {
   /// 서버에 등록된 강제 업데이트 버전을 체크하고, 대상이면 다이얼로그를 띄운다.
   /// 다이얼로그를 띄운 경우(이후 로직 중단이 필요한 경우) true를 반환한다.
   Future<bool> _checkForceUpdate() async {
-    if (!Platform.isIOS) return false;
+    final platform = Platform.isIOS
+        ? 'ios'
+        : Platform.isAndroid
+            ? 'android'
+            : null;
+    if (platform == null) return false;
 
     try {
-      final response = await Api().client.getAppVersion('ios');
+      final response = await Api().client.getAppVersion(platform, 'user');
       if (response.version == null || !response.isForceUpdate) {
         return false;
       }
@@ -130,16 +135,14 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return true;
       CommonDialog.show(
         context: context,
-        title: '업데이트 안내',
-        content: '새로운 버전이 출시되었습니다.\n계속 이용하시려면 업데이트해 주세요.',
-        buttonText: '업데이트',
+        title: '최신 버전 업데이트',
+        content: '최신버전 앱으로 업데이트를 위해\n스토어로 이동합니다.',
+        buttonText: '확인',
         cancel: false,
         preventPop: true,
+        filledButton: true,
         onPressed: () {
-          launchUrl(
-            Uri.parse('https://apps.apple.com/app/id6777555229'),
-            mode: LaunchMode.externalApplication,
-          );
+          _openStore(platform);
         },
       );
       return true;
@@ -147,6 +150,27 @@ class _SplashScreenState extends State<SplashScreen> {
       debugPrint('[ForceUpdate] 체크 실패(무시): $e');
       return false;
     }
+  }
+
+  Future<void> _openStore(String platform) async {
+    if (platform == 'android') {
+      final marketUri = Uri.parse('market://details?id=com.gifnut.cafeplatform');
+      if (await canLaunchUrl(marketUri)) {
+        await launchUrl(marketUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+      await launchUrl(
+        Uri.parse(
+            'https://play.google.com/store/apps/details?id=com.gifnut.cafeplatform'),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
+
+    await launchUrl(
+      Uri.parse('https://apps.apple.com/app/id6757492323'),
+      mode: LaunchMode.externalApplication,
+    );
   }
 
   Future<void> _prefetchHomeData(StoreProvider storeProvider) async {

@@ -1149,9 +1149,15 @@ class _ApiClient implements ApiClient {
   }
 
   @override
-  Future<AppVersionResponse> getAppVersion(String platform) async {
+  Future<AppVersionResponse> getAppVersion(
+    String platform,
+    String appType,
+  ) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{r'platform': platform};
+    final queryParameters = <String, dynamic>{
+      r'platform': platform,
+      r'app_type': appType,
+    };
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _result = await _dio
