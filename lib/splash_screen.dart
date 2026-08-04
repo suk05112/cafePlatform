@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:cafeplatform/main.dart';
@@ -12,7 +13,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cafeplatform/Payment/register_gifticon_page.dart';
 import 'package:cafeplatform/model/Store.dart';
 import 'package:cafeplatform/utils/cached_image.dart';
+import 'package:cafeplatform/utils/version_compare.dart';
+import 'package:cafeplatform/widget/CommonDialog.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,6 +34,10 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAutoLogin() async {
+    if (!mounted) return;
+
+    final forceUpdateShown = await _checkForceUpdate();
+    if (forceUpdateShown) return;
     if (!mounted) return;
 
     try {
@@ -100,6 +109,68 @@ class _SplashScreenState extends State<SplashScreen> {
         );
       }
     }
+  }
+
+  /// 서버에 등록된 강제 업데이트 버전을 체크하고, 대상이면 다이얼로그를 띄운다.
+  /// 다이얼로그를 띄운 경우(이후 로직 중단이 필요한 경우) true를 반환한다.
+  Future<bool> _checkForceUpdate() async {
+    final platform = Platform.isIOS
+        ? 'ios'
+        : Platform.isAndroid
+            ? 'android'
+            : null;
+    if (platform == null) return false;
+
+    try {
+      final response = await Api().client.getAppVersion(platform, 'user');
+      if (response.version == null || !response.isForceUpdate) {
+        return false;
+      }
+
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (!isNewerVersion(response.version!, packageInfo.version)) {
+        return false;
+      }
+
+      if (!mounted) return true;
+      CommonDialog.show(
+        context: context,
+        title: '최신 버전 업데이트',
+        content: '최신버전 앱으로 업데이트를 위해\n스토어로 이동합니다.',
+        buttonText: '확인',
+        cancel: false,
+        preventPop: true,
+        filledButton: true,
+        onPressed: () {
+          _openStore(platform);
+        },
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[ForceUpdate] 체크 실패(무시): $e');
+      return false;
+    }
+  }
+
+  Future<void> _openStore(String platform) async {
+    if (platform == 'android') {
+      final marketUri = Uri.parse('market://details?id=com.gifnut.cafeplatform');
+      if (await canLaunchUrl(marketUri)) {
+        await launchUrl(marketUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+      await launchUrl(
+        Uri.parse(
+            'https://play.google.com/store/apps/details?id=com.gifnut.cafeplatform'),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
+
+    await launchUrl(
+      Uri.parse('https://apps.apple.com/app/id6757492323'),
+      mode: LaunchMode.externalApplication,
+    );
   }
 
   Future<void> _prefetchHomeData(StoreProvider storeProvider) async {
