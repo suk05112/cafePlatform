@@ -34,7 +34,6 @@ import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/setting/setting_page.dart';
 import 'package:cafeplatform/Payment/register_gifticon_page.dart';
 import 'package:cafeplatform/gifticon_page.dart';
-import 'package:cafeplatform/tosspayments/widget_home.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
@@ -790,7 +789,6 @@ class _TabPageState extends State<TabPage> {
     /*Home(), */
     CafeList(), // 매장보기 (index 0)
     GiftBox(),
-    // WidgetHome(), // 선물함 (index 1)
     // CafeList(), // mapview (index 2) - 나중에 맵뷰로 변경 가능
     SettingPage() // 더보기 (index 3)
   ];

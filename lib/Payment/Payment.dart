@@ -22,10 +22,6 @@ import 'package:cafeplatform/Payment/figma_payment_method_section.dart';
 import 'package:cafeplatform/utils/meta_analytics_service.dart';
 import 'package:cafeplatform/Payment/payment_ui_tokens.dart';
 import 'package:provider/provider.dart';
-import 'package:tosspayments_widget_sdk_flutter/model/payment_widget_options.dart';
-import 'package:tosspayments_widget_sdk_flutter/payment_widget.dart';
-import 'package:tosspayments_widget_sdk_flutter/widgets/agreement.dart';
-import 'package:tosspayments_widget_sdk_flutter/widgets/payment_method.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
@@ -33,9 +29,6 @@ import 'package:cafeplatform/SignIn/login_page.dart';
 import 'package:uuid/uuid.dart';
 import 'package:fast_contacts/fast_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
-
-/// true: Figma(1683:764) 결제 UI · 토스 위젯 미사용 · PG 연동 전
-const bool _kUseFigmaPaymentUi = true;
 
 class Payment extends StatefulWidget {
   const Payment({
@@ -69,126 +62,13 @@ class _PaymentState extends State<Payment> {
   String receiver = "";
   String receiverPhoneNumber = "";
 
-  // 토스페이먼츠 위젯 관련 상태 (_kUseFigmaPaymentUi 이면 미사용)
-  PaymentWidget? _paymentWidget;
-  PaymentMethodWidgetControl? _paymentMethodWidgetControl;
-  AgreementWidgetControl? _agreementWidgetControl;
-
   /// Figma 결제수단 UI
   String _figmaPaymentLabel = '카카오페이';
   // bool _figmaTermsAgreed = false;
 
   String _idempotencyKey = const Uuid().v4();
 
-  // 결제 위젯 로딩 상태
-  bool _isLoadingWidgets = true;
   bool _isSubmitting = false;
-
-  void _checkWidgetsReady() {
-    if (_paymentMethodWidgetControl != null &&
-        _agreementWidgetControl != null) {
-      if (mounted) {
-        setState(() {
-          _isLoadingWidgets = false;
-        });
-      }
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    if (_kUseFigmaPaymentUi) {
-      _isLoadingWidgets = false;
-    } else {
-      _paymentWidget = PaymentWidget(
-        clientKey: "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm",
-        customerKey: "zG5XLcHhA7c3tuJsV_H3j",
-      );
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            try {
-              _renderPaymentWidgets();
-            } catch (e) {
-              if (mounted) {
-                setState(() {
-                  _isLoadingWidgets = false;
-                });
-              }
-            }
-          }
-        });
-      });
-    }
-  }
-
-  void _renderPaymentWidgets() {
-    if (!mounted || _paymentWidget == null) return;
-
-    try {
-      _paymentWidget!
-          .renderPaymentMethods(
-        selector: 'payment-methods',
-        amount: Amount(
-          value: widget.menu.price,
-          currency: Currency.KRW,
-          country: "KR",
-        ),
-        options: RenderPaymentMethodsOptions(variantKey: "DEFAULT"),
-      )
-          .then((control) {
-        if (mounted) {
-          setState(() {
-            _paymentMethodWidgetControl = control;
-          });
-          _checkWidgetsReady();
-        }
-      }).catchError((error, stackTrace) {
-        if (mounted) {
-          setState(() {
-            _isLoadingWidgets = false;
-          });
-        }
-      });
-
-      _paymentWidget!
-          .renderAgreement(selector: 'payment-agreement')
-          .then((control) {
-        if (mounted) {
-          setState(() {
-            _agreementWidgetControl = control;
-          });
-          _checkWidgetsReady();
-        }
-      }).catchError((error, stackTrace) {
-        if (mounted) {
-          setState(() {
-            _isLoadingWidgets = false;
-          });
-        }
-      });
-    } catch (e, stackTrace) {
-      if (mounted) {
-        setState(() {
-          _isLoadingWidgets = false;
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    // PaymentWidget 리소스 정리
-    try {
-      _paymentMethodWidgetControl = null;
-      _agreementWidgetControl = null;
-    } catch (e) {
-    }
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -259,83 +139,54 @@ class _PaymentState extends State<Payment> {
                             const Text("결제 수단",
                                 style: PaymentUiTokens.sectionTitle),
                             const SizedBox(height: 12),
-                            if (_kUseFigmaPaymentUi) ...[
-                              FigmaPaymentMethodSection(
-                                initialSelection: _figmaPaymentLabel,
-                                onSelectionChanged: (label) {
-                                  setState(() => _figmaPaymentLabel = label);
-                                },
-                              ),
-                              // const SizedBox(height: 16),
-                              // Row(
-                              //   crossAxisAlignment: CrossAxisAlignment.start,
-                              //   children: [
-                              //     SizedBox(
-                              //       width: 24,
-                              //       height: 24,
-                              //       child: Checkbox(
-                              //         value: _figmaTermsAgreed,
-                              //         activeColor: ColorAssset.mainColor,
-                              //         onChanged: (v) => setState(
-                              //             () => _figmaTermsAgreed = v ?? false),
-                              //       ),
-                              //     ),
-                              //     Expanded(
-                              //       child: GestureDetector(
-                              //         onTap: () {
-                              //           Navigator.push(
-                              //             context,
-                              //             MaterialPageRoute<void>(
-                              //               builder: (context) =>
-                              //                   Payment_Terms(),
-                              //             ),
-                              //           );
-                              //         },
-                              //         child: const Padding(
-                              //           padding: EdgeInsets.only(top: 2),
-                              //           child: Text(
-                              //             '결제 및 개인정보 처리에 동의합니다. (필수)',
-                              //             style: TextStyle(
-                              //               fontSize: 13,
-                              //               color: Colors.black87,
-                              //               height: 1.35,
-                              //               decoration:
-                              //                   TextDecoration.underline,
-                              //             ),
-                              //           ),
-                              //         ),
-                              //       ),
-                              //     ),
-                              //   ],
-                              // ),
-                            ] else
-                              Stack(
-                                children: [
-                                  Opacity(
-                                    opacity: _isLoadingWidgets ? 0.0 : 1.0,
-                                    child: Column(
-                                      children: [
-                                        PaymentMethodWidget(
-                                          paymentWidget: _paymentWidget!,
-                                          selector: 'payment-methods',
-                                        ),
-                                        const SizedBox(height: 12),
-                                        AgreementWidget(
-                                          paymentWidget: _paymentWidget!,
-                                          selector: 'payment-agreement',
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (_isLoadingWidgets)
-                                    const SizedBox(
-                                      height: 200,
-                                      child: Center(
-                                        child: CircularProgressIndicator(color: ColorAssset.mainColor),
-                                      ),
-                                    ),
-                                ],
-                              ),
+                            FigmaPaymentMethodSection(
+                              initialSelection: _figmaPaymentLabel,
+                              onSelectionChanged: (label) {
+                                setState(() => _figmaPaymentLabel = label);
+                              },
+                            ),
+                            // const SizedBox(height: 16),
+                            // Row(
+                            //   crossAxisAlignment: CrossAxisAlignment.start,
+                            //   children: [
+                            //     SizedBox(
+                            //       width: 24,
+                            //       height: 24,
+                            //       child: Checkbox(
+                            //         value: _figmaTermsAgreed,
+                            //         activeColor: ColorAssset.mainColor,
+                            //         onChanged: (v) => setState(
+                            //             () => _figmaTermsAgreed = v ?? false),
+                            //       ),
+                            //     ),
+                            //     Expanded(
+                            //       child: GestureDetector(
+                            //         onTap: () {
+                            //           Navigator.push(
+                            //             context,
+                            //             MaterialPageRoute<void>(
+                            //               builder: (context) =>
+                            //                   Payment_Terms(),
+                            //             ),
+                            //           );
+                            //         },
+                            //         child: const Padding(
+                            //           padding: EdgeInsets.only(top: 2),
+                            //           child: Text(
+                            //             '결제 및 개인정보 처리에 동의합니다. (필수)',
+                            //             style: TextStyle(
+                            //               fontSize: 13,
+                            //               color: Colors.black87,
+                            //               height: 1.35,
+                            //               decoration:
+                            //                   TextDecoration.underline,
+                            //             ),
+                            //           ),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
                           ],
                         ),
                       ),
@@ -559,47 +410,15 @@ class _PaymentState extends State<Payment> {
     FocusScope.of(context).unfocus();
 
     late final String paymentValue;
-    if (_kUseFigmaPaymentUi) {
-      // if (!_figmaTermsAgreed) {
-      //   _showToast('결제 약관에 동의해 주세요.');
-      //   return;
-      // }
-if (_figmaPaymentLabel.isEmpty) {
-        _showToast('결제수단을 선택해주세요.');
-        return;
-      }
-      paymentValue = _figmaPaymentLabel;
-    } else {
-      if (_agreementWidgetControl == null ||
-          _paymentMethodWidgetControl == null) {
-        _showToast('결제위젯이 준비되지 않았습니다.');
-        return;
-      }
-
-      final agreement = await _agreementWidgetControl?.getAgreementStatus();
-      if (agreement?.agreedRequiredTerms != true) {
-        _showToast('필수 약관에 모두 동의해주세요.');
-        return;
-      }
-
-      final selectedPaymentMethod =
-          await _paymentMethodWidgetControl?.getSelectedPaymentMethod();
-
-      if (selectedPaymentMethod == null) {
-        _showToast('결제수단을 선택해주세요.');
-        return;
-      }
-
-      final method = selectedPaymentMethod.method?.toLowerCase() ?? '';
-      if (method == 'card') {
-        paymentValue = '카드';
-      } else if (selectedPaymentMethod.easyPay != null) {
-        paymentValue =
-            selectedPaymentMethod.easyPay!.provider ?? '간편결제';
-      } else {
-        paymentValue = selectedPaymentMethod.method ?? '기타';
-      }
+    // if (!_figmaTermsAgreed) {
+    //   _showToast('결제 약관에 동의해 주세요.');
+    //   return;
+    // }
+    if (_figmaPaymentLabel.isEmpty) {
+      _showToast('결제수단을 선택해주세요.');
+      return;
     }
+    paymentValue = _figmaPaymentLabel;
 
     MetaAnalyticsService.instance.logAddPaymentInfo(success: true);
 

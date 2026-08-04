@@ -1312,14 +1312,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
-  os_info_plugin:
-    dependency: transitive
-    description:
-      name: os_info_plugin
-      sha256: "381a8ba0a6ab663565a63e40d2eb859e227b022fd458b4ea01cb32459286285f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.1"
   package_config:
     dependency: transitive
     description:
@@ -1837,22 +1829,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
-  tosspayments_webview_flutter:
-    dependency: transitive
-    description:
-      name: tosspayments_webview_flutter
-      sha256: "61513ba33423a1e9a55022f26b250f2314d79390d1f7e0d5078cb4500e512517"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.6"
-  tosspayments_widget_sdk_flutter:
-    dependency: "direct main"
-    description:
-      name: tosspayments_widget_sdk_flutter
-      sha256: a16eddb26866809832166f5a0967afeaab604debe69726d389ed6be5cd35fd5e
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.2"
   tuple:
     dependency: transitive
     description:

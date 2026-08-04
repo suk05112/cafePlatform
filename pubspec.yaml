@@ -84,7 +84,6 @@ dependencies:
   app_links: ^6.4.1
   get: ^4.6.6
   qr_flutter: ^4.1.0
-  tosspayments_widget_sdk_flutter: ^2.1.2
   url_launcher: ^6.3.0
   device_info_plus: ^9.0.0
   sign_in_with_apple: ^7.0.1
