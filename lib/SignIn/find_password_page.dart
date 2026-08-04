@@ -34,13 +34,10 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
   bool _obscureConfirmPassword = true; // 비밀번호 확인 숨김/표시
 
   final inputDecoration = InputDecoration(
-      border: UnderlineInputBorder(
-          // borderRadius: BorderRadius.circular(8.0),
-          // borderSide: const BorderSide(
-          //   color: Colors.redAccent,
-          //   width: 2,
-          // )
-          ));
+      border: const UnderlineInputBorder(),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: ColorAssset.mainColor, width: 2),
+      ));
 
   @override
   void dispose() {
@@ -228,6 +225,10 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             hintText: "새 비밀번호를 입력해주세요",
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: ColorAssset.mainColor, width: 2),
+                            ),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
@@ -268,6 +269,10 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
                           obscureText: _obscureConfirmPassword,
                           decoration: InputDecoration(
                             hintText: "비밀번호를 다시 입력해주세요",
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: ColorAssset.mainColor, width: 2),
+                            ),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscureConfirmPassword

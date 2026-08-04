@@ -321,8 +321,8 @@ class _LoginPageState extends State<LoginPage> {
                                     BorderSide(color: Colors.grey[300]!),
                               ),
                               focusedBorder: UnderlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.black, width: 2),
+                                borderSide: BorderSide(
+                                    color: ColorAssset.mainColor, width: 2),
                               ),
                             ),
                           ),
@@ -343,8 +343,8 @@ class _LoginPageState extends State<LoginPage> {
                                     BorderSide(color: Colors.grey[300]!),
                               ),
                               focusedBorder: UnderlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.black, width: 2),
+                                borderSide: BorderSide(
+                                    color: ColorAssset.mainColor, width: 2),
                               ),
                               suffixIcon: IconButton(
                                 icon: Icon(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 
 class InputInfoWidget extends StatefulWidget {
   InputInfoWidget(
@@ -59,8 +60,8 @@ class _InputInfoWidgetState extends State<InputInfoWidget> {
               enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.grey[300]!),
               ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.black, width: 2),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: ColorAssset.mainColor, width: 2),
               ),
               suffixIcon: _hidePassword == null
                   ? null

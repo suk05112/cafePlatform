@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cafeplatform/Style/ColorAsset.dart';
 import 'package:cafeplatform/api/API.dart';
 import 'package:cafeplatform/api/user_response.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -525,7 +526,12 @@ class _MyAppState extends State<MyApp> {
         child: GetMaterialApp(
           title: "MyApp",
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(primarySwatch: Colors.blue),
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            textSelectionTheme: const TextSelectionThemeData(
+              cursorColor: ColorAssset.mainColor,
+            ),
+          ),
           home: SplashScreen(),
         ),
       ),
