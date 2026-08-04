@@ -238,6 +238,10 @@ class _InputRecipientInfoPageState extends State<InputRecipientInfoPage> {
                 decoration: const InputDecoration(
                   labelText: '이름 (선택)',
                   hintText: '이름을 입력해주세요',
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide:
+                        BorderSide(color: ColorAssset.mainColor, width: 2),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -248,6 +252,10 @@ class _InputRecipientInfoPageState extends State<InputRecipientInfoPage> {
                 decoration: const InputDecoration(
                   labelText: '전화번호',
                   hintText: '01012345678',
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide:
+                        BorderSide(color: ColorAssset.mainColor, width: 2),
+                  ),
                 ),
               ),
             ],

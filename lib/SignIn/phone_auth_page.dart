@@ -142,7 +142,7 @@ class _PhoneNumberVerificationWidgetState
       borderSide: BorderSide(color: Colors.grey[300]!),
     ),
     focusedBorder: UnderlineInputBorder(
-      borderSide: BorderSide(color: Colors.black, width: 2),
+      borderSide: BorderSide(color: ColorAssset.mainColor, width: 2),
     ),
   );
 

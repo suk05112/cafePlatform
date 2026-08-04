@@ -27,12 +27,10 @@ class _FindUserIDPageState extends State<FindUserIDPage> {
   PhoneAuthCredential? phoneCredential;
 
   final inputDecoration = const InputDecoration(
-      border: UnderlineInputBorder(
-          // borderRadius: BorderRadius.circular(8.0),
-          // borderSide: const BorderSide(
-          //   color: Colors.redAccent,
-          //   width: 2,
-          ));
+      border: UnderlineInputBorder(),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: ColorAssset.mainColor, width: 2),
+      ));
 
   @override
   Widget build(BuildContext context) {
