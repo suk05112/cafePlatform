@@ -18,12 +18,15 @@ import 'package:flutter/foundation.dart';
 import 'package:cafeplatform/order/order_detail_page.dart';
 import 'package:cafeplatform/order/receiver_refund_request_page.dart';
 import 'package:cafeplatform/widget/common_app_bar.dart';
+import 'package:cafeplatform/static/payment_guide_text.dart';
+import 'package:cafeplatform/utils/cached_image.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:cafeplatform/main.dart';
 
 class GifticonPage extends StatefulWidget {
-  const GifticonPage({super.key, required this.gifticon_id, this.fromKakao = false});
+  const GifticonPage(
+      {super.key, required this.gifticon_id, this.fromKakao = false});
 
   final int gifticon_id;
   final bool fromKakao;
@@ -85,160 +88,175 @@ class _GifticonPageState extends State<GifticonPage>
         Navigator.pop(context, _didUseGifticon);
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          toolbarHeight: 44,
-          title: const Text(
-            "선물함",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Colors.black,
-            ),
-          ),
-          centerTitle: true,
           backgroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.white,
-          actions: widget.fromKakao
-              ? [
-                  IconButton(
-                    icon: const Icon(Icons.home_outlined, color: Colors.black),
-                    onPressed: () => Get.offAll(() => const TabPage(initialIndex: 1)),
-                  ),
-                ]
-              : null,
-        ),
-        body: SafeArea(
-            child: FutureBuilder<Gifticon?>(
-                future: futureGifticon,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
-                  } else if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+          appBar: AppBar(
+            toolbarHeight: 44,
+            title: const Text(
+              "선물함",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.black,
+              ),
+            ),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.white,
+            actions: widget.fromKakao
+                ? [
+                    IconButton(
+                      icon:
+                          const Icon(Icons.home_outlined, color: Colors.black),
+                      onPressed: () =>
+                          Get.offAll(() => const TabPage(initialIndex: 1)),
+                    ),
+                  ]
+                : null,
+          ),
+          body: SafeArea(
+              child: FutureBuilder<Gifticon?>(
+                  future: futureGifticon,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                          child: CircularProgressIndicator(
+                              color: ColorAssset.mainColor));
+                    } else if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline,
+                                size: 48, color: Colors.grey[400]),
+                            SizedBox(height: 12),
+                            Text(
+                              "Error: ${snapshot.error}",
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else if (snapshot.hasData) {
+                      Gifticon gifticon = snapshot.data!;
+                      return Column(
                         children: [
-                          Icon(Icons.error_outline,
-                              size: 48, color: Colors.grey[400]),
-                          SizedBox(height: 12),
-                          Text(
-                            "Error: ${snapshot.error}",
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    );
-                  } else if (snapshot.hasData) {
-                    Gifticon gifticon = snapshot.data!;
-                    return Column(
-                      children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  SizedBox(height: 16),
-                                  showSender(gifticon),
-                                  Stack(alignment: Alignment.center, children: [
-                                    Container(
-                                      width: 200,
-                                      height: 200,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    SizedBox(height: 16),
+                                    showSender(gifticon),
+                                    Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Container(
+                                            width: 200,
+                                            height: 200,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              child: _buildMenuImage(
+                                                  gifticon.menu_url),
+                                            ),
+                                          ),
+                                          usedOverlay(gifticon),
+                                        ]),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      gifticon.product_type == 'VOUCHER'
+                                          ? PaymentGuideText.voucherStoreLabel
+                                          : gifticon.store_name,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(20),
-                                        child:
-                                            _buildMenuImage(gifticon.menu_url),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      gifticon.name,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                        letterSpacing: -0.3,
                                       ),
                                     ),
-                                    usedOverlay(gifticon),
-                                  ]),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    gifticon.store_name,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    gifticon.name,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                      letterSpacing: -0.3,
-                                    ),
-                                  ),
-                                  if (gifticon.sender.isNotEmpty) ...[
-                                    SizedBox(height: 6),
-                                    gifticon.type == 1
-                                        ? Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.person_outline,
-                                                  size: 14,
-                                                  color: Colors.grey[500]),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                'From ${gifticon.sender}',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey[600],
-                                                ),
-                                              )
-                                            ],
-                                          )
-                                        : SizedBox(),
+                                    if (gifticon.sender.isNotEmpty) ...[
+                                      SizedBox(height: 6),
+                                      gifticon.type == 1
+                                          ? Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.person_outline,
+                                                    size: 14,
+                                                    color: Colors.grey[500]),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'From ${gifticon.sender}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                )
+                                              ],
+                                            )
+                                          : SizedBox(),
+                                    ],
+                                    SizedBox(height: 20),
+                                    getTabBarWidget(),
+                                    SizedBox(height: 12),
+                                    selectedTabIndex == 0
+                                        ? gifticonInfo(gifticon)
+                                        : getDetailInfo(
+                                            gifticon.product_type == 'VOUCHER'
+                                                ? PaymentGuideText
+                                                    .voucherStoreLabel
+                                                : gifticon.store_name,
+                                          ),
+                                    SizedBox(height: 24),
                                   ],
-                                  SizedBox(height: 20),
-                                  getTabBarWidget(),
-                                  SizedBox(height: 12),
-                                  selectedTabIndex == 0
-                                      ? gifticonInfo(gifticon)
-                                      : getDetailInfo(gifticon.store_name),
-                                  SizedBox(height: 24),
-                                ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        // 하단 고정 버튼
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: Offset(0, -2),
-                              ),
-                            ],
+                          // 하단 고정 버튼
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: Offset(0, -2),
+                                ),
+                              ],
+                            ),
+                            child: useButton(gifticon),
                           ),
-                          child: useButton(gifticon),
+                        ],
+                      );
+                    } else {
+                      return Center(
+                        child: Text(
+                          "기프티콘 읽어오기 실패",
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
-                      ],
-                    );
-                  } else {
-                    return Center(
-                      child: Text(
-                        "기프티콘 읽어오기 실패",
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    );
-                  }
-                }))),
-      );
+                      );
+                    }
+                  }))),
+    );
   }
 
   Widget showSender(gifticon) {
@@ -404,47 +422,54 @@ class _GifticonPageState extends State<GifticonPage>
               // '선물주문일', '${gifticon.created_time?.toDateTimeString}'),
               gifticonInfoRow('쿠폰상태',
                   gifticonStatus(gifticon.status ?? "", gifticon.validity)),
-              gifticonInfoRow('교환처', gifticon.store_address ?? '정보 없음'),
+              gifticonInfoRow(
+                '교환처',
+                gifticon.product_type == 'VOUCHER'
+                    ? PaymentGuideText.voucherStoreLabel
+                    : (gifticon.store_address ?? '정보 없음'),
+              ),
             ],
           ),
         ),
         SizedBox(height: 16),
         // 유의사항 섹션
         _buildPrecautionsSection(),
-        SizedBox(height: 16),
-        Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.map, size: 20, color: Colors.black87),
-              SizedBox(width: 8),
-              Text(
-                '교환처 지도로보기',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+        if (gifticon.product_type != 'VOUCHER') ...[
+          SizedBox(height: 16),
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
                 ),
-              ),
-            ],
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.map, size: 20, color: Colors.black87),
+                SizedBox(width: 8),
+                Text(
+                  '교환처 지도로보기',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        SizedBox(height: 12),
-        NaverMapWidget(
-          latitude: gifticon.store_lat,
-          longitude: gifticon.store_lng,
-        ),
+          SizedBox(height: 12),
+          NaverMapWidget(
+            latitude: gifticon.store_lat,
+            longitude: gifticon.store_lng,
+          ),
+        ],
       ],
     );
   }
@@ -590,7 +615,8 @@ class _GifticonPageState extends State<GifticonPage>
   }
 
   bool _canRequestReceiverRefund(gifticon) {
-    if (gifticon.status != 'UNUSED' && gifticon.status != 'EXPIRED') return false;
+    if (gifticon.status != 'UNUSED' && gifticon.status != 'EXPIRED')
+      return false;
     final purchaserRefundDeadline = gifticon.purchaserRefundDeadline;
     if (purchaserRefundDeadline == null) return false;
     return !DateTime.now().isBefore(purchaserRefundDeadline);
@@ -617,7 +643,8 @@ class _GifticonPageState extends State<GifticonPage>
           );
           if (requested == true && mounted) {
             _didUseGifticon = true;
-            Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
+            Provider.of<UserProvider>(context, listen: false)
+                .invalidateGifticonCache();
             Navigator.pop(context, true);
           }
         },
@@ -634,8 +661,9 @@ class _GifticonPageState extends State<GifticonPage>
   }
 
   Widget useButton(gifticon) {
-    String statusText = gifticonStatus(gifticon?.status ?? "", gifticon.validity);
-    bool available = statusText == "사용가능" && gifticon.store_id != null;
+    String statusText =
+        gifticonStatus(gifticon?.status ?? "", gifticon.validity);
+    bool available = statusText == "사용가능";
     Widget useElevatedButton = SizedBox(
       width: double.infinity,
       height: 52,
@@ -645,17 +673,18 @@ class _GifticonPageState extends State<GifticonPage>
             borderRadius: BorderRadius.circular(12),
           ),
           foregroundColor: Colors.white,
-          backgroundColor:
-              available ? ColorAssset.mainColor : Colors.grey[400],
+          backgroundColor: available ? ColorAssset.mainColor : Colors.grey[400],
           elevation: 0,
         ),
         onPressed: available == false
             ? null
             : () async {
-                await ShowQR(gifticon.gifticon_id, gifticon.store_id!);
+                await ShowQR(gifticon.gifticon_id, gifticon.store_id);
                 if (!mounted) return;
-                Provider.of<UserProvider>(context, listen: false).invalidateGifticonCache();
-                final refreshed = await GifticonPage.fetchGifticon(widget.gifticon_id);
+                Provider.of<UserProvider>(context, listen: false)
+                    .invalidateGifticonCache();
+                final refreshed =
+                    await GifticonPage.fetchGifticon(widget.gifticon_id);
                 if (!mounted) return;
                 if (refreshed?.status != gifticon.status) {
                   _didUseGifticon = true;
@@ -689,6 +718,10 @@ class _GifticonPageState extends State<GifticonPage>
   }
 
   Future<void> ShowQR(gifticonId, storeId) {
+    // 금액권(store_id=null)은 특정 매장에 속하지 않으므로 매장 소속 검증을
+    // 무조건 통과시키기 위해 storeId 자리에 고정값 1을 사용한다.
+    // (사장님앱 QR 파싱 포맷을 그대로 유지하기 위한 임시 처리, GNB-246에서 서버 검증으로 대체 예정)
+    final qrData = "${storeId ?? 1},$gifticonId";
     return showDialog(
         context: context,
         barrierDismissible: true,
@@ -733,7 +766,7 @@ class _GifticonPageState extends State<GifticonPage>
                       border: Border.all(color: Colors.grey[200]!),
                     ),
                     child: QrImageView(
-                      data: "$storeId,$gifticonId",
+                      data: qrData,
                       version: QrVersions.auto,
                       size: 220.0,
                       backgroundColor: Colors.white,
@@ -817,7 +850,10 @@ class _GifticonPageState extends State<GifticonPage>
 
   Widget getDetailInfo(String storeName) {
     return Column(
-      children: [Product_notice_information(storeName), Cancellation_refund_policy()],
+      children: [
+        Product_notice_information(storeName),
+        Cancellation_refund_policy()
+      ],
     );
   }
 
@@ -981,93 +1017,11 @@ class _GifticonPageState extends State<GifticonPage>
 
   // ✅ 메뉴 이미지 빌드 (URL 유효성 검사 포함)
   Widget _buildMenuImage(String? menuUrl) {
-    final cleanedUrl = menuUrl?.trim() ?? '';
-
-    // URL이 비어있거나 유효하지 않은 경우
-    if (cleanedUrl.isEmpty ||
-        (!cleanedUrl.startsWith('http://') &&
-            !cleanedUrl.startsWith('https://'))) {
-      // 이미지가 없을 때 예쁜 플레이스홀더 표시
-      return Container(
-        width: 200,
-        height: 200,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.grey[100]!,
-              Colors.grey[200]!,
-            ],
-          ),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.card_giftcard,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-        ),
-      );
-    }
-
-    // 유효한 URL이 있을 때 네트워크 이미지 표시
-    return Image.network(
-      cleanedUrl,
+    return CachedImage(
+      url: menuUrl ?? '',
       width: 200,
       height: 200,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          width: 200,
-          height: 200,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.grey[100]!,
-                Colors.grey[200]!,
-              ],
-            ),
-          ),
-          child: Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        // 네트워크 이미지 로드 실패 시 플레이스홀더 표시
-        return Container(
-          width: 200,
-          height: 200,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.grey[100]!,
-                Colors.grey[200]!,
-              ],
-            ),
-          ),
-          child: Center(
-            child: Icon(
-              Icons.card_giftcard,
-              size: 80,
-              color: Colors.grey[400],
-            ),
-          ),
-        );
-      },
+      fallbackIcon: Icons.card_giftcard,
     );
   }
 }
@@ -1137,8 +1091,7 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
         if (mounted) {
           setState(() {});
         }
-      } catch (fallbackError) {
-      }
+      } catch (fallbackError) {}
     }
   }
 
@@ -1177,8 +1130,7 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
       }
 
       await _mapController.addOverlay(marker);
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   @override
@@ -1188,8 +1140,7 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
     if (_isMapReady && mapControllerCompleter.isCompleted) {
       try {
         _mapController.dispose();
-      } catch (e) {
-      }
+      } catch (e) {}
     }
     super.dispose();
   }
@@ -1232,7 +1183,6 @@ class _NaverMapWidgetState extends State<NaverMapWidget>
             if (!mapControllerCompleter.isCompleted) {
               mapControllerCompleter.complete(controller);
             }
-
 
             // 지도가 준비되면 마커 추가
             if (!_isDisposed) {

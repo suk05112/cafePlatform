@@ -99,6 +99,9 @@ class OrderDetailResponse {
   @JsonKey(name: 'store_telephone')
   String? store_telephone;
 
+  @JsonKey(name: 'product_type')
+  String? product_type;
+
   int? amount;
   String? status;
   String? payment;
@@ -124,6 +127,7 @@ class OrderDetailResponse {
     this.store_name,
     this.store_address,
     this.store_telephone,
+    this.product_type,
     this.amount,
     this.status,
     this.payment,

@@ -107,6 +107,9 @@ abstract class ApiClient {
     @Query('cursor') String? cursor,
   });
 
+  @GET("/menu/vouchers")
+  Future<VoucherListResponse> getVouchers();
+
   @POST("/menu/")
   Future<MenuPostResponse> addMenu(
     @Body() Menu menu,
@@ -123,7 +126,7 @@ abstract class ApiClient {
     @Body() PaymentUrlRequest request,
   );
 
-@POST("/order/payment/result")
+  @POST("/order/payment/result")
   Future<void> sendPaymentResult(
     @Body() PaymentResultRequest paymentResult,
   );

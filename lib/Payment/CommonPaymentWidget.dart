@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cafeplatform/model/menu.dart';
 import 'package:cafeplatform/provider/menu_provider.dart';
 import 'package:cafeplatform/widget/store_map_page.dart';
 import 'package:cafeplatform/store_page.dart';
+import 'package:cafeplatform/static/payment_guide_text.dart';
 import 'package:provider/provider.dart';
 
 class CommonPaymentWidget {
@@ -38,50 +40,74 @@ class CommonPaymentWidget {
     );
   }
 
+  static bool _isSvgUrl(String url) =>
+      Uri.tryParse(url)?.path.toLowerCase().endsWith('.svg') ?? false;
+
   static Widget _giftMenuCoverImage(
     String url, {
     required double borderRadius,
     bool useDetailedPlaceholders = false,
   }) {
-    Widget net = Image.network(
-      url,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        if (!useDetailedPlaceholders) return const SizedBox.shrink();
-        return Container(
-          color: Colors.grey.shade200,
-          alignment: Alignment.center,
-          child: const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        if (!useDetailedPlaceholders) return const SizedBox.shrink();
-        return ColoredBox(
-          color: Colors.grey.shade200,
-          child: Icon(
-            Icons.image_not_supported_outlined,
-            size: 40,
-            color: Colors.grey.shade500,
-          ),
-        );
-      },
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded) return child;
-        return AnimatedOpacity(
-          opacity: frame == null ? 0.0 : 1.0,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-          child: child,
-        );
-      },
-    );
+    Widget net;
+    if (_isSvgUrl(url)) {
+      net = SvgPicture.network(
+        url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        placeholderBuilder: !useDetailedPlaceholders
+            ? null
+            : (_) => Container(
+                  color: Colors.grey.shade200,
+                  alignment: Alignment.center,
+                  child: const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+      );
+    } else {
+      net = Image.network(
+        url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          if (!useDetailedPlaceholders) return const SizedBox.shrink();
+          return Container(
+            color: Colors.grey.shade200,
+            alignment: Alignment.center,
+            child: const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          if (!useDetailedPlaceholders) return const SizedBox.shrink();
+          return ColoredBox(
+            color: Colors.grey.shade200,
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              size: 40,
+              color: Colors.grey.shade500,
+            ),
+          );
+        },
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          return AnimatedOpacity(
+            opacity: frame == null ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            child: child,
+          );
+        },
+      );
+    }
     if (borderRadius <= 0) return net;
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -102,6 +128,7 @@ class CommonPaymentWidget {
     int? contextStoreId,
     bool asCard = true,
     bool skipImage = false,
+    bool isVoucher = false,
   }) {
     final hasImage =
         menu.menu_image_url != null && menu.menu_image_url!.trim().isNotEmpty;
@@ -112,139 +139,147 @@ class CommonPaymentWidget {
     final mapName = (exchangePlaceName != null && exchangePlaceName.isNotEmpty)
         ? exchangePlaceName
         : (menu.name ?? '매장');
-    final showMap = _validMapCoords(exchangeLat, exchangeLng);
+    final showMap = !isVoucher && _validMapCoords(exchangeLat, exchangeLng);
 
     final imageRadius = asCard ? 12.0 : 0.0;
     final column = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (hasImage && !skipImage) ...[
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final side = constraints.maxWidth;
-                if (!side.isFinite || side <= 0) {
-                  return const SizedBox.shrink();
-                }
-                return SizedBox(
-                  width: side,
-                  height: side,
-                  child: _giftMenuCoverImage(
-                    menu.menu_image_url!.trim(),
-                    borderRadius: imageRadius,
-                    useDetailedPlaceholders: false,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasImage && !skipImage) ...[
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final side = constraints.maxWidth;
+              if (!side.isFinite || side <= 0) {
+                return const SizedBox.shrink();
+              }
+              return SizedBox(
+                width: side,
+                height: side,
+                child: _giftMenuCoverImage(
+                  menu.menu_image_url!.trim(),
+                  borderRadius: imageRadius,
+                  useDetailedPlaceholders: false,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (!isVoucher &&
+            exchangePlaceName != null &&
+            exchangePlaceName.isNotEmpty) ...[
+          GestureDetector(
+            onTap: () {
+              final storeId =
+                  contextStoreId ?? (menu.store_id > 0 ? menu.store_id : null);
+              if (storeId == null) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      StorePage(storeId: storeId, storeName: exchangePlaceName),
+                ),
+              );
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  exchangePlaceName,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF757575),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (exchangePlaceName != null && exchangePlaceName.isNotEmpty) ...[
-            GestureDetector(
-              onTap: () {
-                final storeId = contextStoreId ?? (menu.store_id > 0 ? menu.store_id : null);
-                if (storeId == null) return;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => StorePage(storeId: storeId, storeName: exchangePlaceName),
-                  ),
-                );
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    exchangePlaceName,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF757575),
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, size: 16, color: Color(0xFF757575)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-          ],
-          Text(
-            menu.name ?? "",
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+                ),
+                const Icon(Icons.chevron_right,
+                    size: 16, color: Color(0xFF757575)),
+              ],
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            "${menu.price}원",
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+        ],
+        Text(
+          menu.name ?? "",
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
-          if (hasDesc) ...[
-            const SizedBox(height: 8),
-            Text(
-              desc,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black87,
-                height: 1.45,
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          const Text(
-            '교환처',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "${menu.price}원",
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
+        ),
+        if (hasDesc) ...[
           const SizedBox(height: 8),
           Text(
-            hasAddr ? addr : '등록된 주소가 없습니다.',
-            style: TextStyle(
+            desc,
+            style: const TextStyle(
               fontSize: 13,
-              color: hasAddr ? Colors.black87 : Colors.grey.shade600,
-              height: 1.4,
+              color: Colors.black87,
+              height: 1.45,
             ),
           ),
-          if (showMap) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (context) => StoreMapPage(
-                        latitude: exchangeLat!,
-                        longitude: exchangeLng!,
-                        storeName: mapName,
-                      ),
+        ],
+        const SizedBox(height: 16),
+        const Divider(height: 1),
+        const SizedBox(height: 12),
+        const Text(
+          '교환처',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          isVoucher
+              ? PaymentGuideText.voucherExchangeInfo
+              : (hasAddr ? addr : '등록된 주소가 없습니다.'),
+          style: TextStyle(
+            fontSize: 13,
+            color:
+                (isVoucher || hasAddr) ? Colors.black87 : Colors.grey.shade600,
+            height: 1.4,
+          ),
+        ),
+        if (showMap) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => StoreMapPage(
+                      latitude: exchangeLat!,
+                      longitude: exchangeLng!,
+                      storeName: mapName,
                     ),
-                  );
-                },
-                icon: const Icon(Icons.map_outlined, size: 20),
-                label: const Text('지도로 보여주기'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.blue.shade700,
-                  padding: EdgeInsets.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map_outlined, size: 20),
+              label: const Text('지도로 보여주기'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blue.shade700,
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
-          ],
+          ),
         ],
-      );
+      ],
+    );
 
     if (!asCard) {
       return column;
@@ -270,10 +305,7 @@ class CommonPaymentWidget {
   static bool _validMapCoords(double? lat, double? lng) {
     if (lat == null || lng == null) return false;
     if (lat.abs() < 1e-5 && lng.abs() < 1e-5) return false;
-    return lat >= 33.0 &&
-        lat <= 38.8 &&
-        lng >= 124.0 &&
-        lng <= 132.5;
+    return lat >= 33.0 && lat <= 38.8 && lng >= 124.0 && lng <= 132.5;
   }
 
   static Widget getGiftInfo() {
