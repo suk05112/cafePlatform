@@ -2,7 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 // flutter_cache_manager is a transitive dependency of cached_network_image
 import 'package:flutter_cache_manager/flutter_cache_manager.dart' as fcm;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+
+bool _isSvgUrl(String url) =>
+    Uri.tryParse(url)?.path.toLowerCase().endsWith('.svg') ?? false;
 
 class _AppCacheManager extends fcm.CacheManager with fcm.ImageCacheManager {
   static const _key = 'gifnut_img_1h';
@@ -104,27 +108,34 @@ class CachedImage extends StatelessWidget {
     final h = height ?? 80;
 
     if (cleanUrl.isEmpty ||
-        (!cleanUrl.startsWith('http://') &&
-            !cleanUrl.startsWith('https://'))) {
+        (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://'))) {
       return _buildError(w, h);
     }
 
     final key = cacheKey ?? _cacheKeyFor(cleanUrl);
 
-    Widget image = CachedNetworkImage(
-      imageUrl: cleanUrl,
-      cacheKey: key,
-      cacheManager: _AppCacheManager(),
-      width: width,
-      height: height,
-      fit: fit,
-      // 캐시 히트 시 즉각 표시 (흐릿→선명 전환 없음).
-      // 미스(최초 다운로드) 시에는 placeholder → fade-in이 자연스럽게 동작한다.
-      fadeInDuration: Duration.zero,
-      fadeOutDuration: Duration.zero,
-      placeholder: (_, __) => _buildPlaceholder(w, h),
-      errorWidget: (_, __, ___) => _buildError(w, h),
-    );
+    Widget image = _isSvgUrl(cleanUrl)
+        ? SvgPicture.network(
+            cleanUrl,
+            width: width,
+            height: height,
+            fit: fit,
+            placeholderBuilder: (_) => _buildPlaceholder(w, h),
+          )
+        : CachedNetworkImage(
+            imageUrl: cleanUrl,
+            cacheKey: key,
+            cacheManager: _AppCacheManager(),
+            width: width,
+            height: height,
+            fit: fit,
+            // 캐시 히트 시 즉각 표시 (흐릿→선명 전환 없음).
+            // 미스(최초 다운로드) 시에는 placeholder → fade-in이 자연스럽게 동작한다.
+            fadeInDuration: Duration.zero,
+            fadeOutDuration: Duration.zero,
+            placeholder: (_, __) => _buildPlaceholder(w, h),
+            errorWidget: (_, __, ___) => _buildError(w, h),
+          );
 
     if (borderRadius != null) {
       image = ClipRRect(borderRadius: borderRadius!, child: image);

@@ -22,6 +22,7 @@ class SelectGiftPage extends StatefulWidget {
     this.exchangePlaceName,
     this.contextStoreId,
     this.loadStoreId,
+    this.isVoucher = false,
   });
 
   final Menu menu;
@@ -30,8 +31,13 @@ class SelectGiftPage extends StatefulWidget {
   final double? exchangeLng;
   final String? exchangePlaceName;
   final int? contextStoreId;
+
   /// 전달 시 initState에서 매장 정보를 로드해 exchangeAddress/Lat/Lng/PlaceName을 채움
   final int? loadStoreId;
+
+  /// 금액권(교환권) 상품인 경우 true. 특정 매장에 속하지 않으므로
+  /// 매장 상세/지도 이동을 막고 교환처 안내 문구를 대체 표시한다.
+  final bool isVoucher;
 
   @override
   State<SelectGiftPage> createState() => _SelectGiftPagePageState();
@@ -61,7 +67,9 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
     _exchangeLng = widget.exchangeLng;
     _exchangePlaceName = widget.exchangePlaceName;
     _loadTerms();
-    if (widget.loadStoreId != null) _loadStoreInfo(widget.loadStoreId!);
+    if (!widget.isVoucher && widget.loadStoreId != null) {
+      _loadStoreInfo(widget.loadStoreId!);
+    }
   }
 
   Future<void> _loadStoreInfo(int storeId) async {
@@ -153,7 +161,8 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
 
   Widget _guideTabBody() {
     if (!_termsLoaded) {
-      return const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
+      return const Center(
+          child: CircularProgressIndicator(color: ColorAssset.mainColor));
     }
     if (_guideTab == 0) {
       return Text(
@@ -182,240 +191,256 @@ class _SelectGiftPagePageState extends State<SelectGiftPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: const CommonAppBar(title: "선물하기"),
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      CommonPaymentWidget.buildGiftProductHeroImage(
-                        context,
-                        widget.menu,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            CommonPaymentWidget.buildGiftProductCard(
-                              context,
-                              widget.menu,
-                              exchangeAddress: _exchangeAddress,
-                              exchangeLat: _exchangeLat,
-                              exchangeLng: _exchangeLng,
-                              exchangePlaceName: _exchangePlaceName,
-                              contextStoreId: widget.contextStoreId ?? widget.loadStoreId,
-                              asCard: false,
-                              skipImage: true,
-                            ),
-                            const SizedBox(height: 20),
+      appBar: const CommonAppBar(title: "선물하기"),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CommonPaymentWidget.buildGiftProductHeroImage(
+                      context,
+                      widget.menu,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          CommonPaymentWidget.buildGiftProductCard(
+                            context,
+                            widget.menu,
+                            exchangeAddress: _exchangeAddress,
+                            exchangeLat: _exchangeLat,
+                            exchangeLng: _exchangeLng,
+                            exchangePlaceName: _exchangePlaceName,
+                            contextStoreId:
+                                widget.contextStoreId ?? widget.loadStoreId,
+                            asCard: false,
+                            skipImage: true,
+                            isVoucher: widget.isVoucher,
+                          ),
+                          const SizedBox(height: 20),
 
-                            // 사용방법 섹션 (Figma 톤)
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFAFAFA),
-                                borderRadius: BorderRadius.circular(12),
-                                border:
-                                    Border.all(color: const Color(0xFFE0E0E0)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    '사용방법',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    '실물 배송 상품이 아닌 교환처에서 사용할 수 있는 모바일 상품권입니다.',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.black87,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    '상품권 사용시 QR코드 또는 상품권 번호를 매장에 제시해 주시면 됩니다',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.black87,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      '[주문/결제 → 상품권 수신 → 선물함 → QR코드 제시]',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          // 사용방법 섹션 (Figma 톤)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAFAFA),
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: const Color(0xFFE0E0E0)),
                             ),
-                            const SizedBox(height: 16),
-
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _guideTabBar(),
+                                const Text(
+                                  '사용방법',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
-                                Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: _guideTabBody(),
+                                const Text(
+                                  '실물 배송 상품이 아닌 교환처에서 사용할 수 있는 모바일 상품권입니다.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black87,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  '상품권 사용시 QR코드 또는 상품권 번호를 매장에 제시해 주시면 됩니다',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black87,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    '[주문/결제 → 상품권 수신 → 선물함 → QR코드 제시]',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                          ),
+                          const SizedBox(height: 16),
 
-              // 하단 버튼 영역 (결제하기 화면 하단과 동일: 한 행 2버튼)
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(
-                    top: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 50,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            final user = Provider.of<UserProvider>(context, listen: false).user;
-                            if (user == null) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage(returnToPrevious: true)));
-                              return;
-                            }
-                            MetaAnalyticsService.instance.logInitiateCheckout(
-                              contentId: widget.menu.menu_id.toString(),
-                              contentType: 'product',
-                              value: widget.menu.price.toDouble(),
-                            );
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => Payment(
-                                  type: 1,
-                                  menu: widget.menu,
-                                  storeDisplayName: _exchangePlaceName,
-                                  contextStoreId: widget.contextStoreId ?? widget.loadStoreId ??
-                                      (widget.menu.store_id > 0
-                                          ? widget.menu.store_id
-                                          : null),
-                                ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _guideTabBar(),
+                              const SizedBox(height: 12),
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: _guideTabBody(),
                               ),
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: ColorAssset.mainColor,
-                            side: const BorderSide(
-                                color: ColorAssset.mainColor, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            ],
                           ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: const Text(
-                              '지금 바로 결제하기',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SizedBox(
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            foregroundColor: Colors.white,
-                            backgroundColor: ColorAssset.mainColor,
-                          ),
-                          onPressed: () {
-                            final user = Provider.of<UserProvider>(context, listen: false).user;
-                            if (user == null) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => LoginPage(returnToPrevious: true)));
-                              return;
-                            }
-                            MetaAnalyticsService.instance.logInitiateCheckout(
-                              contentId: widget.menu.menu_id.toString(),
-                              contentType: 'product',
-                              value: widget.menu.price.toDouble(),
-                            );
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => Payment(
-                                  type: 2,
-                                  menu: widget.menu,
-                                  storeDisplayName: _exchangePlaceName,
-                                  exchangeAddress: _exchangeAddress,
-                                  exchangeLat: _exchangeLat,
-                                  exchangeLng: _exchangeLng,
-                                  exchangePlaceName: _exchangePlaceName,
-                                  contextStoreId: widget.contextStoreId ?? widget.loadStoreId ??
-                                      (widget.menu.store_id > 0
-                                          ? widget.menu.store_id
-                                          : null),
-                                ),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            '선물하기',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+
+            // 하단 버튼 영역 (결제하기 화면 하단과 동일: 한 행 2버튼)
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          final user =
+                              Provider.of<UserProvider>(context, listen: false)
+                                  .user;
+                          if (user == null) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        LoginPage(returnToPrevious: true)));
+                            return;
+                          }
+                          MetaAnalyticsService.instance.logInitiateCheckout(
+                            contentId: widget.menu.menu_id.toString(),
+                            contentType: 'product',
+                            value: widget.menu.price.toDouble(),
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Payment(
+                                type: 1,
+                                menu: widget.menu,
+                                storeDisplayName: _exchangePlaceName,
+                                contextStoreId: widget.contextStoreId ??
+                                    widget.loadStoreId ??
+                                    (widget.menu.store_id > 0
+                                        ? widget.menu.store_id
+                                        : null),
+                              ),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ColorAssset.mainColor,
+                          side: const BorderSide(
+                              color: ColorAssset.mainColor, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: const Text(
+                            '지금 바로 결제하기',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          foregroundColor: Colors.white,
+                          backgroundColor: ColorAssset.mainColor,
+                        ),
+                        onPressed: () {
+                          final user =
+                              Provider.of<UserProvider>(context, listen: false)
+                                  .user;
+                          if (user == null) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        LoginPage(returnToPrevious: true)));
+                            return;
+                          }
+                          MetaAnalyticsService.instance.logInitiateCheckout(
+                            contentId: widget.menu.menu_id.toString(),
+                            contentType: 'product',
+                            value: widget.menu.price.toDouble(),
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Payment(
+                                type: 2,
+                                menu: widget.menu,
+                                storeDisplayName: _exchangePlaceName,
+                                exchangeAddress: _exchangeAddress,
+                                exchangeLat: _exchangeLat,
+                                exchangeLng: _exchangeLng,
+                                exchangePlaceName: _exchangePlaceName,
+                                contextStoreId: widget.contextStoreId ??
+                                    widget.loadStoreId ??
+                                    (widget.menu.store_id > 0
+                                        ? widget.menu.store_id
+                                        : null),
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          '선물하기',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
