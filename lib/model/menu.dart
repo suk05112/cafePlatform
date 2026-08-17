@@ -61,6 +61,46 @@ class RecommendMenuResponse {
   }
 }
 
+class Voucher {
+  final int storeId;
+  final int menuId;
+  final String menuName;
+  final int price;
+  final String? description;
+  final String? menuPhoto;
+
+  const Voucher({
+    required this.storeId,
+    required this.menuId,
+    required this.menuName,
+    required this.price,
+    this.description,
+    this.menuPhoto,
+  });
+
+  factory Voucher.fromJson(Map<String, dynamic> json) => Voucher(
+        storeId: (json['store_id'] as num?)?.toInt() ?? 0,
+        menuId: (json['menu_id'] as num?)?.toInt() ?? 0,
+        menuName: json['menu_name'] as String? ?? '',
+        price: (json['price'] as num?)?.toInt() ?? 0,
+        description: json['description'] as String?,
+        menuPhoto: json['menu_photo'] as String?,
+      );
+}
+
+class VoucherListResponse {
+  final List<Voucher> voucherList;
+
+  const VoucherListResponse({required this.voucherList});
+
+  factory VoucherListResponse.fromJson(Map<String, dynamic> json) {
+    final list = (json['voucherList'] as List<dynamic>? ?? [])
+        .map((e) => Voucher.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return VoucherListResponse(voucherList: list);
+  }
+}
+
 @JsonSerializable()
 class MenuGetResponse {
   List<Menu> menuList;

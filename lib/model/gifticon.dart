@@ -17,13 +17,16 @@ class Gifticon {
   String description;
   DateTime? validity; // 1: 유효기간 만료, 2:
   @JsonKey(name: 'purchaser_refund_deadline')
-  DateTime? purchaserRefundDeadline; // 구매자 100% 환불 마감일 (발급 시점 정책 고정값, null=환불불가)
+  DateTime?
+      purchaserRefundDeadline; // 구매자 100% 환불 마감일 (발급 시점 정책 고정값, null=환불불가)
   String sender;
   String receiver;
   String? menu_url;
   int? menu_id;
   @JsonKey(name: 'status')
   String? status; // 'UNUSED', 'USED', 'EXPIRED', 'CANCELED'
+  @JsonKey(name: 'product_type')
+  String? product_type; // 'MENU', 'VOUCHER'
   int? type;
   String? receiver_phone_number;
   int? store_id;
@@ -52,6 +55,7 @@ class Gifticon {
       this.menu_id,
       this.receiver_phone_number,
       this.status,
+      this.product_type,
       this.type,
       this.store_id,
       this.validity,

@@ -20,6 +20,7 @@ Gifticon _$GifticonFromJson(Map<String, dynamic> json) => Gifticon(
       menu_id: json['menu_id'] as int?,
       receiver_phone_number: json['receiver_phone_number'] as String?,
       status: json['status'] as String?,
+      product_type: json['product_type'] as String?,
       type: json['type'] as int?,
       store_id: json['store_id'] as int?,
       validity: json['validity'] == null
@@ -56,6 +57,7 @@ Map<String, dynamic> _$GifticonToJson(Gifticon instance) => <String, dynamic>{
       'menu_url': instance.menu_url,
       'menu_id': instance.menu_id,
       'status': instance.status,
+      'product_type': instance.product_type,
       'type': instance.type,
       'receiver_phone_number': instance.receiver_phone_number,
       'store_id': instance.store_id,

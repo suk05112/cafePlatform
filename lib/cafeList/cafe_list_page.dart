@@ -18,7 +18,6 @@ import 'package:cafeplatform/api/API.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
-
 class CafeList extends StatefulWidget {
   const CafeList({super.key});
 
@@ -75,8 +74,6 @@ class _CafeListState extends State<CafeList> {
     });
   }
 
-
-
   void _onScroll() {
     // 스크롤 위치 확인
     final position = _scrollController.position;
@@ -99,9 +96,8 @@ class _CafeListState extends State<CafeList> {
   // 새로 추가된 매장 이미지를 화면에 그려지기 전에 백그라운드로 프리캐시
   void _prefetchNewStoreImages(int fromIndex) {
     if (!mounted) return;
-    final stores = Provider.of<StoreProvider>(context, listen: false)
-        .listViewStores ??
-        [];
+    final stores =
+        Provider.of<StoreProvider>(context, listen: false).listViewStores ?? [];
     if (fromIndex >= stores.length) return;
     final urls = stores
         .sublist(fromIndex)
@@ -279,7 +275,8 @@ class _CafeListState extends State<CafeList> {
                     childCount: 3,
                   ),
                 )
-              else if (filteredListViewStores.isEmpty && !storeProvider.isLoadingMore)
+              else if (filteredListViewStores.isEmpty &&
+                  !storeProvider.isLoadingMore)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: _buildEmptyStoreState(),
@@ -294,7 +291,8 @@ class _CafeListState extends State<CafeList> {
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 24),
                             child: Center(
-                              child: CircularProgressIndicator(color: ColorAssset.mainColor),
+                              child: CircularProgressIndicator(
+                                  color: ColorAssset.mainColor),
                             ),
                           );
                         }
@@ -371,8 +369,6 @@ class _CafeListState extends State<CafeList> {
     final recommendMenus = context.watch<StoreProvider>().recommendMenus;
     final display = recommendMenus.take(10).toList();
 
-    if (!_recommendLoading && recommendMenus.isEmpty) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -412,7 +408,8 @@ class _CafeListState extends State<CafeList> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade600),
+                      Icon(Icons.chevron_right,
+                          size: 18, color: Colors.grey.shade600),
                     ],
                   ),
                 ),
@@ -426,9 +423,14 @@ class _CafeListState extends State<CafeList> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: 3,
+              itemCount: 3 + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, __) => const _RecommendMenuSkeletonCard(),
+              itemBuilder: (_, index) {
+                if (index == 0) {
+                  return _VoucherEntryCard(onTap: _onVoucherCardTap);
+                }
+                return const _RecommendMenuSkeletonCard();
+              },
             ),
           )
         else
@@ -437,10 +439,13 @@ class _CafeListState extends State<CafeList> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: display.length,
+              itemCount: display.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
-                final m = display[index];
+                if (index == 0) {
+                  return _VoucherEntryCard(onTap: _onVoucherCardTap);
+                }
+                final m = display[index - 1];
                 return _RecommendMenuCard(
                   menu: m,
                   onTap: () => _onRecommendMenuItemTap(m),
@@ -467,14 +472,23 @@ class _CafeListState extends State<CafeList> {
       description: item.description,
     );
 
-    Navigator.push(context, MaterialPageRoute<void>(
-      builder: (_) => SelectGiftPage(
-        menu: menu,
-        contextStoreId: item.storeId,
-        exchangePlaceName: item.storeName,
-        loadStoreId: item.storeId,
-      ),
-    )).then((_) => _recommendTapping = false);
+    Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => SelectGiftPage(
+            menu: menu,
+            contextStoreId: item.storeId,
+            exchangePlaceName: item.storeName,
+            loadStoreId: item.storeId,
+          ),
+        )).then((_) => _recommendTapping = false);
+  }
+
+  void _onVoucherCardTap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const _VoucherListPage()),
+    );
   }
 
   Widget _buildSearchAndMapRow() {
@@ -523,8 +537,8 @@ class _CafeListState extends State<CafeList> {
           color: Colors.white,
           shape: const CircleBorder(),
           child: IconButton(
-            icon: Icon(Icons.map_outlined,
-                color: Colors.grey.shade800, size: 26),
+            icon:
+                Icon(Icons.map_outlined, color: Colors.grey.shade800, size: 26),
             onPressed: () {
               Navigator.push(
                 context,
@@ -568,7 +582,6 @@ class _CafeListState extends State<CafeList> {
         fatal: false,
       );
 
-
       // 실제 크래시를 발생시키려면 아래 주석 해제 (앱이 종료됩니다)
       // await Future.delayed(const Duration(seconds: 2));
       // FirebaseCrashlytics.instance.crash();
@@ -592,7 +605,6 @@ class _CafeListState extends State<CafeList> {
       // 테스트용 로그 기록
       await FirebaseCrashlytics.instance.log("크래시 로깅 테스트 시작");
 
-
       // 실제 크래시를 테스트하려면 아래 주석을 해제하세요
       // 주의: 이 코드는 앱을 강제로 크래시시킵니다
       // FirebaseCrashlytics.instance.crash();
@@ -609,8 +621,7 @@ class _CafeListState extends State<CafeList> {
           reason: 'crashtest 함수 실행 중 에러 발생',
           fatal: false,
         );
-      } catch (crashlyticsError) {
-      }
+      } catch (crashlyticsError) {}
     }
   }
 
@@ -963,11 +974,14 @@ class _CafeDiscoverySkeletonRow extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(width: 120, height: 15, color: const Color(0xFFE0E0E0)),
+                  Container(
+                      width: 120, height: 15, color: const Color(0xFFE0E0E0)),
                   const SizedBox(height: 6),
-                  Container(width: 160, height: 13, color: const Color(0xFFE0E0E0)),
+                  Container(
+                      width: 160, height: 13, color: const Color(0xFFE0E0E0)),
                   const SizedBox(height: 10),
-                  Container(width: 70, height: 12, color: const Color(0xFFE0E0E0)),
+                  Container(
+                      width: 70, height: 12, color: const Color(0xFFE0E0E0)),
                 ],
               ),
             ],
@@ -991,9 +1005,8 @@ class _RecommendMenuCard extends StatelessWidget {
 
   static const Color _subtitleColor = Color(0xFF757575);
 
-  String _formatPrice(int price) => price
-      .toString()
-      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  String _formatPrice(int price) => price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
   @override
   Widget build(BuildContext context) {
@@ -1017,27 +1030,233 @@ class _RecommendMenuCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 menu.storeName,
-                style: const TextStyle(fontSize: 12, color: _subtitleColor, height: 1.2),
+                style: const TextStyle(
+                    fontSize: 12, color: _subtitleColor, height: 1.2),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
                 menu.menuName,
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w500,
-                    color: Color(0xFF1A1A1F), height: 1.35),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1A1A1F),
+                    height: 1.35),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
                 '${_formatPrice(menu.price)}원',
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1F), height: 1.35),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1F),
+                    height: 1.35),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _VoucherEntryCard extends StatelessWidget {
+  const _VoucherEntryCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const String _imageUrl =
+      'https://cafeplatform.s3.ap-northeast-2.amazonaws.com/voucher/voucher.png';
+  static const Color _subtitleColor = Color(0xFF757575);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 120,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CachedImage(
+                url: _imageUrl,
+                width: 120,
+                height: 120,
+                borderRadius: BorderRadius.circular(8),
+                fallbackIcon: Icons.card_giftcard_outlined,
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '금액권',
+                style:
+                    TextStyle(fontSize: 12, color: _subtitleColor, height: 1.2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const Text(
+                '기프넛 금액권 구매',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1A1A1F),
+                    height: 1.35),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VoucherListPage extends StatefulWidget {
+  const _VoucherListPage();
+
+  @override
+  State<_VoucherListPage> createState() => _VoucherListPageState();
+}
+
+class _VoucherListPageState extends State<_VoucherListPage> {
+  late Future<List<Voucher>> _futureVouchers;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureVouchers = _fetchVouchers();
+  }
+
+  Future<List<Voucher>> _fetchVouchers() async {
+    try {
+      await Api().setBaseClient(Api.BASE_URL);
+      final resp = await Api().client.getVouchers();
+      return resp.voucherList;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  String _formatPrice(int price) => price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  void _onVoucherTap(Voucher item) {
+    final menu = Menu(
+      menu_id: item.menuId,
+      store_id: item.storeId,
+      name: item.menuName,
+      price: item.price,
+      menu_image_url: item.menuPhoto,
+      description: item.description,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => SelectGiftPage(
+          menu: menu,
+          contextStoreId: item.storeId,
+          isVoucher: true,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon:
+              const Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          '금액권 구매',
+          style: TextStyle(
+              fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black87),
+        ),
+        centerTitle: true,
+      ),
+      body: FutureBuilder<List<Voucher>>(
+        future: _futureVouchers,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+                child: CircularProgressIndicator(color: ColorAssset.mainColor));
+          }
+          final vouchers = snapshot.data ?? [];
+          if (vouchers.isEmpty) {
+            return Center(
+              child: Text(
+                '잠시 후 다시 시도해주세요',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            );
+          }
+          return GridView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 20,
+              childAspectRatio: 0.62,
+            ),
+            itemCount: vouchers.length,
+            itemBuilder: (context, index) {
+              final v = vouchers[index];
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _onVoucherTap(v),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 1,
+                        child: CachedImage(
+                          url: v.menuPhoto ?? '',
+                          borderRadius: BorderRadius.circular(12),
+                          fallbackIcon: Icons.card_giftcard_outlined,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '기프넛 ${_formatPrice(v.price)}원 교환권',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1A1A1F),
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_formatPrice(v.price)}원',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A1F),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -1048,9 +1267,8 @@ class _RecommendMenuListPage extends StatelessWidget {
 
   final List<RecommendMenu> menus;
 
-  String _formatPrice(int price) => price
-      .toString()
-      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  String _formatPrice(int price) => price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
   @override
   Widget build(BuildContext context) {
@@ -1060,12 +1278,14 @@ class _RecommendMenuListPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
+          icon:
+              const Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           '이런 메뉴는 어떠세요?',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black87),
+          style: TextStyle(
+              fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black87),
         ),
         centerTitle: true,
       ),
@@ -1088,27 +1308,38 @@ class _RecommendMenuListPage extends StatelessWidget {
                 if (!context.mounted) return;
                 Menu? picked;
                 for (final menu in menuResp.menuList) {
-                  if (menu.menu_id == m.menuId) { picked = menu; break; }
+                  if (menu.menu_id == m.menuId) {
+                    picked = menu;
+                    break;
+                  }
                 }
                 if (picked == null) {
-                  Navigator.push(context, MaterialPageRoute<void>(
-                    builder: (_) => StorePage(storeId: m.storeId, storeName: m.storeName),
-                  ));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => StorePage(
+                            storeId: m.storeId, storeName: m.storeName),
+                      ));
                   return;
                 }
-                final storeResp = await Api().client.getStoreDetailInfo(m.storeId);
+                final storeResp =
+                    await Api().client.getStoreDetailInfo(m.storeId);
                 if (!context.mounted) return;
                 final detail = storeResp.store;
-                Navigator.push(context, MaterialPageRoute<void>(
-                  builder: (_) => SelectGiftPage(
-                    menu: picked!,
-                    contextStoreId: m.storeId,
-                    exchangeAddress: detail.store_address,
-                    exchangeLat: detail.store_lat,
-                    exchangeLng: detail.store_lng,
-                    exchangePlaceName: detail.store_name.isNotEmpty ? detail.store_name : m.storeName,
-                  ),
-                ));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => SelectGiftPage(
+                        menu: picked!,
+                        contextStoreId: m.storeId,
+                        exchangeAddress: detail.store_address,
+                        exchangeLat: detail.store_lat,
+                        exchangeLng: detail.store_lng,
+                        exchangePlaceName: detail.store_name.isNotEmpty
+                            ? detail.store_name
+                            : m.storeName,
+                      ),
+                    ));
               } catch (_) {}
             },
             child: Column(
@@ -1122,15 +1353,24 @@ class _RecommendMenuListPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(m.storeName,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF757575), height: 1.2),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF757575), height: 1.2),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
                 Text(m.menuName,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
-                        color: Color(0xFF1A1A1F), height: 1.35),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1F),
+                        height: 1.35),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
                 Text('${_formatPrice(m.price)}원',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A1F), height: 1.35)),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1F),
+                        height: 1.35)),
               ],
             ),
           );

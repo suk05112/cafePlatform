@@ -9,6 +9,8 @@ import 'package:cafeplatform/model/user.dart';
 import 'package:cafeplatform/provider/user_provider.dart';
 import 'package:cafeplatform/widget/network_aware_widget.dart';
 import 'package:cafeplatform/Style/ColorAsset.dart';
+import 'package:cafeplatform/static/payment_guide_text.dart';
+import 'package:cafeplatform/utils/cached_image.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -74,7 +76,8 @@ class _GiftBoxState extends State<GiftBox> with SingleTickerProviderStateMixin {
     final used = gifticonList.where((g) {
       final s = g.status?.toUpperCase();
       final isExpiredByDate = g.validity != null && g.validity!.isBefore(now);
-      return (s != 'PENDING' && s != 'UNKNOWN' && s != 'UNUSED') || isExpiredByDate;
+      return (s != 'PENDING' && s != 'UNKNOWN' && s != 'UNUSED') ||
+          isExpiredByDate;
     }).toList();
     final unused = gifticonList.where((g) {
       final s = g.status?.toUpperCase();
@@ -215,7 +218,8 @@ class _GifticonListView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.card_giftcard_outlined, size: 52, color: Colors.grey[300]),
+            Icon(Icons.card_giftcard_outlined,
+                size: 52, color: Colors.grey[300]),
             const SizedBox(height: 12),
             Text(
               "선물이 없습니다.",
@@ -259,7 +263,8 @@ class _GifticonRow extends StatelessWidget {
   bool get _isUsed {
     final s = gifticon.status?.toUpperCase();
     return (s != 'PENDING' && s != 'UNKNOWN' && s != 'UNUSED') ||
-        (gifticon.validity != null && gifticon.validity!.isBefore(DateTime.now()));
+        (gifticon.validity != null &&
+            gifticon.validity!.isBefore(DateTime.now()));
   }
 
   bool get _showSender {
@@ -280,7 +285,8 @@ class _GifticonRow extends StatelessWidget {
         width: 72,
         height: 72,
         color: Colors.grey[100],
-        child: Icon(Icons.local_cafe_outlined, color: Colors.grey[300], size: 28),
+        child:
+            Icon(Icons.local_cafe_outlined, color: Colors.grey[300], size: 28),
       );
 
   @override
@@ -290,7 +296,8 @@ class _GifticonRow extends StatelessWidget {
         final used = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (context) => GifticonPage(gifticon_id: gifticon.gifticon_id),
+            builder: (context) =>
+                GifticonPage(gifticon_id: gifticon.gifticon_id),
           ),
         );
         if (used == true) {
@@ -305,30 +312,27 @@ class _GifticonRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: _hasImage
-                    ? Image.network(
-                        gifticon.menu_url!.trim(),
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return _imagePlaceholder();
-                        },
-                        errorBuilder: (context, error, stackTrace) =>
-                            _imagePlaceholder(),
-                      )
-                    : _imagePlaceholder(),
-              ),
+              _hasImage
+                  ? CachedImage(
+                      url: gifticon.menu_url!.trim(),
+                      width: 72,
+                      height: 72,
+                      borderRadius: BorderRadius.circular(10),
+                      fallbackIcon: Icons.local_cafe_outlined,
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: _imagePlaceholder(),
+                    ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      gifticon.store_name,
+                      gifticon.product_type == 'VOUCHER'
+                          ? PaymentGuideText.voucherStoreLabel
+                          : gifticon.store_name,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[500],

@@ -6,27 +6,30 @@ part 'order.g.dart';
 class Order {
   @JsonKey(name: 'order_id')
   int order_id;
-  
+
   @JsonKey(name: 'store_id')
   int store_id;
-  
+
   @JsonKey(name: 'order_number')
   String order_number;
-  
+
   String sender;
-  
+
   @JsonKey(name: 'created_time', fromJson: _dateTimeFromJson)
   DateTime created_time;
-  
+
   int price;
-  
+
   @JsonKey(name: 'menu_name')
   String menu_name;
-  
+
   @JsonKey(name: 'menu_url')
   String? menu_url;
-  
+
   String status;
+
+  @JsonKey(name: 'product_type')
+  String? product_type;
 
   Order(
       {required this.order_id,
@@ -37,11 +40,12 @@ class Order {
       required this.price,
       required this.menu_name,
       this.menu_url,
-      required this.status});
+      required this.status,
+      this.product_type});
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
   Map<String, dynamic> toJson() => _$OrderToJson(this);
-  
+
   static DateTime _dateTimeFromJson(dynamic dateTime) {
     if (dateTime is String) {
       try {

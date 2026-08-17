@@ -67,83 +67,87 @@ class _OrderDetailPageState extends State<OrderDetailPage>
     return Stack(
       children: [
         Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: const CommonAppBar(title: '주문 상세내역'),
-        body: SafeArea(
-            child: FutureBuilder<OrderDetailResponse>(
-          future: _fetchOrderDetail(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: ColorAssset.mainColor));
-            }
+            backgroundColor: Colors.grey[50],
+            appBar: const CommonAppBar(title: '주문 상세내역'),
+            body: SafeArea(
+                child: FutureBuilder<OrderDetailResponse>(
+              future: _fetchOrderDetail(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator(
+                          color: ColorAssset.mainColor));
+                }
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline,
-                        size: 64, color: Colors.grey[400]),
-                    SizedBox(height: 16),
-                    Text(
-                      '주문 정보를 불러올 수 없습니다.',
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 64, color: Colors.grey[400]),
+                        SizedBox(height: 16),
+                        Text(
+                          '주문 정보를 불러올 수 없습니다.',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {});
+                          },
+                          child: Text('다시 시도'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData) {
+                  return Center(
+                    child: Text(
+                      '주문 정보가 없습니다.',
                       style: TextStyle(color: Colors.grey[600]),
                     ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {});
-                      },
-                      child: Text('다시 시도'),
+                  );
+                }
+
+                final orderDetail = snapshot.data!;
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        gifticonInfoList(orderDetail),
+                        SizedBox(height: 16),
+                        if (orderDetail.product_type != 'VOUCHER') ...[
+                          storeInfo(orderDetail),
+                          SizedBox(height: 16),
+                        ],
+                        orderInfo(orderDetail),
+                        SizedBox(height: 16),
+                        // status가 "REFUNDED"일 경우에만 취소/환불 정보 표시
+                        if (orderDetail.status?.toUpperCase() == 'REFUNDED')
+                          cancellationDetails(orderDetail),
+                        if (orderDetail.status?.toUpperCase() == 'REFUNDED')
+                          SizedBox(height: 16),
+                        SizedBox(height: 24),
+                        // 기프티콘 중 하나라도 is_receiver_linked가 false이면 선물 다시 전달하기 버튼 표시
+                        if (orderDetail.gifticons
+                            .any((g) => g.is_receiver_linked == false))
+                          resendGiftButton(orderDetail),
+                        if (orderDetail.gifticons
+                            .any((g) => g.is_receiver_linked == false))
+                          SizedBox(height: 16),
+                        if (orderDetail.status?.toUpperCase() != 'REFUNDED')
+                          cancelButton(),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            }
-
-            if (!snapshot.hasData) {
-              return Center(
-                child: Text(
-                  '주문 정보가 없습니다.',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              );
-            }
-
-            final orderDetail = snapshot.data!;
-            return SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    gifticonInfoList(orderDetail),
-                    SizedBox(height: 16),
-                    storeInfo(orderDetail),
-                    SizedBox(height: 16),
-                    orderInfo(orderDetail),
-                    SizedBox(height: 16),
-                    // status가 "REFUNDED"일 경우에만 취소/환불 정보 표시
-                    if (orderDetail.status?.toUpperCase() == 'REFUNDED')
-                      cancellationDetails(orderDetail),
-                    if (orderDetail.status?.toUpperCase() == 'REFUNDED')
-                      SizedBox(height: 16),
-                    SizedBox(height: 24),
-                    // 기프티콘 중 하나라도 is_receiver_linked가 false이면 선물 다시 전달하기 버튼 표시
-                    if (orderDetail.gifticons
-                        .any((g) => g.is_receiver_linked == false))
-                      resendGiftButton(orderDetail),
-                    if (orderDetail.gifticons
-                        .any((g) => g.is_receiver_linked == false))
-                      SizedBox(height: 16),
-                    if (orderDetail.status?.toUpperCase() != 'REFUNDED')
-                      cancelButton(),
-                  ],
-                ),
-              ),
-            );
-          },
-        ))),
+                  ),
+                );
+              },
+            ))),
         if (_isRefunding)
           const ModalBarrier(dismissible: false, color: Colors.black26),
         if (_isRefunding)

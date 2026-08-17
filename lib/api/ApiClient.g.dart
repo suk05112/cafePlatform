@@ -367,6 +367,33 @@ class _ApiClient implements ApiClient {
   }
 
   @override
+  Future<VoucherListResponse> getVouchers() async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _result = await _dio.fetch<Map<String, dynamic>>(
+        _setStreamType<VoucherListResponse>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+            .compose(
+              _dio.options,
+              '/menu/vouchers',
+              queryParameters: queryParameters,
+              data: _data,
+            )
+            .copyWith(
+                baseUrl: _combineBaseUrls(
+              _dio.options.baseUrl,
+              baseUrl,
+            ))));
+    final _value = VoucherListResponse.fromJson(_result.data!);
+    return _value;
+  }
+
+  @override
   Future<MenuPostResponse> addMenu(Menu menu) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

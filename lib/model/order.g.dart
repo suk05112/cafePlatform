@@ -16,6 +16,7 @@ Order _$OrderFromJson(Map<String, dynamic> json) => Order(
       menu_name: json['menu_name'] as String,
       menu_url: json['menu_url'] as String?,
       status: json['status'] as String,
+      product_type: json['product_type'] as String?,
     );
 
 Map<String, dynamic> _$OrderToJson(Order instance) => <String, dynamic>{
@@ -28,4 +29,5 @@ Map<String, dynamic> _$OrderToJson(Order instance) => <String, dynamic>{
       'menu_name': instance.menu_name,
       'menu_url': instance.menu_url,
       'status': instance.status,
+      'product_type': instance.product_type,
     };
