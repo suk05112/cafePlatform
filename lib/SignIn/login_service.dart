@@ -148,7 +148,7 @@ class LoginService {
           .signInWithEmailAndPassword(email: email, password: password);
       // return true;
     } catch (error) {
-      onError(await AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(error));
     }
   }
 
@@ -174,7 +174,7 @@ class LoginService {
             googleSignInAccount.displayName ?? "name", credential.providerId);
       }
     } catch (error) {
-      onError(await AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(error));
     }
   }
 
@@ -194,14 +194,14 @@ class LoginService {
         try {
           token = await kakao.UserApi.instance.loginWithKakaoAccount();
         } catch (error) {
-          onError(await AuthErrorHandler.handle(e));
+          onError(await AuthErrorHandler.handle(error));
         }
       }
     } else {
       try {
         token = await kakao.UserApi.instance.loginWithKakaoAccount();
       } catch (error) {
-        onError(await AuthErrorHandler.handle(e));
+        onError(await AuthErrorHandler.handle(error));
       }
     }
 // 계정 가리기 -> 삭제 -> 계정보이고 로그인 : 새로운 유저 -> 전화번호 인증 -> 재검사
@@ -220,7 +220,7 @@ class LoginService {
           kakaoUser.kakaoAccount?.profile?.nickname ?? "name",
           credential.providerId);
     } catch (error) {
-      onError(await AuthErrorHandler.handle(e));
+      onError(await AuthErrorHandler.handle(error));
     }
     return;
   }
